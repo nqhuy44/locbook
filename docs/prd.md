@@ -1,0 +1,116 @@
+# VibeMap (The Living POI Database)
+
+## 1. Executive Summary
+VibeMap is a personal, AI-powered Point of Interest (POI) management system designed to cure "bookmark chaos." It transforms static screenshots and Google Maps links into a searchable, "living" database enriched with semantic context (vibes, occasions) and real-time status updates (open/closed).
+
+## 2. Problem Statement (The Pain Points)
+- **The "Screenshot Graveyard":** Valuable discoveries on Google Maps are often saved via screenshots, becoming "dead data" that is unsearchable and hard to retrieve.
+- **The "Vibe" Gap:** Google Maps allows filtering by category (Cafe, Bar) but not by vibe (e.g., "Vintage," "Speakeasy," "Quiet for coding," "Date night").
+- **Data Staleness:** Saved places often close down, change addresses, or change hours without the user knowing until they arrive at the location.
+- **Discovery Fatigue:** Google Maps' "Explore" feature is increasingly generic and cluttered with ads, making it hard to find hidden gems near the user.
+- **Sharing Friction:** Compiling a recommendation list for friends based on specific criteria (e.g., "Quiet bars in District 1") requires manual cross-referencing and copy-pasting.
+
+## 3. Solution Overview
+A centralized system where a Telegram Bot acts as the primary ingestion and query interface.
+
+- **Input:** User sends a screenshot or link to the Bot.
+- **Processing:** Gemini AI (Vision) extracts details, analyzes photos/reviews to tag "vibes" and "occasions."
+- **Storage:** Data is stored in a structured DB (MongoDB) with geospatial capabilities.
+- **Maintenance:** A background Cronjob checks Google Places API to verify if saved spots are still operational.
+- **Output:** User queries the bot via natural language or views a Web Dashboard.
+
+## 4. Key Features (MVP)
+
+### A. Smart Capture (Ingestion)
+- **Screenshot Analysis:** Extracts Place Name, Address, Rating, and visual cues (decor style) from an image.
+- **Link Parsing:** Extracts Place ID from shared Google Maps URLs.
+- **User Annotation:** Allows users to attach a quick note/caption (e.g., "Good for client meetings") which AI adds to the context.
+- **EXIF Discovery (Hidden Gems):** If a user uploads an original photo, the system extracts GPS metadata to create a location entry, enabling the saving of unlisted spots (e.g., a street food cart or scenic view) not found on Google Maps.
+
+### B. AI Enrichment (The "Brain")
+- **Vibe Tagging:** auto-tags places (e.g., #speakeasy, #industrial_decor, #specialty_coffee).
+- **Occasion Matching:** Categorizes suitability (e.g., Solo, Group, Date, Work).
+- **Price Estimation:** AI analyzes menu photos or price symbols to estimate cost ($, $$, $$$).
+
+### C. The "Living" Database
+- **Status Watchdog:** Automatically flags places as CLOSED_PERMANENTLY or TEMPORARILY_CLOSED.
+- **Alert System:** Telegram notification if a favorite place has permanently closed or moved.
+
+### D. Semantic Discovery
+- **Natural Language Query:** "Find a quiet cafe near District 3 for reading tonight."
+- **Contextual Suggestion:** "I'm hungry, suggest a place near my current location that I haven't visited yet."
+
+## 5. Technical Architecture
+
+### Tech Stack
+- **Interface:** Telegram Bot API (using python-telegram-bot).
+- **Backend:** Python 3.10+ (FastAPI or Asyncio script).
+- **Database:** Supabase (PostgreSQL + PostGIS extension for location queries).
+- **AI Models:**
+    - **Primary:** Google Gemini 1.5 Flash (via API) - For Vision OCR, summary, and vibe extraction.
+    - **Fallback/Privacy:** Local LLM (Ollama/Llama 3) - For local text processing if internet/API is down.
+- **External Data:** Google Places API (New) - For fetching business_status and opening_hours.
+
+```mermaid
+graph TD
+    User[User - Telegram] -->|Send Screenshot/Link| Bot[Telegram Bot]
+    Bot -->|Image/Text| Backend[Python Service]
+    Backend -->|API Call| AI-Model[Gemini 1.5 Flash|Local model]
+    AI-Model -->|JSON Data| Backend
+    Backend -->|Store| DB[(MongoDB)]
+    
+    Cron[Scheduled Cronjob] -->|Check Status| GoogleAPI[Google Places API]
+    GoogleAPI -->|Update Status| DB
+    DB -->|Trigger Alert| Bot
+    Bot -->|Notify| User
+```
+
+## 6. Functional Requirements
+
+### 6.1. The AI Analyst Prompt (Draft)
+The system must generate a prompt similar to this for Gemini:
+
+```text
+"Analyze this screenshot of a venue. Extract the following JSON:
+
+name: Exact name of the venue.
+
+address: Rough address or district.
+
+category: (Cafe, Bar, Restaurant, Street Food).
+
+vibes: Array of keywords (e.g., 'Cozy', 'Cyberpunk', 'Luxury', 'Local').
+
+price_level: Estimate 1-4 based on context.
+
+confidence: 0-100."
+```
+
+### 6.2. Database Schema (Draft)
+**Table: places**
+
+| Field | Type | Attributes | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | uuid | PK | |
+| `gmaps_place_id` | string | Unique/Nullable | Nullable for custom "Hidden Gems" |
+| `name` | string | | |
+| `location` | geography point | | |
+| `tags` | text array | | Generated by AI |
+| `user_notes` | text | | |
+| `status` | enum | | OPERATIONAL, CLOSED, MOVED |
+| `last_checked_at` | timestamp | | |
+
+## 7. Roadmap & Expansion Ideas
+
+### Phase 2: The Web Dashboard
+- **Stack:** Next.js + Leaflet/Mapbox.
+- **Feature:** A "Pinterest-style" grid view of saved places, filtered by Vibe tags.
+
+### Phase 3: Social & Sharing
+- **Feature:** "Export List." User asks bot "List 5 bars for Huy," bot generates a public link containing those 5 locations.
+
+### Phase 4: Hardware Integration (Local AI)
+- **Feature:** If the user is at home, the system can offload extraction tasks to the local PC (using Llama 3/LLaVA) via a local API endpoint to save Gemini API costs (though Flash is very cheap).
+
+### Phase 5: "Menu Decoder"
+- **Feature:** When at a restaurant, user sends a photo of the menu. AI suggests the "Best Value" dish or translates food names into ingredients/macros (linking to health goals).
