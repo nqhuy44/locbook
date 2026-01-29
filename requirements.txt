@@ -1,0 +1,11 @@
+python-telegram-bot[job-queue]
+fastapi
+uvicorn
+google-genai
+motor
+beanie
+python-dotenv
+pydantic
+pydantic-settings
+requests
+beautifulsoup4
