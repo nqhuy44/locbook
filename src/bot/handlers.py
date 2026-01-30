@@ -23,9 +23,101 @@ import src.core.strings as strings
 import datetime
 from src.config import get_settings
 
-# async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-#     """Handle photo uploads (Temporarily Disabled)."""
-#     await update.message.reply_text("📸 Dừng chút! Marin đang tập trung vào Link Google Maps nha. Gửi link cho mình đi!")
+async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle photo uploads for Place Extraction."""
+    settings = get_settings()
+    
+    if not settings.FEAT_SCREENSHOT_ANALYSIS:
+        await update.message.reply_text(strings.MSG_MAINTENANCE_SCREENSHOT)
+        return
+
+    status_msg = await update.message.reply_text("🔎 Đang soi ảnh... Đợi Marin xíu nha!")
+    
+    try:
+        # Get highest res photo
+        photo = update.message.photo[-1]
+        file = await context.bot.get_file(photo.file_id)
+        
+        # Download to memory
+        import io
+        f = io.BytesIO()
+        await file.download_to_memory(f)
+        f.seek(0)
+        image_bytes = f.read()
+        
+        # Call AI
+        # Reuse analyze_place_complex with empty text
+        analysis = await ai_service.analyze_place_complex(
+            text_data="Analyze this screenshot to extract place information.", 
+            images=[(image_bytes, "image/jpeg")]
+        )
+        
+        if "error" in analysis:
+            await status_msg.edit_text(strings.ERROR_AI_FAIL.format(error=analysis['error']))
+            return
+
+        details = analysis.get("details", {})
+        marin_comment = analysis.get("marin_comment", strings.MARIN_BUSY)
+
+        # Create DB Object (Similar logic to link handler)
+        # Note: We might need to handle missing data more gracefully here since screenshots vary
+        
+        # ... (Reuse saving logic? Or just show result?)
+        # For now, let's just Show Result to verify logic, then Save if valid.
+        
+        if not details.get("name"):
+             await status_msg.edit_text("Hic, Marin không đọc được tên quán trong ảnh này. 🥺")
+             return
+
+        # Prepare for saving
+        categories = details.get('categories', [])
+        meal_types = details.get('meal_types', [])
+        occasions = details.get('occasions', [])
+        full_categories = list(set(categories + meal_types + occasions))
+        
+        place = Place(
+            name=details.get('name', 'Unknown Spot'),
+            address=details.get('address'),
+            categories=full_categories,
+            meal_types=meal_types,
+            occasions=occasions,
+            vibes=details.get('vibes', []),
+            mood=details.get('mood', []),
+            aesthetic_score=details.get('aesthetic_score'),
+            lighting=details.get('lighting'),
+            source_img_id=photo.file_id, # Save file_id for reference
+            rating=details.get('rating'),
+            price_level=details.get('price_level'),
+            status=details.get('status'),
+            opening_hours=details.get('opening_hours'),
+            popular_times=details.get('popular_times'),
+            created_at=datetime.datetime.now()
+        )
+        
+        await place.save()
+        
+        # Reply
+        hours_section = ""
+        if place.opening_hours:
+            hours_section = f"🕒 <b>Hours:</b> {place.opening_hours}\n"
+        
+        caption = strings.PLACE_CARD_TEMPLATE.format(
+            name=place.name,
+            address=place.address,
+            categories=', '.join(place.categories) if place.categories else 'Secret Spot',
+            rating=place.rating or 'N/A',
+            price_level=place.price_level or 'N/A',
+            vibes=', '.join(place.vibes),
+            aesthetic_score=place.aesthetic_score or 'N/A',
+            hours_section=hours_section,
+            comment=marin_comment
+        )
+        
+        await status_msg.edit_text(caption, parse_mode="HTML")
+
+    except Exception as e:
+        logger.error(f"Photo handling error: {e}")
+        await status_msg.edit_text(strings.ERROR_GENERIC.format(error="Marin bị hoa mắt rồi..."))
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle text messages (Check for Links)."""
@@ -37,6 +129,28 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     
     if url and link_parser.is_google_maps_url(url):
+        # 0. Check for Duplicate
+        existing_place = await Place.find_one(Place.google_maps_url == url)
+        if existing_place:
+            # Re-use the view logic display
+            hours_section = ""
+            if existing_place.opening_hours:
+                hours_section = f"🕒 <b>Hours:</b> {existing_place.opening_hours}\n"
+            
+            caption = strings.PLACE_CARD_TEMPLATE.format(
+                name=existing_place.name,
+                address=existing_place.address,
+                categories=', '.join(existing_place.categories) if existing_place.categories else 'Secret Spot',
+                rating=existing_place.rating or 'N/A',
+                price_level=existing_place.price_level or 'N/A',
+                vibes=', '.join(existing_place.vibes),
+                aesthetic_score=existing_place.aesthetic_score or 'N/A',
+                hours_section=hours_section,
+                comment=f"<i>(Mình đã lưu quán này rồi nha! ID: {existing_place.id})</i>"
+            )
+            await update.message.reply_html(caption)
+            return
+
         status_msg = await update.message.reply_text(strings.SEARCHING_MSG.format(url=url))
         
         try:
@@ -121,6 +235,34 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
              await update.message.reply_text(strings.DEFAULT_RESPONSE)
              return
 
+        # --- Spam Prevention / Token Saving ---
+        # Only call AI if message looks like a legitimate search query
+        # Heuristics:
+        # 1. Length check (> 3 chars)
+        # 2. Keywords check (must contain at least one search-related word)
+        
+        search_keywords = [
+            "tìm", "kiếm", "quán", "cafe", "cà phê", "bar", "pub", "ăn", "uống", 
+            "review", "chill", "view", "đẹp", "ngon", "rẻ", "đâu", "chỗ", "vibe",
+            "work", "date", "hẹn", "hò", "nhậu", "coffee", "restaurant"
+        ]
+        
+        is_search_intent = False
+        text_lower = text.lower()
+        
+        if len(text) > 3:
+            if any(k in text_lower for k in search_keywords):
+                is_search_intent = True
+            # Allow explicit prefixes if you want
+            if text.startswith("?") or text.lower().startswith("find"):
+                is_search_intent = True
+                
+        if not is_search_intent:
+            # Just ignore or random reply without AI
+            # Random helpful message to guide user
+            await update.message.reply_text(strings.MSG_HELP_SPAM_FILTER)
+            return
+            
         status_msg = await update.message.reply_text("🔎 Marin đang lục lọi trí nhớ xem có quán nào hợp không nhe... (Đợi xíu)")
         
         try:
@@ -174,7 +316,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     rating=p.rating or "N/A",
                     address=p.address or "Unknown",
                     vibes=", ".join(p.vibes[:3]),
-                    id=str(p.id)
+                    map_url=p.google_maps_url
                 )
             
             await status_msg.edit_text(response_text, parse_mode="HTML")
@@ -226,5 +368,6 @@ def get_handlers():
         CommandHandler("start", start_command),
         CommandHandler("help", help_command),
         MessageHandler(filters.Regex(r"^/view_"), handle_view_command),
+        MessageHandler(filters.PHOTO, handle_photo),
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message),
     ]

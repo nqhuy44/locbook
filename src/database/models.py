@@ -19,7 +19,7 @@ class Place(Document):
     rating: Optional[float] = None
     price_level: Optional[str] = None
     status: Optional[str] = None # Operational, Closed, etc.
-    OPENING_HOURS: Optional[str] = None # Helper constant, ignored
+    # OPENING_HOURS removed
     opening_hours: Optional[str] = Field(None, description="Opening hours description")
     popular_times: Optional[str] = Field(None, description="Popular times summary")
     source_img_id: Optional[str] = None

@@ -9,6 +9,7 @@ from google import genai
 from google.genai import types
 from src.config import get_settings
 import src.core.strings as strings
+from src.core.utils import to_toon
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +86,35 @@ class GeminiService(AIService):
         prompt = strings.GEMINI_ANALYSIS_PROMPT
         
         try:
+             # Define Schema
+            schema = {
+                "type": "OBJECT",
+                "properties": {
+                    "details": {
+                        "type": "OBJECT",
+                        "properties": {
+                            "name": {"type": "STRING"},
+                            "address": {"type": "STRING"},
+                            "categories": {"type": "ARRAY", "items": {"type": "STRING"}},
+                            "meal_types": {"type": "ARRAY", "items": {"type": "STRING"}},
+                            "occasions": {"type": "ARRAY", "items": {"type": "STRING"}},
+                            "vibes": {"type": "ARRAY", "items": {"type": "STRING"}},
+                            "mood": {"type": "ARRAY", "items": {"type": "STRING"}},
+                            "aesthetic_score": {"type": "INTEGER"},
+                            "lighting": {"type": "STRING"},
+                            "rating": {"type": "NUMBER"},
+                            "price_level": {"type": "STRING"},
+                            "status": {"type": "STRING"},
+                            "opening_hours": {"type": "STRING"},
+                            "popular_times": {"type": "STRING"}
+                        },
+                        "required": ["name"]
+                    },
+                    "marin_comment": {"type": "STRING"}
+                },
+                "required": ["details", "marin_comment"]
+            }
+
             contents = [prompt, text_data]
             # Append images
             for img_bytes, mime_type in images:
@@ -92,13 +122,18 @@ class GeminiService(AIService):
                 
             response = await self.client.aio.models.generate_content(
                 model=self.model_name,
-                contents=contents
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=schema
+                )
             )
             
             if response.usage_metadata:
                  logger.info(f"Gemini Token Usage (complex): Prompt: {response.usage_metadata.prompt_token_count}, Output: {response.usage_metadata.candidates_token_count}, Total: {response.usage_metadata.total_token_count}")
             
-            return self._parse_json(response.text)
+            # Since we enforce JSON schema, we can trust json.loads
+            return json.loads(response.text)
             
         except Exception as e:
             return {"error": self._handle_gemini_error(e)}
@@ -118,7 +153,8 @@ class GeminiService(AIService):
         Focus on the 'vibes', 'mood', and 'aesthetic_score'.
         Don't just list data, make it sound like you are excited to show this place!
         
-        Data: {json.dumps(place_data)}
+        Data (TOON):
+        {to_toon(place_data)}
         
         Response in Vietnamese, using international and vietnamese slangs, trending words:
         """
@@ -187,11 +223,25 @@ class GeminiService(AIService):
         
         prompt = strings.SEARCH_INTENT_PROMPT.format(query=query)
         try:
+             # Define Schema
+             schema = {
+                "type": "OBJECT",
+                "properties": {
+                    "keywords": {"type": "STRING", "nullable": True},
+                    "vibes": {"type": "ARRAY", "items": {"type": "STRING"}},
+                    "min_rating": {"type": "NUMBER"},
+                    "city": {"type": "STRING", "nullable": True}
+                }
+             }
              response = await self.client.aio.models.generate_content(
                 model=self.model_name,
-                contents=prompt
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=schema
+                )
             )
-             return self._parse_json(response.text)
+             return json.loads(response.text)
         except Exception as e:
             return {"error": self._handle_gemini_error(e)}
 

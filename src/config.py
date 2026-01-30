@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     
     # Feature Flags
     FEAT_IMAGE_ANALYSIS: bool = False
+    FEAT_SCREENSHOT_ANALYSIS: bool = False # Enable/Disable Screenshot Analysis
     FEAT_PLACE_SEARCH: bool = True # Enable/Disable Local DB Search
     MAX_REVIEWS_FOR_AI: int = 5 # Limit reviews to save tokens
     
