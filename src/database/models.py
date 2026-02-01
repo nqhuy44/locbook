@@ -1,12 +1,13 @@
 from beanie import Document
 from pydantic import Field
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 import pymongo
 
 class Place(Document):
     name: str = Field(..., description="Name of the place")
     address: Optional[str] = None
+    location: Optional[Dict[str, Any]] = Field(None, description="GeoJSON Point {type: 'Point', coordinates: [lon, lat]}")
     categories: List[str] = Field(default_factory=list, description="List of simple categories (e.g. Cafe, Bar)")
     meal_types: List[str] = Field(default_factory=list, description="Breakfast, Lunch, Dinner, Brunch, Late Night")
     occasions: List[str] = Field(default_factory=list, description="Date, Work, Group, Solo, Business")
@@ -19,10 +20,16 @@ class Place(Document):
     rating: Optional[float] = None
     price_level: Optional[str] = None
     status: Optional[str] = None # Operational, Closed, etc.
-    OPENING_HOURS: Optional[str] = None # Helper constant, ignored
+    # OPENING_HOURS removed
     opening_hours: Optional[str] = Field(None, description="Opening hours description")
     popular_times: Optional[str] = Field(None, description="Popular times summary")
     source_img_id: Optional[str] = None
+    local_image_path: Optional[str] = Field(None, description="Path to locally stored image")
+    
+    # Future-proofing
+    raw_ai_response: Optional[Dict[str, Any]] = Field(None, description="Raw JSON from AI for re-parsing")
+    schema_version: int = Field(default=1, description="Schema version for migration")
+    
     created_at: datetime = Field(default_factory=datetime.now)
     
     class Settings:

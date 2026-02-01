@@ -16,14 +16,19 @@ class Settings(BaseSettings):
     LOCAL_MODEL_NAME: str = "llama3.2-vision"
     
     # Feature Flags
+    FEAT_SCREENSHOT_ANALYSIS: bool = False # Enable/Disable Screenshot Analysis
     FEAT_IMAGE_ANALYSIS: bool = False
     FEAT_PLACE_SEARCH: bool = True # Enable/Disable Local DB Search
+    FEAT_GEO_SEARCH: bool = True # Enable/Disable Contextual Geo-Search
     MAX_REVIEWS_FOR_AI: int = 5 # Limit reviews to save tokens
     
     MONGO_URI: str = "mongodb://localhost:27018"
     MONGO_DB_NAME: str = "locbook"
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    MAX_MESSAGE_AGE_SECONDS: int = 60 # Ignore messages older than 2 minutes by default
+    RATE_LIMIT_PER_MINUTE: int = 5 # Max 5 requests per minute per user
+
+    model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True, env_file_encoding="utf-8")
 
 @lru_cache
 def get_settings():
