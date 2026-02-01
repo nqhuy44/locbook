@@ -25,3 +25,12 @@ env/
 test/
 data/
 backups
+mongodb
+coverage/
+htmlcov/
+.pytest_cache/
+
+# Dashboard artifacts (if not using dashboard/.gitignore)
+dashboard/node_modules
+dashboard/dist
+dashboard/.env.local

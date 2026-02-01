@@ -24,3 +24,9 @@ db-down:
 
 db-clean:
 	docker compose down -v
+
+fe-setup:
+	cd dashboard && npm install
+
+fe-run:
+	cd dashboard && npm run dev -- --host

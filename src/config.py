@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     FEAT_PLACE_SEARCH: bool = True # Enable/Disable Local DB Search
     FEAT_GEO_SEARCH: bool = True # Enable/Disable Contextual Geo-Search
     MAX_REVIEWS_FOR_AI: int = 5 # Limit reviews to save tokens
+    ENABLE_BOT: bool = True # Enable/Disable Telegram Bot Logic
     
     MONGO_URI: str = "mongodb://localhost:27018"
     MONGO_DB_NAME: str = "locbook"
