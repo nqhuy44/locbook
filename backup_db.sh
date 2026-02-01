@@ -6,7 +6,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BACKUP_DIR="${SCRIPT_DIR}/backups"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 DB_NAME="locbook"
-FILENAME="${BACKUP_DIR}/locbook_backup_${TIMESTAMP}.archive.gz"
+FILENAME="${BACKUP_DIR}/locbook_backup.archive.gz"
 CONTAINER_NAME_PATTERN="locbook-mongo" # Adjust if project name is different, or use label filter
 
 # Ensure backup directory exists

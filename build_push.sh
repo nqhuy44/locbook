@@ -3,32 +3,65 @@
 # Exit on error
 set -e
 
-# Check if tag argument is provided
-if [ -z "$1" ]; then
-    echo "Usage: ./build_push.sh <tag>"
-    echo "Example: ./build_push.sh v0.1.0"
+# Usage function
+usage() {
+    echo "Usage: ./build_push.sh <target> <tag>"
+    echo "Targets:"
+    echo "  be   - Build and push Backend (nqh44/locbook)"
+    echo "  fe   - Build and push Frontend (nqh44/locbook-fe)"
+    echo ""
+    echo "Example: ./build_push.sh be v0.1.0"
     exit 1
+}
+
+# Check arguments
+if [ -z "$1" ] || [ -z "$2" ]; then
+    usage
 fi
 
-TAG=$1
-IMAGE_NAME="nqh44/locbook"
-FULL_IMAGE_NAME="$IMAGE_NAME:$TAG"
+TARGET=$1
+TAG=$2
+
+BE_IMAGE="nqh44/locbook:$TAG"
+FE_IMAGE="nqh44/locbook-fe:$TAG"
+
+build_be() {
+    echo "========================================"
+    echo "BACKEND: Building $BE_IMAGE..."
+    echo "========================================"
+    docker build -t "$BE_IMAGE" .
+    
+    echo "BACKEND: Pushing $BE_IMAGE..."
+    docker push "$BE_IMAGE"
+    echo "BACKEND: Done!"
+}
+
+build_fe() {
+    echo "========================================"
+    echo "FRONTEND: Building $FE_IMAGE..."
+    echo "========================================"
+    # Assuming dashboard dir is at ./dashboard
+    docker build -t "$FE_IMAGE" ./dashboard
+    
+    echo "FRONTEND: Pushing $FE_IMAGE..."
+    docker push "$FE_IMAGE"
+    echo "FRONTEND: Done!"
+}
+
+# Main Logic
+case "$TARGET" in
+    be)
+        build_be
+        ;;
+    fe)
+        build_fe
+        ;;
+    *)
+        echo "Error: Invalid target '$TARGET'"
+        usage
+        ;;
+esac
 
 echo "========================================"
-echo "Building Docker image: $FULL_IMAGE_NAME"
-echo "========================================"
-
-# Build the image
-docker build -t "$FULL_IMAGE_NAME" .
-
-echo "========================================"
-echo "Successfully built $FULL_IMAGE_NAME"
-echo "========================================"
-
-# Pushing logic (commented out for local testing if needed, but user asked for script TO push)
-echo "Pushing image to Docker Hub..."
-docker push "$FULL_IMAGE_NAME"
-
-echo "========================================"
-echo "Done! Image pushed: $FULL_IMAGE_NAME"
+echo "Build & Push Completed successfully!"
 echo "========================================"

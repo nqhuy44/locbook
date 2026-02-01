@@ -1,27 +1,40 @@
 services:
-  app:
-    build: .
-    restart: always
-    environment:
-      - MONGO_URI=mongodb://mongo:27017
-      - MONGO_DB_NAME=locbook
-      - PYTHONUNBUFFERED=1
-    env_file:
-      - .env
-    volumes:
-      - ./data:/app/data # Persist images
-    depends_on:
-      - mongo
-    deploy:
-      resources:
-        limits:
-          cpus: '0.50'
-          memory: 1G
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+  # app:
+  #   image: nqh44/locbook:v0.1.0
+  #   restart: always
+  #   user: "1000:1000"
+  #   command: uvicorn src.api:app --host 0.0.0.0 --port 8000
+  #   ports:
+  #     - "8000:8000"
+  #   environment:
+  #     - MONGO_URI=mongodb://mongo:27017
+  #     - MONGO_DB_NAME=locbook
+  #     - PYTHONUNBUFFERED=1
+  #   env_file:
+  #     - .env
+  #   volumes:
+  #     - ./data:/app/data # Persist images
+  #   depends_on:
+  #     - mongo
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '0.50'
+  #         memory: 1G
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
+
+  # dashboard:
+  #   image: nqh44/locbook:v0.2.0
+  #   restart: always
+  #   ports:
+  #     - "80:80" # Expose development server
+  #   depends_on:
+  #     - app
+  #     - mongo
 
   mongo:
     image: mongo:latest
