@@ -22,5 +22,6 @@ env/
 *.log
 
 # Test
-tests/
 test/
+data/
+backups

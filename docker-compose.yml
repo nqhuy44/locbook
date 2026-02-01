@@ -1,15 +1,42 @@
-version: '3.8'
-
 services:
+  app:
+    build: .
+    restart: always
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - MONGO_DB_NAME=locbook
+      - PYTHONUNBUFFERED=1
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data # Persist images
+    depends_on:
+      - mongo
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   mongo:
     image: mongo:latest
-    container_name: locbook_mongo
+    restart: always
+    volumes:
+      - ./mongodb:/data/db
     ports:
       - "27018:27017"
-    volumes:
-      - mongo_data:/data/db
-    environment:
-      - MONGO_INITDB_DATABASE=locbook
-
-volumes:
-  mongo_data:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

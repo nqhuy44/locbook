@@ -34,11 +34,24 @@ class LinkParser:
             
         try:
             url = "https://places.googleapis.com/v1/places:searchText"
+            
+            # Dynamic FieldMask based on Config
+            base_fields = ["places.name", "places.displayName", "places.formattedAddress", "places.types", 
+                           "places.rating", "places.userRatingCount", "places.priceLevel", "places.currentOpeningHours",
+                           "places.location"]
+            
+            # Logic: Reviews depends on MAX_REVIEWS_FOR_AI
+            if settings.MAX_REVIEWS_FOR_AI > 0:
+                base_fields.append("places.reviews")
+
+            # Logic: Photos depends on FEAT_IMAGE_ANALYSIS
+            if settings.FEAT_IMAGE_ANALYSIS:
+                base_fields.append("places.photos")
+            
             headers = {
                 "Content-Type": "application/json",
                 "X-Goog-Api-Key": api_key,
-                # Added places.photos
-                "X-Goog-FieldMask": "places.name,places.displayName,places.formattedAddress,places.types,places.rating,places.userRatingCount,places.priceLevel,places.currentOpeningHours,places.reviews,places.photos"
+                "X-Goog-FieldMask": ",".join(base_fields)
             }
             payload = {"textQuery": text_query}
             
@@ -51,6 +64,22 @@ class LinkParser:
         except Exception as e:
             logger.warning(f"Places API access failed: {e}")
         return None
+
+    async def geocode_place(self, name: str, address: str = None) -> Optional[Dict[str, Any]]:
+        """
+        Geocode a place by name and optional address to get coordinates.
+        Returns dictionary with 'location' (lat/long) and 'address' (formatted).
+        """
+        query = f"{name} {address}" if address else name
+        place_data = await self._call_places_api(query)
+        
+        if place_data and "location" in place_data:
+            return {
+                "location": place_data["location"],
+                "address": place_data.get("formattedAddress")
+            }
+        return None
+
 
     async def _fetch_photo_bytes(self, photo_name: str) -> Optional[tuple[bytes, str]]:
         """Fetch photo bytes and mime_type from Google Places Media API."""

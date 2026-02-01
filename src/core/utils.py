@@ -1,3 +1,24 @@
+def resize_image(image_bytes: bytes, max_size: tuple[int, int] = (800, 800)) -> bytes:
+    """Resize image to fit within max_size while maintaining aspect ratio."""
+    from PIL import Image
+    import io
+
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+        
+        # Convert to RGB if needed (e.g. RGBA)
+        if img.mode in ("RGBA", "P"): 
+            img = img.convert("RGB")
+            
+        img.thumbnail(max_size, Image.Resampling.LANCZOS)
+        
+        output = io.BytesIO()
+        img.save(output, format="JPEG", quality=85, optimize=True)
+        return output.getvalue()
+    except Exception as e:
+        # Fallback to original if resize fails
+        return image_bytes
+
 
 def to_toon(data: dict, indent: int = 0) -> str:
     """

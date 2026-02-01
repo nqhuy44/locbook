@@ -9,3 +9,5 @@ pydantic
 pydantic-settings
 requests
 beautifulsoup4
+pillow
+aiofiles

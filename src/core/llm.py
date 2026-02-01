@@ -106,7 +106,13 @@ class GeminiService(AIService):
                             "price_level": {"type": "STRING"},
                             "status": {"type": "STRING"},
                             "opening_hours": {"type": "STRING"},
-                            "popular_times": {"type": "STRING"}
+                            "popular_times": {"type": "STRING"},
+                            
+                            # Rich Prompting Fields (Raw Only)
+                            "noise_level": {"type": "STRING", "description": "Quiet, Moderate, Loud", "nullable": True},
+                            "crowd_type": {"type": "ARRAY", "items": {"type": "STRING"}, "description": "Students, Office Workers, Couples, Tourists"},
+                            "amenities": {"type": "ARRAY", "items": {"type": "STRING"}, "description": "Wifi, Parking, AC, Power Outlets"},
+                            "best_time_to_visit": {"type": "STRING", "nullable": True}
                         },
                         "required": ["name"]
                     },
@@ -147,6 +153,17 @@ class GeminiService(AIService):
         """
         if not self.client: return "Sorry, AI is sleeping..."
         
+        # Optimize Token Usage: Only send relevant fields
+        relevant_data = {
+            "name": place_data.get("name"),
+            "categories": place_data.get("categories"),
+            "vibes": place_data.get("vibes"),
+            "mood": place_data.get("mood"),
+            "aesthetic_score": place_data.get("aesthetic_score"),
+            "rating": place_data.get("rating"),
+            "marin_comment": place_data.get("marin_comment")
+        }
+
         prompt = f"""
         Role: You are Marin, a Gen Z Location Scout (Anime style, Cute, Vietnamese).
         Based on this data about a place, write a short, catchy, and cute introduction to the user.
@@ -154,7 +171,7 @@ class GeminiService(AIService):
         Don't just list data, make it sound like you are excited to show this place!
         
         Data (TOON):
-        {to_toon(place_data)}
+        {to_toon(relevant_data)}
         
         Response in Vietnamese, using international and vietnamese slangs, trending words:
         """
