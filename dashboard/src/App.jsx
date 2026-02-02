@@ -59,20 +59,16 @@ function App() {
             const cats = place.categories?.join(" ").toLowerCase() || "";
             const vibes = place.vibes?.join(" ").toLowerCase() || "";
             const combined = cats + " " + vibes;
-            let assigned = false;
-
             // Dynamic checking based on CONFIG
             for (const [category, keywords] of Object.entries(CONFIG.CATEGORY_KEYWORDS)) {
-                if (groups[category] && keywords.some(k => combined.includes(k))) {
+                // Use regex with word boundaries to avoid partial matches (e.g., "barbecue" matching "bar")
+                if (groups[category] && keywords.some(k => new RegExp(`\\b${k}\\b`, 'i').test(combined))) {
                     groups[category].push(place);
-                    assigned = true;
                 }
             }
 
-            // Fallback
-            if (!assigned) {
-                groups["Casual"].push(place);
-            }
+            // Fallback removed: Places that don't match any keywords will not be shown in homepage categories.
+
         });
 
         // Deduplicate within groups
