@@ -17,6 +17,8 @@ export const CONFIG = {
     BUY_ME_COFFEE: "https://buymeacoffee.com/nqhuy",
     GITHUB: "https://locbook.firstdraft.sh",
     AUTHOR_WEBSITE: "https://locbook.firstdraft.sh",
+    LOC_REQUEST: "https://forms.gle/2w4efcfECzXwpnvo7", // Replace with actual Google Form URL
+    FEEDBACK: "https://forms.gle/2ntCQmgKNrEbN3DX9",   // Replace with actual Google Form URL
   },
 
   // Uncategorized Logic Configuration (Keywords mapped to Categories)

@@ -13,7 +13,9 @@ import {
     PartyPopper,
     Heart,
     Github,
-    Globe
+    Globe,
+    PlusCircle,
+    MessageSquare,
 } from 'lucide-react';
 import { CONFIG } from './config';
 import MapView from './components/MapView';
@@ -126,7 +128,20 @@ function App() {
         else setActiveCats([...activeCats, cat]);
     };
 
-    const openModal = (place) => { setSelectedPlace(place); document.body.style.overflow = 'hidden'; };
+    const openModal = async (place) => {
+        setSelectedPlace(place);
+        document.body.style.overflow = 'hidden';
+
+        if (!place.raw_ai_response) {
+            try {
+                const res = await fetch(`${API_URL}/api/places/${place._id}`);
+                const fullPlace = await res.json();
+                setSelectedPlace(fullPlace);
+            } catch (e) {
+                console.error("Failed to fetch details", e);
+            }
+        }
+    };
     const closeModal = () => { setSelectedPlace(null); document.body.style.overflow = 'auto'; };
 
     const getSectionIcon = (name) => {
@@ -172,6 +187,9 @@ function App() {
                 </div>
 
                 <div className="nav-right">
+                    <a href={CONFIG.LINKS.LOC_REQUEST || "#"} target="_blank" rel="noreferrer" className="nav-link" style={{ marginRight: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <PlusCircle size={18} /> Request Place
+                    </a>
                     {CONFIG.FEATURES.ENABLE_BUY_ME_COFFEE && (
                         <a href={CONFIG.LINKS.BUY_ME_COFFEE} target="_blank" rel="noreferrer" className="bmc-button">
                             <Coffee size={16} /> Buy me a coffee
@@ -274,6 +292,9 @@ function App() {
                             )}
                             {CONFIG.LINKS.AUTHOR_WEBSITE && (
                                 <a href={CONFIG.LINKS.AUTHOR_WEBSITE} target="_blank" rel="noreferrer"><Globe size={18} /> Website</a>
+                            )}
+                            {CONFIG.LINKS.FEEDBACK && (
+                                <a href={CONFIG.LINKS.FEEDBACK} target="_blank" rel="noreferrer"><MessageSquare size={18} /> Feedback</a>
                             )}
                         </div>
                         <div className="footer-text">

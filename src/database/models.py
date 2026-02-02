@@ -35,11 +35,24 @@ class Place(Document):
     class Settings:
         name = "places"
         indexes = [
-            [("location", pymongo.GEOSPHERE)], # Planned for GeoJSON
-            "vibes",
-            "mood",
             [("name", pymongo.TEXT), ("categories", pymongo.TEXT), ("meal_types", pymongo.TEXT), ("occasions", pymongo.TEXT)] # Text Index
         ]
+
+class PlaceSummary(BaseModel):
+    id: PydanticObjectId = Field(alias="_id")
+    name: str
+    address: Optional[str] = None
+    categories: List[str] = Field(default_factory=list)
+    vibes: List[str] = Field(default_factory=list)
+    mood: List[str] = Field(default_factory=list)
+    aesthetic_score: Optional[int] = None
+    rating: Optional[float] = None
+    price_level: Optional[str] = None
+    local_image_path: Optional[str] = None
+    google_maps_url: Optional[str] = None
+    
+    class Settings:
+        projection = {"raw_ai_response": 0}
 
 class UserLog(Document):
     user_id: int
