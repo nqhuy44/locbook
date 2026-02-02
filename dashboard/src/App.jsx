@@ -9,10 +9,13 @@ import {
     Coffee,
     Wine,
     UtensilsCrossed,
+    Beer,
     PartyPopper,
     Heart,
     Github,
-    Globe
+    Globe,
+    PlusCircle,
+    MessageSquare,
 } from 'lucide-react';
 import { CONFIG } from './config';
 import MapView from './components/MapView';
@@ -59,20 +62,16 @@ function App() {
             const cats = place.categories?.join(" ").toLowerCase() || "";
             const vibes = place.vibes?.join(" ").toLowerCase() || "";
             const combined = cats + " " + vibes;
-            let assigned = false;
-
             // Dynamic checking based on CONFIG
             for (const [category, keywords] of Object.entries(CONFIG.CATEGORY_KEYWORDS)) {
-                if (groups[category] && keywords.some(k => combined.includes(k))) {
+                // Use regex with word boundaries to avoid partial matches (e.g., "barbecue" matching "bar")
+                if (groups[category] && keywords.some(k => new RegExp(`\\b${k}\\b`, 'i').test(combined))) {
                     groups[category].push(place);
-                    assigned = true;
                 }
             }
 
-            // Fallback
-            if (!assigned) {
-                groups["Casual"].push(place);
-            }
+            // Fallback removed: Places that don't match any keywords will not be shown in homepage categories.
+
         });
 
         // Deduplicate within groups
@@ -104,7 +103,9 @@ function App() {
         return places.filter(place => {
             const matchesSearch = searchTerm === "" ||
                 place.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                place.address?.toLowerCase().includes(searchTerm.toLowerCase());
+                place.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                place.vibes?.some(v => v.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                place.categories?.some(c => c.toLowerCase().includes(searchTerm.toLowerCase()));
 
             const matchesVibe = activeVibes.length === 0 ||
                 place.vibes?.some(v => activeVibes.includes(v));
@@ -127,12 +128,26 @@ function App() {
         else setActiveCats([...activeCats, cat]);
     };
 
-    const openModal = (place) => { setSelectedPlace(place); document.body.style.overflow = 'hidden'; };
+    const openModal = async (place) => {
+        setSelectedPlace(place);
+        document.body.style.overflow = 'hidden';
+
+        if (!place.raw_ai_response) {
+            try {
+                const res = await fetch(`${API_URL}/api/places/${place._id}`);
+                const fullPlace = await res.json();
+                setSelectedPlace(fullPlace);
+            } catch (e) {
+                console.error("Failed to fetch details", e);
+            }
+        }
+    };
     const closeModal = () => { setSelectedPlace(null); document.body.style.overflow = 'auto'; };
 
     const getSectionIcon = (name) => {
         const lower = name.toLowerCase();
         if (lower.includes("bar")) return <Wine size={20} color="#a855f7" />;
+        if (lower.includes("nhậu")) return <Beer size={20} color="#f59e0b" />;
         if (lower.includes("coffee") || lower.includes("cafe")) return <Coffee size={20} color="#f472b6" />;
         if (lower.includes("special") || lower.includes("date")) return <Sparkles size={20} color="#d946ef" />;
         return <UtensilsCrossed size={20} color="#fbbf24" />;
@@ -172,6 +187,9 @@ function App() {
                 </div>
 
                 <div className="nav-right">
+                    <a href={CONFIG.LINKS.LOC_REQUEST || "#"} target="_blank" rel="noreferrer" className="nav-link" style={{ marginRight: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <PlusCircle size={18} /> Request Place
+                    </a>
                     {CONFIG.FEATURES.ENABLE_BUY_ME_COFFEE && (
                         <a href={CONFIG.LINKS.BUY_ME_COFFEE} target="_blank" rel="noreferrer" className="bmc-button">
                             <Coffee size={16} /> Buy me a coffee
@@ -196,7 +214,7 @@ function App() {
                 <div className="filter-group">
                     <span className="filter-label">Vibes:</span>
                     <div className="filter-scroll">
-                        {allVibes.slice(0, 15).map(vibe => (
+                        {allVibes.map(vibe => (
                             <button
                                 key={vibe}
                                 className={`filter-btn ${activeVibes.includes(vibe) ? 'active' : ''}`}
@@ -211,7 +229,7 @@ function App() {
                 <div className="filter-group">
                     <span className="filter-label">Categories:</span>
                     <div className="filter-scroll">
-                        {allCategories.slice(0, 10).map(cat => (
+                        {allCategories.map(cat => (
                             <button
                                 key={cat}
                                 className={`filter-btn ${activeCats.includes(cat) ? 'active' : ''}`}
@@ -274,6 +292,9 @@ function App() {
                             )}
                             {CONFIG.LINKS.AUTHOR_WEBSITE && (
                                 <a href={CONFIG.LINKS.AUTHOR_WEBSITE} target="_blank" rel="noreferrer"><Globe size={18} /> Website</a>
+                            )}
+                            {CONFIG.LINKS.FEEDBACK && (
+                                <a href={CONFIG.LINKS.FEEDBACK} target="_blank" rel="noreferrer"><MessageSquare size={18} /> Feedback</a>
                             )}
                         </div>
                         <div className="footer-text">

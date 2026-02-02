@@ -7,7 +7,7 @@ from telegram.ext import ApplicationBuilder, Application
 
 from src.config import get_settings
 from src.bot.handlers import get_handlers
-from src.database.models import Place
+from src.database.models import Place, PlaceSummary
 from src.main import init_db
 
 logger = logging.getLogger(__name__)
@@ -91,7 +91,14 @@ async def get_places(
         # Simple text search if search provided
         query = Place.find({"$text": {"$search": search}})
     
-    places = await query.sort("-created_at").skip(offset).limit(limit).to_list()
+    # Optimize: Exclude raw_ai_response using Pydantic Projection
+    # This returns instances of PlaceSummary, which are lighter.
+    places = await query.sort("-created_at") \
+        .skip(offset) \
+        .limit(limit) \
+        .project(PlaceSummary) \
+        .to_list()
+        
     total = await query.count()
     
     return {
