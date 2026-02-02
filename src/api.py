@@ -1,13 +1,14 @@
 import logging
 from contextlib import asynccontextmanager
-from typing import List, Optional
-from fastapi import FastAPI, HTTPException, Query
+from typing import List, Optional, Dict, Any
+from fastapi import FastAPI, HTTPException, Query, Header, Depends, Security
+from fastapi.security import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
 from telegram.ext import ApplicationBuilder, Application
 
 from src.config import get_settings
 from src.bot.handlers import get_handlers
-from src.database.models import Place, PlaceSummary
+from src.database.models import Place, PlaceSummary, PlaceUpdate, AppConfig
 from src.main import init_db
 
 logger = logging.getLogger(__name__)
@@ -102,11 +103,27 @@ async def get_places(
     total = await query.count()
     
     return {
-        "data": places,
+        "data": [p.model_dump(mode='json', by_alias=True) for p in places],
         "total": total,
         "limit": limit,
         "offset": offset
     }
+
+# Auth
+API_KEY_HEADER = APIKeyHeader(name="x-admin-token", auto_error=False)
+
+async def verify_admin(token: str = Security(API_KEY_HEADER)):
+    settings = get_settings()
+    # If no secret set, fail secure or allow dev? Fail secure.
+    secret = settings.ADMIN_SECRET
+    if not secret:
+        # If env var not set, log warning and deny
+        logger.warning("ADMIN_SECRET not set in env. Denying admin access.")
+        raise HTTPException(status_code=403, detail="Admin access not configured")
+    
+    if not token or token != secret:
+        raise HTTPException(status_code=403, detail="Invalid Admin Token")
+    return True
 
 @app.get("/api/places/{place_id}")
 async def get_place_detail(place_id: str):
@@ -114,6 +131,24 @@ async def get_place_detail(place_id: str):
     if not place:
         raise HTTPException(status_code=404, detail="Place not found")
     return place
+
+@app.put("/api/places/{place_id}", dependencies=[Depends(verify_admin)])
+async def update_place(place_id: str, place_update: PlaceUpdate):
+    place = await Place.get(place_id)
+    if not place:
+        raise HTTPException(status_code=404, detail="Place not found")
+    
+    update_data = place_update.model_dump(exclude_unset=True)
+    await place.set(update_data)
+    return place
+
+@app.delete("/api/places/{place_id}", dependencies=[Depends(verify_admin)])
+async def delete_place(place_id: str):
+    place = await Place.get(place_id)
+    if not place:
+        raise HTTPException(status_code=404, detail="Place not found")
+    await place.delete()
+    return {"status": "deleted"}
 
 @app.get("/api/stats")
 async def get_stats():
@@ -134,3 +169,49 @@ async def get_stats():
         "total_places": total_places,
         "top_categories": [{"name": c["_id"], "count": c["count"]} for c in categories]
     }
+
+# Default Config
+DEFAULT_APP_CONFIG = {
+  "FEATURES": {
+    "ENABLE_BUY_ME_COFFEE": True,
+    "ENABLE_FOOTER": True,
+    "ENABLE_AUTHOR_CREDITS": True,
+    "ENABLE_DISCOVER": True,
+    "ENABLE_MAP": False,
+  },
+  "HOME_CATEGORIES": ["Casual", "Cafe & Coffee", "Special Occasion", "Bar"],
+  "LINKS": {
+    "BUY_ME_COFFEE": "https://buymeacoffee.com/nqhuy",
+    "GITHUB": "https://locbook.firstdraft.sh",
+    "AUTHOR_WEBSITE": "https://locbook.firstdraft.sh",
+    "LOC_REQUEST": "https://forms.gle/2w4efcfECzXwpnvo7",
+    "FEEDBACK": "https://forms.gle/2ntCQmgKNrEbN3DX9",
+  },
+  "CATEGORY_KEYWORDS": {
+    "Nhậu": ["nhậu", "beer"],
+    "Special Occasion": [
+      "romantic", "fine dining", "fancy", "wine", "anniversary", "celebration", "special occasion"
+    ],
+    "Bar": ["bar", "cocktail", "lounge", "speakeasy", "wine"],
+    "Cafe & Coffee": ["cafe", "coffee", "tea"],
+    "Casual": ["casual", "street", "local", "snack", "quick"],
+  }
+}
+
+@app.get("/api/config")
+async def get_config():
+    config = await AppConfig.find_one(AppConfig.key == "global")
+    if not config:
+        return DEFAULT_APP_CONFIG
+    return config.data
+
+@app.put("/api/config", dependencies=[Depends(verify_admin)])
+async def update_config(payload: Dict[str, Any]):
+    config = await AppConfig.find_one(AppConfig.key == "global")
+    if not config:
+        config = AppConfig(key="global", data=payload)
+        await config.insert()
+    else:
+        config.data = payload
+        await config.save()
+    return config.data

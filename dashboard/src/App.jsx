@@ -16,15 +16,18 @@ import {
     Globe,
     PlusCircle,
     MessageSquare,
+    Settings
 } from 'lucide-react';
-import { CONFIG } from './config';
+import { CONFIG as DEFAULT_CONFIG } from './config';
 import MapView from './components/MapView';
+import CategoryRow from './components/CategoryRow';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
 function App() {
     const [places, setPlaces] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [config, setConfig] = useState(DEFAULT_CONFIG);
     const [selectedPlace, setSelectedPlace] = useState(null);
     const [currentView, setCurrentView] = useState('list'); // 'list' | 'map'
 
@@ -40,9 +43,23 @@ function App() {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const res = await fetch(`${API_URL}/api/places?limit=150`);
-            const data = await res.json();
-            setPlaces(data.data);
+
+            // Parallel fetch
+            const [placesRes, configRes] = await Promise.all([
+                fetch(`${API_URL}/api/places?limit=150`),
+                fetch(`${API_URL}/api/config`)
+            ]);
+
+            const placesData = await placesRes.json();
+            setPlaces(placesData.data);
+
+            if (configRes.ok) {
+                const configData = await configRes.json();
+                // Ensure deep merge or just trust backend structure
+                if (configData && configData.HOME_CATEGORIES) {
+                    setConfig(configData);
+                }
+            }
         } catch (err) {
             console.error("Failed to fetch data", err);
         } finally {
@@ -53,7 +70,7 @@ function App() {
     // 1. Precise Categorization Logic using CONFIG
     const categorizedPlaces = useMemo(() => {
         const groups = {};
-        CONFIG.HOME_CATEGORIES.forEach(cat => groups[cat] = []);
+        config.HOME_CATEGORIES.forEach(cat => groups[cat] = []);
 
         // Add a default fallback if not in list
         if (!groups["Casual"]) groups["Casual"] = [];
@@ -63,7 +80,7 @@ function App() {
             const vibes = place.vibes?.join(" ").toLowerCase() || "";
             const combined = cats + " " + vibes;
             // Dynamic checking based on CONFIG
-            for (const [category, keywords] of Object.entries(CONFIG.CATEGORY_KEYWORDS)) {
+            for (const [category, keywords] of Object.entries(config.CATEGORY_KEYWORDS)) {
                 // Use regex with word boundaries to avoid partial matches (e.g., "barbecue" matching "bar")
                 if (groups[category] && keywords.some(k => new RegExp(`\\b${k}\\b`, 'i').test(combined))) {
                     groups[category].push(place);
@@ -82,19 +99,61 @@ function App() {
         return groups;
     }, [places]);
 
-    // 2. Filter Lists
-    const { allVibes, allCategories } = useMemo(() => {
-        const v = new Set();
-        const c = new Set();
-        places.forEach(p => {
-            p.vibes?.forEach(x => v.add(x));
-            p.categories?.forEach(x => c.add(x));
+    // 2. Filter Lists & Smart Facets
+    // We want to show options that are relevant to the *other* active filters.
+    // e.g. If I search "Pizza", I only want to see Vibes/Cats relevant to Pizza.
+    // However, within the same group (e.g. Vibes), we shouldn't filter out options just because
+    // one vibe is selected (since it's an OR filter).
+
+    const { displayedVibes, displayedCategories } = useMemo(() => {
+        // Helper to check match against Search
+        const matchesSearch = (p) =>
+            searchTerm === "" ||
+            p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.vibes?.some(v => v.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            p.categories?.some(c => c.toLowerCase().includes(searchTerm.toLowerCase()));
+
+        // Helper: Available Vibes (Filter by Search + Categories, Ignore Vibes)
+        const placesForVibes = places.filter(p => {
+            const mSearch = matchesSearch(p);
+            const mCat = activeCats.length === 0 || p.categories?.some(c => activeCats.includes(c));
+            return mSearch && mCat;
         });
-        return {
-            allVibes: Array.from(v).sort(),
-            allCategories: Array.from(c).sort()
+
+        // Helper: Available Cats (Filter by Search + Vibes, Ignore Categories)
+        const placesForCats = places.filter(p => {
+            const mSearch = matchesSearch(p);
+            const mVibe = activeVibes.length === 0 || p.vibes?.some(v => activeVibes.includes(v));
+            return mSearch && mVibe;
+        });
+
+        const getUnique = (list, key) => {
+            const s = new Set();
+            list.forEach(p => p[key]?.forEach(x => s.add(x)));
+            return Array.from(s);
+        }
+
+        const availVibes = getUnique(placesForVibes, 'vibes');
+        const availCats = getUnique(placesForCats, 'categories');
+
+        // Construct Final Lists: Active (sorted) + AvailableUnselected (sorted)
+        const buildList = (available, active) => {
+            const availableSet = new Set(available);
+            // We keep ALL active items, even if they wouldn't match the current search
+            // (User requirement: "won't disappear... unless I unselect")
+            const activeSorted = [...active].sort();
+
+            const remaining = available.filter(x => !active.includes(x)).sort();
+
+            return [...activeSorted, ...remaining];
         };
-    }, [places]);
+
+        return {
+            displayedVibes: buildList(availVibes, activeVibes),
+            displayedCategories: buildList(availCats, activeCats)
+        };
+    }, [places, searchTerm, activeVibes, activeCats, config]);
 
     const isFiltering = searchTerm !== "" || activeVibes.length > 0 || activeCats.length > 0;
 
@@ -163,10 +222,10 @@ function App() {
             <nav className="navbar">
                 <div className="nav-left">
                     <div className="brand" onClick={() => { setSearchTerm(''); setActiveVibes([]); setActiveCats([]); setCurrentView('list') }}>
-                        LOCBOOK <span className="brand-subtitle">by Marin</span>
+                        LocBook <span className="brand-subtitle">by Marin</span>
                     </div>
                     <div className="nav-links">
-                        {CONFIG.FEATURES.ENABLE_DISCOVER && (
+                        {config.FEATURES.ENABLE_DISCOVER && (
                             <span
                                 className={`nav-link ${currentView === 'list' && !isFiltering ? 'active' : ''}`}
                                 onClick={() => { setSearchTerm(''); setActiveVibes([]); setActiveCats([]); setCurrentView('list') }}
@@ -175,7 +234,7 @@ function App() {
                             </span>
                         )}
 
-                        {CONFIG.FEATURES.ENABLE_MAP && (
+                        {config.FEATURES.ENABLE_MAP && (
                             <span
                                 className={`nav-link ${currentView === 'map' ? 'active' : ''}`}
                                 onClick={() => setCurrentView('map')}
@@ -183,15 +242,17 @@ function App() {
                                 Map
                             </span>
                         )}
+
+
                     </div>
                 </div>
 
                 <div className="nav-right">
-                    <a href={CONFIG.LINKS.LOC_REQUEST || "#"} target="_blank" rel="noreferrer" className="nav-link" style={{ marginRight: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <a href={config.LINKS.LOC_REQUEST || "#"} target="_blank" rel="noreferrer" className="nav-link" style={{ marginRight: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                         <PlusCircle size={18} /> Request Place
                     </a>
-                    {CONFIG.FEATURES.ENABLE_BUY_ME_COFFEE && (
-                        <a href={CONFIG.LINKS.BUY_ME_COFFEE} target="_blank" rel="noreferrer" className="bmc-button">
+                    {config.FEATURES.ENABLE_BUY_ME_COFFEE && (
+                        <a href={config.LINKS.BUY_ME_COFFEE} target="_blank" rel="noreferrer" className="bmc-button">
                             <Coffee size={16} /> Buy me a coffee
                         </a>
                     )}
@@ -214,7 +275,7 @@ function App() {
                 <div className="filter-group">
                     <span className="filter-label">Vibes:</span>
                     <div className="filter-scroll">
-                        {allVibes.map(vibe => (
+                        {displayedVibes.map(vibe => (
                             <button
                                 key={vibe}
                                 className={`filter-btn ${activeVibes.includes(vibe) ? 'active' : ''}`}
@@ -229,7 +290,7 @@ function App() {
                 <div className="filter-group">
                     <span className="filter-label">Categories:</span>
                     <div className="filter-scroll">
-                        {allCategories.map(cat => (
+                        {displayedCategories.map(cat => (
                             <button
                                 key={cat}
                                 className={`filter-btn ${activeCats.includes(cat) ? 'active' : ''}`}
@@ -260,21 +321,18 @@ function App() {
                             </div>
                         </div>
                     ) : (
-                        // Use CONFIG for Home Categories Order
-                        CONFIG.HOME_CATEGORIES.map(category => {
+                        // Use config for Home Categories Order
+                        config.HOME_CATEGORIES.map(category => {
                             if (!categorizedPlaces[category] || categorizedPlaces[category].length === 0) return null;
                             return (
-                                <div key={category} className="section-wrapper">
-                                    <div className="section-header">
-                                        {getSectionIcon(category)}
-                                        <h2 className="section-title">{category}</h2>
-                                    </div>
-                                    <div className="places-row">
-                                        {categorizedPlaces[category].map(place => (
-                                            <PlaceCard key={place._id} place={place} onClick={() => openModal(place)} />
-                                        ))}
-                                    </div>
-                                </div>
+                                <CategoryRow
+                                    key={category}
+                                    title={category}
+                                    icon={getSectionIcon(category)}
+                                    places={categorizedPlaces[category]}
+                                    onPlaceClick={openModal}
+                                    PlaceCardComponent={PlaceCard}
+                                />
                             );
                         })
                     )
@@ -282,19 +340,19 @@ function App() {
             </main>
 
             {/* Footer */}
-            {CONFIG.FEATURES.ENABLE_FOOTER && currentView !== 'map' && (
+            {config.FEATURES.ENABLE_FOOTER && currentView !== 'map' && (
                 <footer className="footer">
                     <div className="footer-content">
-                        <div className="footer-brand">LOCBOOK</div>
+                        <div className="footer-brand">LocBook</div>
                         <div className="footer-links">
-                            {CONFIG.LINKS.GITHUB && (
-                                <a href={CONFIG.LINKS.GITHUB} target="_blank" rel="noreferrer"><Github size={18} /> GitHub</a>
+                            {config.LINKS.GITHUB && (
+                                <a href={config.LINKS.GITHUB} target="_blank" rel="noreferrer"><Github size={18} /> GitHub</a>
                             )}
-                            {CONFIG.LINKS.AUTHOR_WEBSITE && (
-                                <a href={CONFIG.LINKS.AUTHOR_WEBSITE} target="_blank" rel="noreferrer"><Globe size={18} /> Website</a>
+                            {config.LINKS.AUTHOR_WEBSITE && (
+                                <a href={config.LINKS.AUTHOR_WEBSITE} target="_blank" rel="noreferrer"><Globe size={18} /> Website</a>
                             )}
-                            {CONFIG.LINKS.FEEDBACK && (
-                                <a href={CONFIG.LINKS.FEEDBACK} target="_blank" rel="noreferrer"><MessageSquare size={18} /> Feedback</a>
+                            {config.LINKS.FEEDBACK && (
+                                <a href={config.LINKS.FEEDBACK} target="_blank" rel="noreferrer"><MessageSquare size={18} /> Feedback</a>
                             )}
                         </div>
                         <div className="footer-text">

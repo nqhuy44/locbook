@@ -2,7 +2,7 @@ import logging
 import asyncio
 from beanie import init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient
-from src.database.models import Place, UserLog
+from src.database.models import Place, UserLog, AppConfig
 import uvicorn
 import os
 
@@ -23,7 +23,7 @@ async def init_db(settings):
             # Verify connection
             await client.admin.command('ping')
             
-            await init_beanie(database=client[settings.MONGO_DB_NAME], document_models=[Place, UserLog])
+            await init_beanie(database=client[settings.MONGO_DB_NAME], document_models=[Place, UserLog, AppConfig])
             logger.info("MongoDB Initialized.")
             return
         except Exception as e:

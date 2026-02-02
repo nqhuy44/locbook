@@ -1,5 +1,5 @@
-from beanie import Document
-from pydantic import Field
+from beanie import Document, PydanticObjectId
+from pydantic import Field, BaseModel
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 import pymongo
@@ -39,7 +39,7 @@ class Place(Document):
         ]
 
 class PlaceSummary(BaseModel):
-    id: PydanticObjectId = Field(alias="_id")
+    id: PydanticObjectId = Field(alias="_id", serialization_alias="_id")
     name: str
     address: Optional[str] = None
     categories: List[str] = Field(default_factory=list)
@@ -63,3 +63,22 @@ class UserLog(Document):
 
     class Settings:
         name = "user_logs"
+
+class PlaceUpdate(BaseModel):
+    name: Optional[str] = None
+    address: Optional[str] = None
+    categories: Optional[List[str]] = None
+    vibes: Optional[List[str]] = None
+    meal_types: Optional[List[str]] = None
+    occasions: Optional[List[str]] = None
+    price_level: Optional[str] = None
+    rating: Optional[float] = None
+    google_maps_url: Optional[str] = None
+    opening_hours: Optional[str] = None
+
+class AppConfig(Document):
+    key: str = Field(default="global", description="Configuration Key")
+    data: Dict[str, Any] = Field(default_factory=dict, description="JSON Config")
+
+    class Settings:
+        name = "app_config"

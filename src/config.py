@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     
     MONGO_URI: str = "mongodb://localhost:27018"
     MONGO_DB_NAME: str = "locbook"
+    ADMIN_SECRET: str | None = None
 
     MAX_MESSAGE_AGE_SECONDS: int = 60 # Ignore messages older than 2 minutes by default
     RATE_LIMIT_PER_MINUTE: int = 5 # Max 5 requests per minute per user
