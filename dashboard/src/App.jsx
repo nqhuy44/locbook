@@ -9,6 +9,7 @@ import {
     Coffee,
     Wine,
     UtensilsCrossed,
+    Beer,
     PartyPopper,
     Heart,
     Github,
@@ -100,7 +101,9 @@ function App() {
         return places.filter(place => {
             const matchesSearch = searchTerm === "" ||
                 place.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                place.address?.toLowerCase().includes(searchTerm.toLowerCase());
+                place.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                place.vibes?.some(v => v.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                place.categories?.some(c => c.toLowerCase().includes(searchTerm.toLowerCase()));
 
             const matchesVibe = activeVibes.length === 0 ||
                 place.vibes?.some(v => activeVibes.includes(v));
@@ -129,6 +132,7 @@ function App() {
     const getSectionIcon = (name) => {
         const lower = name.toLowerCase();
         if (lower.includes("bar")) return <Wine size={20} color="#a855f7" />;
+        if (lower.includes("nhậu")) return <Beer size={20} color="#f59e0b" />;
         if (lower.includes("coffee") || lower.includes("cafe")) return <Coffee size={20} color="#f472b6" />;
         if (lower.includes("special") || lower.includes("date")) return <Sparkles size={20} color="#d946ef" />;
         return <UtensilsCrossed size={20} color="#fbbf24" />;
@@ -192,7 +196,7 @@ function App() {
                 <div className="filter-group">
                     <span className="filter-label">Vibes:</span>
                     <div className="filter-scroll">
-                        {allVibes.slice(0, 15).map(vibe => (
+                        {allVibes.map(vibe => (
                             <button
                                 key={vibe}
                                 className={`filter-btn ${activeVibes.includes(vibe) ? 'active' : ''}`}
@@ -207,7 +211,7 @@ function App() {
                 <div className="filter-group">
                     <span className="filter-label">Categories:</span>
                     <div className="filter-scroll">
-                        {allCategories.slice(0, 10).map(cat => (
+                        {allCategories.map(cat => (
                             <button
                                 key={cat}
                                 className={`filter-btn ${activeCats.includes(cat) ? 'active' : ''}`}

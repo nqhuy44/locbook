@@ -21,6 +21,10 @@ export const CONFIG = {
 
   // Uncategorized Logic Configuration (Keywords mapped to Categories)
   CATEGORY_KEYWORDS: {
+    Nhậu: [
+      "nhậu",
+      "beer",
+    ],
     "Special Occasion": [
       "romantic",
       "fine dining",
@@ -31,7 +35,7 @@ export const CONFIG = {
       "celebration",
       "special occasion",
     ],
-    Bar: ["bar", "pub", "cocktail", "lounge", "beer", "speakeasy", "wine"],
+    Bar: ["bar", "pub", "cocktail", "lounge", "speakeasy", "wine"],
     "Cafe & Coffee": ["cafe", "coffee", "tea"],
     Casual: ["casual", "street", "local", "snack", "quick"],
   },
