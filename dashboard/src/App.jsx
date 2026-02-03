@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     Search,
     X,
@@ -16,11 +16,43 @@ import {
     Globe,
     PlusCircle,
     MessageSquare,
-    Settings
+    Settings,
+    Share2,
+    Check
 } from 'lucide-react';
 import { CONFIG as DEFAULT_CONFIG } from './config';
 import MapView from './components/MapView';
 import CategoryRow from './components/CategoryRow';
+
+class ErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+
+    static getDerivedStateFromError(error) {
+        return { hasError: true, error };
+    }
+
+    componentDidCatch(error, errorInfo) {
+        console.error("ErrorBoundary caught an error", error, errorInfo);
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div style={{ padding: '20px', color: 'white', background: 'rgba(255,0,0,0.1)', borderRadius: '8px' }}>
+                    <h2>Something went wrong.</h2>
+                    <details style={{ whiteSpace: 'pre-wrap' }}>
+                        {this.state.error && this.state.error.toString()}
+                    </details>
+                </div>
+            );
+        }
+
+        return this.props.children;
+    }
+}
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -38,7 +70,28 @@ function App() {
 
     useEffect(() => {
         fetchData();
+
+        // Handle browser back checks if needed, or stick to simple pushState
+        const handlePopState = () => {
+            const params = new URLSearchParams(window.location.search);
+            const placeId = params.get("place");
+            if (!placeId) setSelectedPlace(null);
+        };
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
     }, []);
+
+    // Deep Linking: Check URL when places load
+    useEffect(() => {
+        if (places.length > 0 && !selectedPlace) {
+            const params = new URLSearchParams(window.location.search);
+            const placeId = params.get("place");
+            if (placeId) {
+                const found = places.find(p => p._id === placeId);
+                if (found) openModal(found);
+            }
+        }
+    }, [places]);
 
     const fetchData = async () => {
         try {
@@ -53,11 +106,14 @@ function App() {
             const placesData = await placesRes.json();
             setPlaces(placesData.data);
 
+            // Safely handle config fetch
             if (configRes.ok) {
-                const configData = await configRes.json();
-                // Ensure deep merge or just trust backend structure
-                if (configData && configData.HOME_CATEGORIES) {
-                    setConfig(configData);
+                const contentType = configRes.headers.get("content-type");
+                if (contentType && contentType.includes("application/json")) {
+                    const configData = await configRes.json();
+                    if (configData && configData.HOME_CATEGORIES) {
+                        setConfig(prev => ({ ...prev, ...configData }));
+                    }
                 }
             }
         } catch (err) {
@@ -191,6 +247,10 @@ function App() {
         setSelectedPlace(place);
         document.body.style.overflow = 'hidden';
 
+        // Update URL
+        const newUrl = `${window.location.pathname}?place=${place._id}`;
+        window.history.pushState({ path: newUrl }, '', newUrl);
+
         if (!place.raw_ai_response) {
             try {
                 const res = await fetch(`${API_URL}/api/places/${place._id}`);
@@ -201,7 +261,13 @@ function App() {
             }
         }
     };
-    const closeModal = () => { setSelectedPlace(null); document.body.style.overflow = 'auto'; };
+    const closeModal = () => {
+        setSelectedPlace(null);
+        document.body.style.overflow = 'auto';
+        // Revert URL
+        const baseUrl = window.location.pathname;
+        window.history.pushState({ path: baseUrl }, '', baseUrl);
+    };
 
     const getSectionIcon = (name) => {
         const lower = name.toLowerCase();
@@ -370,76 +436,81 @@ function App() {
             {
                 selectedPlace && (
                     <div className="modal-overlay" onClick={closeModal}>
-                        <div className="modal-content" onClick={e => e.stopPropagation()}>
-                            <div className="modal-close" onClick={closeModal}>
-                                <X size={24} />
-                            </div>
-
-                            <div className="modal-hero">
-                                <PlaceHeroImage place={selectedPlace} />
-                                <div className="hero-overlay"></div>
-                                <div className="hero-info">
-                                    <h1 className="hero-title">{selectedPlace.name}</h1>
-                                    <div className="card-tags" style={{ fontSize: '1rem' }}>
-                                        {selectedPlace.price_level && <span className="tag-soft">{selectedPlace.price_level}</span>}
-                                        {selectedPlace.rating && (
-                                            <span className="tag-soft" style={{ background: 'rgba(255,215,0,0.2)', color: '#ffd700' }}>
-                                                ⭐ {selectedPlace.rating}
-                                            </span>
-                                        )}
+                        <div className="modal-overlay" onClick={closeModal}>
+                            <div className="modal-content" onClick={e => e.stopPropagation()}>
+                                <ErrorBoundary>
+                                    <div className="modal-close" onClick={closeModal}>
+                                        <X size={24} />
                                     </div>
 
-                                    <div className="hero-actions">
-                                        {selectedPlace.google_maps_url ? (
-                                            <a href={selectedPlace.google_maps_url} target="_blank" rel="noreferrer" className="btn-primary">
-                                                <Navigation size={20} /> Get Directions
-                                            </a>
-                                        ) : null}
-                                    </div>
-                                </div>
-                            </div>
+                                    <div className="modal-hero">
+                                        <PlaceHeroImage place={selectedPlace} />
+                                        <div className="hero-overlay"></div>
+                                        <div className="hero-info">
+                                            <h1 className="hero-title">{selectedPlace.name}</h1>
+                                            <div className="card-tags" style={{ fontSize: '1rem' }}>
+                                                {selectedPlace.price_level && <span className="tag-soft">{selectedPlace.price_level}</span>}
+                                                {selectedPlace.rating && (
+                                                    <span className="tag-soft" style={{ background: 'rgba(255,215,0,0.2)', color: '#ffd700' }}>
+                                                        ⭐ {selectedPlace.rating}
+                                                    </span>
+                                                )}
+                                            </div>
 
-                            <div className="modal-body">
-                                <div className="col-main" style={{ flex: 2 }}>
-                                    {selectedPlace.raw_ai_response?.marin_comment && (
-                                        <div className="marin-box">
-                                            <div className="marin-label">Marin's Take</div>
-                                            <div className="marin-text">"{selectedPlace.raw_ai_response.marin_comment}"</div>
-                                        </div>
-                                    )}
-
-                                    <div className="detail-row">
-                                        <div className="detail-label">Address</div>
-                                        <div className="detail-value">{selectedPlace.address}</div>
-                                    </div>
-
-                                    {selectedPlace.opening_hours && (
-                                        <div className="detail-row">
-                                            <div className="detail-label">Hours</div>
-                                            <div className="detail-value">{selectedPlace.opening_hours}</div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="col-side" style={{ flex: 1 }}>
-                                    <div className="detail-row">
-                                        <div className="detail-label">Vibes</div>
-                                        <div className="pill-list">
-                                            {selectedPlace.vibes?.map(v => (
-                                                <span key={v} className="pill">{v}</span>
-                                            ))}
+                                            <div className="hero-actions">
+                                                <ShareButton />
+                                                {selectedPlace.google_maps_url ? (
+                                                    <a href={selectedPlace.google_maps_url} target="_blank" rel="noreferrer" className="btn-primary">
+                                                        <Navigation size={20} /> Get Directions
+                                                    </a>
+                                                ) : null}
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div className="detail-row">
-                                        <div className="detail-label">Categories</div>
-                                        <div className="pill-list">
-                                            {selectedPlace.categories?.map(c => (
-                                                <span key={c} className="pill">{c}</span>
-                                            ))}
+                                    <div className="modal-body">
+                                        <div className="col-main" style={{ flex: 2 }}>
+                                            {selectedPlace.raw_ai_response?.marin_comment && (
+                                                <div className="marin-box">
+                                                    <div className="marin-label">Marin's Take</div>
+                                                    <div className="marin-text">"{selectedPlace.raw_ai_response.marin_comment}"</div>
+                                                </div>
+                                            )}
+
+                                            <div className="detail-row">
+                                                <div className="detail-label">Address</div>
+                                                <div className="detail-value">{selectedPlace.address}</div>
+                                            </div>
+
+                                            {selectedPlace.opening_hours && (
+                                                <div className="detail-row">
+                                                    <div className="detail-label">Hours</div>
+                                                    <div className="detail-value">{selectedPlace.opening_hours}</div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="col-side" style={{ flex: 1 }}>
+                                            <div className="detail-row">
+                                                <div className="detail-label">Vibes</div>
+                                                <div className="pill-list">
+                                                    {selectedPlace.vibes?.map(v => (
+                                                        <span key={v} className="pill">{v}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="detail-row">
+                                                <div className="detail-label">Categories</div>
+                                                <div className="pill-list">
+                                                    {selectedPlace.categories?.map(c => (
+                                                        <span key={c} className="pill">{c}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                </ErrorBoundary>
                             </div>
                         </div>
                     </div>
@@ -492,6 +563,24 @@ function PlaceHeroImage({ place }) {
         return <img src={imageUrl} alt={place.name} />
     }
     return <div style={{ width: '100%', height: '100%', background: '#2d1b4e' }}></div>
+}
+
+
+function ShareButton() {
+    const [copied, setCopied] = useState(false);
+
+    const handleShare = () => {
+        navigator.clipboard.writeText(window.location.href);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+        <button className="btn-secondary" onClick={handleShare} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.8rem 1.2rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'white', cursor: 'pointer', transition: 'all 0.2s' }}>
+            {copied ? <Check size={20} color="#4ade80" /> : <Share2 size={20} />}
+            {copied ? "Copied Link!" : "Share"}
+        </button>
+    );
 }
 
 export default App

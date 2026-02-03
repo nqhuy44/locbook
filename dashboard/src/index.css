@@ -536,7 +536,7 @@ body {
 }
 
 .modal-body {
-    padding: 1.5rem 2.5rem 5rem 2.5rem;
+    padding: 1.5rem 2.5rem 2.5rem 2.5rem;
     overflow-y: auto;
     display: flex;
     gap: 2.5rem;
@@ -599,6 +599,7 @@ body {
     color: white;
     font-size: 0.95rem;
     line-height: 1.4;
+    padding-bottom: 1rem;
 }
 
 .pill-list {
@@ -650,8 +651,8 @@ body {
     .modal-body {
         flex-direction: column;
         padding: 1.5rem;
-        padding-bottom: 6rem;
-        /* Extra padding for bottom scroll */
+        padding-bottom: 2rem;
+        /* Scroll space handled by column margins */
     }
 
     .hero-title {
