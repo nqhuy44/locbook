@@ -124,6 +124,7 @@ class LinkParser:
             place_name_from_url = "Unknown Place"
             page_title = "Unknown"
             og_title_content = ""
+            scraped_images = []
             
             async with httpx.AsyncClient(headers=self.headers, follow_redirects=True, timeout=10.0) as client:
                 # Expand URL
@@ -150,12 +151,32 @@ class LinkParser:
                     og_title = soup.find("meta", property="og:title")
                     if og_title:
                         og_title_content = og_title['content']
-                except Exception:
-                    pass
+                    
+                    # Scrape og:image (Free Thumbnail)
+                    og_image = soup.find("meta", property="og:image")
+                    if og_image and og_image.get('content'):
+                        img_url = og_image['content']
+                        # Filter out generic Google Maps icons/logos and Static Maps
+                        if "google_maps_logo" not in img_url and "icon" not in img_url and "staticmap" not in img_url:
+                             logger.info(f"Found og:image: {img_url}")
+                             try:
+                                 img_resp = await client.get(img_url, timeout=5.0)
+                                 if img_resp.status_code == 200:
+                                     # Store tuple (bytes, mime_type)
+                                     # Need to make sure photos_bytes is available or define it here
+                                     # Since I can't easily move the variable definition in this Replace block without context,
+                                     # I will return this in a specialized way or use a temp list.
+                                     # Let's see... I'll define a temp list here.
+                                     scraped_images.append((img_resp.content, img_resp.headers.get("Content-Type", "image/jpeg")))
+                             except Exception as e:
+                                 logger.warning(f"Failed to download og:image: {e}")
+
+                except Exception as e:
+                    logger.warning(f"Scraping failed: {e}")
 
             # --- Try Places API ---
             places_api_data = None
-            photos_bytes = []
+            photos_bytes = list(scraped_images) # Start with scraped images
             
             search_query = place_name_from_url if place_name_from_url != "Unknown Place" else (og_title_content or page_title)
             

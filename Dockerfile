@@ -25,6 +25,7 @@ COPY --from=builder /install /usr/local
 
 # Copy application code
 COPY src ./src
+COPY scripts ./scripts
 COPY .env.example .
 
 # Set environment variables
