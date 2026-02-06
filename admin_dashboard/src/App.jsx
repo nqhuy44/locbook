@@ -674,10 +674,66 @@ const SystemPanel = ({ API_URL }) => {
     const [versions, setVersions] = useState({ backend: '...', dashboard: '...', admin_dashboard: '...' });
 
     useEffect(() => {
-        fetch(`${API_URL}/api/versions`)
-            .then(res => res.json())
-            .then(data => setVersions(data))
-            .catch(err => console.error("Failed to fetch versions", err));
+        const fetchVersions = async () => {
+            const newVersions = { backend: '...', dashboard: '...', admin_dashboard: '...' };
+
+            // 1. Backend
+            try {
+                const res = await fetch(`${API_URL}/api/versions`);
+                if (res.ok) {
+                    const data = await res.json();
+                    newVersions.backend = data.backend || 'unknown';
+                }
+            } catch (e) {
+                console.error("Failed to fetch backend version", e);
+                newVersions.backend = 'error';
+            }
+
+            // 2. Admin Dashboard (Self)
+            try {
+                const res = await fetch('/version.json');
+                if (res.ok) {
+                    const data = await res.json();
+                    newVersions.admin_dashboard = data.version || 'unknown';
+                } else {
+                    newVersions.admin_dashboard = window.__APP_VERSION__ || 'unknown';
+                }
+            } catch (e) {
+                newVersions.admin_dashboard = window.__APP_VERSION__ || 'unknown';
+            }
+
+            // 3. User Dashboard (Need Config first)
+            try {
+                const configRes = await fetch(`${API_URL}/api/config`);
+                if (configRes.ok) {
+                    const configData = await configRes.json();
+                    const dashboardUrl = configData.LINKS?.DASHBOARD_URL || configData.LINKS?.AUTHOR_WEBSITE || configData.LINKS?.GITHUB; // Fallback
+
+                    if (dashboardUrl) {
+                        try {
+                            // Ensure no trailing slash
+                            const cleanUrl = dashboardUrl.replace(/\/$/, "");
+                            const res = await fetch(`${cleanUrl}/version.json`);
+                            if (res.ok) {
+                                const data = await res.json();
+                                newVersions.dashboard = data.version || 'unknown';
+                            } else {
+                                newVersions.dashboard = 'unknown';
+                            }
+                        } catch (e) {
+                            console.error("Failed to fetch dashboard version", e);
+                            newVersions.dashboard = 'error';
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to fetch config for dashboard url", e);
+            }
+
+            setVersions(newVersions);
+        };
+
+        fetchVersions();
     }, [API_URL]);
 
     return (

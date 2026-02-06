@@ -86,19 +86,8 @@ async def get_versions():
     settings = get_settings()
     
     # Helper to read package.json version
-    import json
-    def get_pkg_version(path):
-        try:
-            with open(path) as f:
-                data = json.load(f)
-                return data.get("version", "unknown")
-        except:
-            return "unknown"
-
     return {
         "backend": settings.APP_VERSION,
-        "dashboard": get_pkg_version("dashboard/package.json"),
-        "admin_dashboard": get_pkg_version("admin_dashboard/package.json")
     }
 
 @app.get("/api/places")
@@ -206,6 +195,7 @@ DEFAULT_APP_CONFIG = {
     "AUTHOR_WEBSITE": "https://locbook.firstdraft.sh",
     "LOC_REQUEST": "https://forms.gle/2w4efcfECzXwpnvo7",
     "FEEDBACK": "https://forms.gle/2ntCQmgKNrEbN3DX9",
+    "DASHBOARD_URL": "http://localhost:5173",
   },
   "CATEGORY_KEYWORDS": {
     "Nhậu": ["nhậu", "beer"],
@@ -223,7 +213,33 @@ async def get_config():
     config = await AppConfig.find_one(AppConfig.key == "global")
     if not config:
         return DEFAULT_APP_CONFIG
-    return config.data
+    
+    # Merge DB config over Default config to ensure new keys (like DASHBOARD_URL) exist
+    # deeply merging is better but shallow merge of top keys might suffice if structure is flat-ish
+    # Here we do a careful merge manually or just simple dict merge if adequate.
+    # We want keys in DEFAULT that are NOT in config.data to be present.
+    merged = DEFAULT_APP_CONFIG.copy()
+    
+    # Deep merge helper or simple specific merge
+    # For now, let's just ensure LINKS exists and has DASHBOARD_URL
+    db_data = config.data
+    
+    # Simple recursive merge for LINKS and FEATURES
+    for key in ["LINKS", "FEATURES"]:
+        if key in db_data and isinstance(db_data[key], dict):
+             # Ensure sub-keys from default exist in db_data result
+             for sub_key, sub_val in merged[key].items():
+                 if sub_key not in db_data[key]:
+                     db_data[key][sub_key] = sub_val
+    
+    # Update top level
+    for key, val in db_data.items():
+        if key in merged and isinstance(merged[key], dict) and isinstance(val, dict):
+             merged[key].update(val)
+        else:
+             merged[key] = val
+             
+    return merged
 
 @app.put("/api/config", dependencies=[Depends(verify_admin)])
 async def update_config(payload: Dict[str, Any]):

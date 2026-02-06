@@ -44,8 +44,12 @@ update_fe_version() {
     echo "Updating Frontend version to $VERSION in package.json..."
     cd dashboard
     npm version $VERSION --no-git-tag-version --allow-same-version
+    
+    # Generate version.json for dynamic checking
+    echo "{\"version\": \"$VERSION\"}" > public/version.json
+    
     cd ..
-    echo "Updated dashboard/package.json"
+    echo "Updated dashboard/package.json & public/version.json"
 }
 
 update_adm_version() {
@@ -53,8 +57,12 @@ update_adm_version() {
     echo "Updating Admin version to $VERSION in package.json..."
     cd admin_dashboard
     npm version $VERSION --no-git-tag-version --allow-same-version
+    
+    # Generate version.json for dynamic checking
+    echo "{\"version\": \"$VERSION\"}" > public/version.json
+    
     cd ..
-    echo "Updated admin_dashboard/package.json"
+    echo "Updated admin_dashboard/package.json & public/version.json"
 }
 
 build_be() {

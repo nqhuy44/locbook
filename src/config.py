@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     
     # App Version
-    APP_VERSION: str = "0.3.2"
+    APP_VERSION: str = "0.3.3"
 
     # AI Config
     AI_MODE: str = "gemini" # gemini or local

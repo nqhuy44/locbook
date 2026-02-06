@@ -319,7 +319,7 @@ function App() {
                     </a>
                     {config.FEATURES.ENABLE_BUY_ME_COFFEE && (
                         <a href={config.LINKS.BUY_ME_COFFEE} target="_blank" rel="noreferrer" className="bmc-button">
-                            <Coffee size={16} /> <span className="bmc-text">Buy me a coffee</span>
+                            <Coffee size={16} /> <span className="bmc-text desktop-only">Buy me a coffee</span>
                         </a>
                     )}
                 </div>
