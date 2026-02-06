@@ -330,6 +330,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "type": "Point",
                     "coordinates": [loc_api['longitude'], loc_api['latitude']]
                 }
+
+            # Save Thumbnail (from Scraper or API)
+            local_image_path = None
+            if raw_info.get("images"):
+                try:
+                    # raw_info['images'] contains (bytes, mime_type) tuples
+                    img_bytes, _ = raw_info["images"][0]
+                    rel_path, abs_path = await image_manager.save_screenshot(img_bytes, user.id)
+                    local_image_path = rel_path
+                    logger.info(f"Saved thumbnail to {abs_path}")
+                except Exception as e:
+                    logger.error(f"Failed to save thumbnail: {e}")
             
             place = Place(
                 name=details.get('name', raw_info.get('inferred_name', 'Unknown Spot')),
@@ -343,6 +355,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 aesthetic_score=details.get('aesthetic_score'),
                 lighting=details.get('lighting'),
                 google_maps_url=url,
+                local_image_path=local_image_path, # Image Path
                 rating=details.get('rating'),
                 price_level=details.get('price_level'),
                 status=details.get('status'),

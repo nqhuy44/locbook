@@ -30,3 +30,9 @@ fe-setup:
 
 fe-run:
 	cd dashboard && npm run dev -- --host
+
+adm-setup:
+	cd admin_dashboard && npm install
+
+adm-run:
+	cd admin_dashboard && npm run dev -- --port 5174 --host
