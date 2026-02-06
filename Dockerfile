@@ -28,6 +28,10 @@ COPY src ./src
 COPY scripts ./scripts
 COPY .env.example .
 
+# Copy package.json files for version detection
+COPY dashboard/package.json ./dashboard/package.json
+COPY admin_dashboard/package.json ./admin_dashboard/package.json
+
 # Set environment variables
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1

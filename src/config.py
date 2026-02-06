@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
     
+    # App Version
+    APP_VERSION: str = "0.3.2"
+
     # AI Config
     AI_MODE: str = "gemini" # gemini or local
     LOCAL_MODEL_URL: str = "http://localhost:11434/api/generate" # Ollama default

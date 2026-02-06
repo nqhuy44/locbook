@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Edit2, Trash2, Save, LogOut, Settings as SettingsIcon, MapPin, List, PlusCircle } from 'lucide-react';
+import { Search, Edit2, Trash2, Save, LogOut, Settings as SettingsIcon, MapPin, List, PlusCircle, Monitor } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -236,6 +236,8 @@ const AdminPanel = ({ API_URL, token, onLogout }) => {
                 }
             `}</style>
 
+
+
             <div className="admin-header" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', alignItems: 'center' }}>
                 <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     <div className="brand" style={{ fontSize: '2rem', cursor: 'default', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
@@ -256,6 +258,13 @@ const AdminPanel = ({ API_URL, token, onLogout }) => {
                             onClick={() => setView('config')}
                         >
                             <SettingsIcon size={16} style={{ marginRight: '0.5rem', verticalAlign: 'middle' }} /> Configuration
+                        </button>
+                        <button
+                            className={`nav-link ${view === 'system' ? 'active' : ''}`}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: view === 'system' ? '#d8b4fe' : 'rgba(255,255,255,0.6)', padding: '0.5rem 1rem' }}
+                            onClick={() => setView('system')}
+                        >
+                            <Monitor size={16} style={{ marginRight: '0.5rem', verticalAlign: 'middle' }} /> System
                         </button>
                     </div>
                 </div>
@@ -327,8 +336,10 @@ const AdminPanel = ({ API_URL, token, onLogout }) => {
                             </tbody>
                         </table>
                     )
-                ) : (
+                ) : view === 'config' ? (
                     <ConfigPanel API_URL={API_URL} token={token} />
+                ) : (
+                    <SystemPanel API_URL={API_URL} />
                 )
             }
 
@@ -658,5 +669,35 @@ const ConfigPanel = ({ API_URL, token }) => {
         </div>
     );
 };
+
+const SystemPanel = ({ API_URL }) => {
+    const [versions, setVersions] = useState({ backend: '...', dashboard: '...', admin_dashboard: '...' });
+
+    useEffect(() => {
+        fetch(`${API_URL}/api/versions`)
+            .then(res => res.json())
+            .then(data => setVersions(data))
+            .catch(err => console.error("Failed to fetch versions", err));
+    }, [API_URL]);
+
+    return (
+        <div style={{ padding: '2rem', maxWidth: '800px' }}>
+            <h2 style={{ marginBottom: '2rem', color: 'white' }}>System Information</h2>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+                <VersionCard title="Backend API" version={versions.backend} color="#d8b4fe" />
+                <VersionCard title="User Dashboard" version={versions.dashboard} color="#f472b6" />
+                <VersionCard title="Admin Dashboard" version={versions.admin_dashboard} color="#3b82f6" />
+            </div>
+        </div>
+    );
+};
+
+const VersionCard = ({ title, version, color }) => (
+    <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
+        <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)', marginBottom: '0.5rem' }}>{title}</div>
+        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: color }}>v{version}</div>
+    </div>
+);
 
 export default App;

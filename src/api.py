@@ -81,6 +81,26 @@ app.mount("/images", StaticFiles(directory="data/images"), name="images")
 async def health_check():
     return {"status": "ok"}
 
+@app.get("/api/versions")
+async def get_versions():
+    settings = get_settings()
+    
+    # Helper to read package.json version
+    import json
+    def get_pkg_version(path):
+        try:
+            with open(path) as f:
+                data = json.load(f)
+                return data.get("version", "unknown")
+        except:
+            return "unknown"
+
+    return {
+        "backend": settings.APP_VERSION,
+        "dashboard": get_pkg_version("dashboard/package.json"),
+        "admin_dashboard": get_pkg_version("admin_dashboard/package.json")
+    }
+
 @app.get("/api/places")
 async def get_places(
     limit: int = 20, 

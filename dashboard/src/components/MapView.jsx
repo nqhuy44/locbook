@@ -59,7 +59,9 @@ const MapController = ({ center, zoom, userLocation }) => {
     return null;
 }
 
-const MapView = ({ places }) => {
+const API_URL = import.meta.env.VITE_API_URL || '';
+
+const MapView = ({ places, onPlaceClick }) => {
     // Default center (HCMC)
     const [center, setCenter] = useState([10.762622, 106.660172]);
     const [userLocation, setUserLocation] = useState(null);
@@ -125,17 +127,48 @@ const MapView = ({ places }) => {
                             <Popup className="marin-popup">
                                 <div style={{ minWidth: '200px' }}>
                                     <h3 style={{ margin: '0 0 4px 0', fontSize: '1rem', fontWeight: '600' }}>{place.name}</h3>
+
+                                    {/* Thumbnail Image */}
+                                    {place.local_image_path && (
+                                        <div style={{ width: '100%', height: '120px', borderRadius: '8px', overflow: 'hidden', marginBottom: '8px' }}>
+                                            <img
+                                                src={`${API_URL}/images/${place.local_image_path}`}
+                                                alt={place.name}
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                            />
+                                        </div>
+                                    )}
+
                                     <p style={{ margin: '0 0 8px 0', fontSize: '0.8rem', color: '#666', whiteSpace: 'pre-wrap' }}>{place.address}</p>
                                     <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '8px' }}>
                                         {place.vibes?.slice(0, 3).map(v => (
                                             <span key={v} style={{ fontSize: '0.7rem', background: '#fce7f3', padding: '2px 6px', borderRadius: '4px', color: '#db2777' }}>{v}</span>
                                         ))}
                                     </div>
-                                    {place.google_maps_url && (
-                                        <a href={place.google_maps_url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none', color: '#7e22ce', fontSize: '0.8rem', fontWeight: '600' }}>
-                                            <Navigation size={12} /> Get Directions
-                                        </a>
-                                    )}
+
+                                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                                        <button
+                                            onClick={() => onPlaceClick(place)}
+                                            style={{
+                                                flex: 1,
+                                                background: '#d946ef',
+                                                color: 'white',
+                                                border: 'none',
+                                                padding: '6px 12px',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer',
+                                                fontSize: '0.8rem',
+                                                fontWeight: '600'
+                                            }}
+                                        >
+                                            View Details
+                                        </button>
+                                        {place.google_maps_url && (
+                                            <a href={place.google_maps_url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px', borderRadius: '6px', background: '#f3e8ff', color: '#7e22ce', textDecoration: 'none' }} title="Get Directions">
+                                                <Navigation size={16} />
+                                            </a>
+                                        )}
+                                    </div>
                                 </div>
                             </Popup>
                         </Marker>

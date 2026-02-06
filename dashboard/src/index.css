@@ -437,8 +437,9 @@ body {
     position: fixed;
     inset: 0;
     background: var(--modal-overlay);
+    margin-top: 0;
     backdrop-filter: blur(10px);
-    z-index: 200;
+    z-index: 9999;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -774,19 +775,28 @@ body {
         gap: 1.5rem;
     }
 
-    /* Compact BMC Button on Mobile */
+    .desktop-only {
+        display: none !important;
+    }
+
+    /* Refined BMC Button on Mobile */
     .bmc-button {
-        font-size: 0 !important;
-        padding: 0.5rem !important;
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
+        font-size: 0.8rem !important;
+        padding: 0.4rem 0.8rem !important;
+        width: auto !important;
+        height: auto !important;
+        border-radius: 99px !important;
         justify-content: center;
     }
 
+    .bmc-text {
+        display: inline;
+        /* Keep text visible */
+    }
+
     .bmc-button svg {
-        width: 18px;
-        height: 18px;
+        width: 16px;
+        height: 16px;
     }
 
     .nav-links {
@@ -817,5 +827,26 @@ body {
         width: 40px;
         /* Larger touch target */
         height: 40px;
+    }
+
+    /* Improved Footer for Mobile */
+    .footer-content {
+        gap: 2rem;
+    }
+
+    .footer-links {
+        flex-direction: column;
+        gap: 1.2rem;
+        align-items: center;
+        width: 100%;
+    }
+
+    .footer-links a {
+        background: rgba(255, 255, 255, 0.03);
+        width: 100%;
+        justify-content: center;
+        padding: 0.8rem;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
     }
 }

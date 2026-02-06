@@ -314,12 +314,12 @@ function App() {
                 </div>
 
                 <div className="nav-right">
-                    <a href={config.LINKS.LOC_REQUEST || "#"} target="_blank" rel="noreferrer" className="nav-link" style={{ marginRight: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <a href={config.LINKS.LOC_REQUEST || "#"} target="_blank" rel="noreferrer" className="nav-link desktop-only" style={{ marginRight: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                         <PlusCircle size={18} /> Request Place
                     </a>
                     {config.FEATURES.ENABLE_BUY_ME_COFFEE && (
                         <a href={config.LINKS.BUY_ME_COFFEE} target="_blank" rel="noreferrer" className="bmc-button">
-                            <Coffee size={16} /> Buy me a coffee
+                            <Coffee size={16} /> <span className="bmc-text">Buy me a coffee</span>
                         </a>
                     )}
                 </div>
@@ -373,7 +373,7 @@ function App() {
             {/* Main Content */}
             <main className="main-content" style={currentView === 'map' ? { padding: '0 2rem 2rem 2rem', overflow: 'hidden' } : {}}>
                 {currentView === 'map' ? (
-                    <MapView places={isFiltering ? filteredPlaces : places} />
+                    <MapView places={isFiltering ? filteredPlaces : places} onPlaceClick={openModal} />
                 ) : (
                     isFiltering ? (
                         <div className="section-wrapper">
@@ -411,6 +411,9 @@ function App() {
                     <div className="footer-content">
                         <div className="footer-brand">LocBook</div>
                         <div className="footer-links">
+                            {config.LINKS.LOC_REQUEST && (
+                                <a href={config.LINKS.LOC_REQUEST} target="_blank" rel="noreferrer"><MapPin size={18} /> Request Place</a>
+                            )}
                             {config.LINKS.GITHUB && (
                                 <a href={config.LINKS.GITHUB} target="_blank" rel="noreferrer"><Github size={18} /> GitHub</a>
                             )}
@@ -425,7 +428,7 @@ function App() {
                             Made by nqhuy
                         </div>
                         <div className="footer-copyright">
-                            © {new Date().getFullYear()} LocBook. All rights reserved.
+                            © {new Date().getFullYear()} LocBook. All rights reserved. v{__APP_VERSION__}
                         </div>
                     </div>
                 </footer>

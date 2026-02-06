@@ -42,6 +42,7 @@ class PlaceSummary(BaseModel):
     id: PydanticObjectId = Field(alias="_id", serialization_alias="_id")
     name: str
     address: Optional[str] = None
+    location: Optional[Dict[str, Any]] = None
     categories: List[str] = Field(default_factory=list)
     vibes: List[str] = Field(default_factory=list)
     mood: List[str] = Field(default_factory=list)
