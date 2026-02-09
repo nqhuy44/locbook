@@ -11,3 +11,5 @@ requests
 beautifulsoup4
 pillow
 aiofiles
+chromadb
+python-multipart

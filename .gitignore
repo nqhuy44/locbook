@@ -26,6 +26,7 @@ test/
 data/
 backups
 mongodb
+chromadb
 coverage/
 htmlcov/
 .pytest_cache/

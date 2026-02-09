@@ -6,6 +6,7 @@ export const CONFIG = {
     ENABLE_AUTHOR_CREDITS: true,
     ENABLE_DISCOVER: true,
     ENABLE_MAP: false, // Feature flag for Map view
+    FEAT_AI_MATCHMAKE: true,
   },
 
   // Home Page Categories Order & Display

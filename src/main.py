@@ -2,7 +2,7 @@ import logging
 import asyncio
 from beanie import init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient
-from src.database.models import Place, UserLog, AppConfig
+from src.database.models import Place, UserLog, AppConfig, ChatSession
 import uvicorn
 import os
 
@@ -23,7 +23,7 @@ async def init_db(settings):
             # Verify connection
             await client.admin.command('ping')
             
-            await init_beanie(database=client[settings.MONGO_DB_NAME], document_models=[Place, UserLog, AppConfig])
+            await init_beanie(database=client[settings.MONGO_DB_NAME], document_models=[Place, UserLog, AppConfig, ChatSession])
             logger.info("MongoDB Initialized.")
             return
         except Exception as e:
@@ -38,7 +38,7 @@ def main():
     """Entry point: Runs Uvicorn."""
     # Run uvicorn programmatically or use command line. 
     # For Docker compat, command line is better, but here we provide a script entry.
-    uvicorn.run("src.api:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("src.api:app", host="0.0.0.0", port=8000, reload=True, reload_dirs=["src"])
 
 if __name__ == "__main__":
     main()

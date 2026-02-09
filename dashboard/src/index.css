@@ -41,12 +41,12 @@ body {
 }
 
 .app-container {
-    min-height: 100vh;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
     width: 100%;
-    overflow-x: hidden;
-    /* Double protect */
+    overflow: hidden;
+    /* Prevent body scroll, handle inside main-content */
 }
 
 /* Navbar */
@@ -184,8 +184,13 @@ body {
 
 /* Main Content */
 .main-content {
-    padding: 1rem 3rem 4rem 3rem;
+    padding: 1rem 3rem 1rem 3rem;
     flex: 1;
+    overflow-y: auto;
+    /* Enable internal scrolling */
+    position: relative;
+    display: flex;
+    flex-direction: column;
 }
 
 .section-wrapper {

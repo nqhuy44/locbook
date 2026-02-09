@@ -1,7 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 from typing import List, Optional, Dict, Any
-from fastapi import FastAPI, HTTPException, Query, Header, Depends, Security
+from fastapi import FastAPI, HTTPException, Query, Header, Depends, Security, File, UploadFile, BackgroundTasks
 from fastapi.security import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
 from telegram.ext import ApplicationBuilder, Application
@@ -24,8 +24,16 @@ async def lifespan(app: FastAPI):
     
     # 1. Init DB
     await init_db(settings)
+
+    # 2. Auto-Index Vector DB (Async Background Task)
+    # 2. Auto-Index Vector DB (Async Background Task) - DISABLED
+    # if settings.FEAT_AI_MATCHMAKE:
+    #     import asyncio
+    #     from src.scripts.reindex_vectors import reindex
+    #     # Run in background to not block startup
+    #     asyncio.create_task(reindex())
     
-    # 2. Init Bot
+    # 3. Init Bot
     global bot_app
     if settings.TELEGRAM_BOT_TOKEN and settings.ENABLE_BOT:
         bot_app = ApplicationBuilder().token(settings.TELEGRAM_BOT_TOKEN).build()
@@ -60,6 +68,8 @@ async def lifespan(app: FastAPI):
 
 from fastapi.staticfiles import StaticFiles
 import os
+import shutil
+import uuid
 
 app = FastAPI(title="LocBook API", lifespan=lifespan)
 
@@ -149,6 +159,61 @@ async def update_place(place_id: str, place_update: PlaceUpdate):
     
     update_data = place_update.model_dump(exclude_unset=True)
     await place.set(update_data)
+    
+    # Sync to Vector DB
+    try:
+        from src.core.vector_store import vector_store
+        # We need to construct the text representation again.
+        # This is duplication of logic in reindex_vectors.py.
+        # Ideally, we should have a helper function "place_to_vector_doc(place)".
+        # For now, let's just do a quick re-fetch and add.
+        
+        # We need the full object with new values
+        updated_place = await Place.get(place_id)
+        if updated_place:
+             # Logic from reindex_vectors.py (simplified)
+             p = updated_place
+             vibes_str = ", ".join(p.vibes) if p.vibes else ""
+             cats_str = ", ".join(p.categories) if p.categories else ""
+             mood_str = ", ".join(p.mood) if p.mood else ""
+             meal_str = ", ".join(p.meal_types) if p.meal_types else ""
+             occasion_str = ", ".join(p.occasions) if p.occasions else ""
+             price = p.price_level if p.price_level else "Unknown"
+             status = p.status if p.status else "Unknown"
+             hours = p.opening_hours if p.opening_hours else ""
+             
+             text = (
+                f"Name: {p.name}. "
+                f"Categories: {cats_str}. "
+                f"Vibes: {vibes_str}. "
+                f"Mood: {mood_str}. "
+                f"Meal Types: {meal_str}. "
+                f"Occasions: {occasion_str}. "
+                f"Price: {price}. "
+                f"Address: {p.address}. "
+                f"Status: {status}. "
+                f"Hours: {hours}"
+             )
+             
+             metadata = {
+                "name": p.name,
+                "address": p.address or "",
+                "vibes": vibes_str,
+                "categories_list": ",".join(p.categories),
+                "rating": float(p.rating) if p.rating else 0.0,
+                "place_id": str(p.id),
+                "city": "Hồ Chí Minh",
+                "district": p.address.split(",")[1].strip() if p.address and len(p.address.split(",")) > 1 else "Unknown"
+             }
+             
+             vector_store.add_place({
+                "id": str(p.id),
+                "text": text,
+                "metadata": metadata
+             })
+    except Exception as e:
+        logger.error(f"Failed to sync update to Vector DB: {e}")
+
     return place
 
 @app.delete("/api/places/{place_id}", dependencies=[Depends(verify_admin)])
@@ -157,6 +222,14 @@ async def delete_place(place_id: str):
     if not place:
         raise HTTPException(status_code=404, detail="Place not found")
     await place.delete()
+    
+    # Sync to Vector DB
+    try:
+        from src.core.vector_store import vector_store
+        vector_store.delete_place(place_id)
+    except Exception as e:
+        logger.error(f"Failed to sync delete to Vector DB: {e}")
+        
     return {"status": "deleted"}
 
 @app.get("/api/stats")
@@ -187,6 +260,7 @@ DEFAULT_APP_CONFIG = {
     "ENABLE_AUTHOR_CREDITS": True,
     "ENABLE_DISCOVER": True,
     "ENABLE_MAP": False,
+    "FEAT_AI_MATCHMAKE": get_settings().FEAT_AI_MATCHMAKE,
   },
   "HOME_CATEGORIES": ["Casual", "Cafe & Coffee", "Special Occasion", "Bar"],
   "LINKS": {
@@ -205,6 +279,26 @@ DEFAULT_APP_CONFIG = {
     "Bar": ["bar", "cocktail", "lounge", "speakeasy", "wine"],
     "Cafe & Coffee": ["cafe", "coffee", "tea"],
     "Casual": ["casual", "street", "local", "snack", "quick"],
+  },
+  "MARIN": {
+    "AVATAR_NAME": "Marin 🎀",
+    "AVATAR_IMAGE": "",
+    "SYSTEM_INSTRUCTION": "You are Marin, an AI local guide for Ho Chi Minh City. You are helpful, friendly, and knowledgeable about Saigon's nightlife and cafes.",
+    "CATEGORY_SYNONYMS": {
+        "bar": ["pub", "lounge", "club", "speakeasy", "nightlife", "cocktail"],
+        "pub": ["bar", "gastropub", "izakaya", "beer", "brewery", "nightlife"],
+        "cafe": ["coffee", "tea", "bakery", "dessert", "bistro", "brunch"],
+        "restaurant": ["dining", "eatery", "bistro", "food", "dinner", "lunch"],
+        "casual": ["bình dân", "street food", "vỉa hè", "local"]
+    },
+    "PROMPT_CATEGORY_MAPPING": {
+        "nhậu": "Pub",
+        "ăn tối": "Restaurant",
+        "tâm sự": "Bar",
+        "quẩy": "Bar",
+        "bình dân": "Casual",
+        "cafe": "Cafe"
+    }
   }
 }
 
@@ -224,8 +318,8 @@ async def get_config():
     # For now, let's just ensure LINKS exists and has DASHBOARD_URL
     db_data = config.data
     
-    # Simple recursive merge for LINKS and FEATURES
-    for key in ["LINKS", "FEATURES"]:
+    # Simple recursive merge for LINKS, FEATURES, and MARIN
+    for key in ["LINKS", "FEATURES", "MARIN"]:
         if key in db_data and isinstance(db_data[key], dict):
              # Ensure sub-keys from default exist in db_data result
              for sub_key, sub_val in merged[key].items():
@@ -251,3 +345,69 @@ async def update_config(payload: Dict[str, Any]):
         config.data = payload
         await config.save()
     return config.data
+
+# Chat API
+from pydantic import BaseModel
+class ChatMessage(BaseModel):
+    session_id: str | None = None
+    message: str
+
+@app.post("/api/chat/message")
+async def chat_message(payload: ChatMessage):
+    if not DEFAULT_APP_CONFIG["FEATURES"]["FEAT_AI_MATCHMAKE"]:
+        return {"error": "Feature disabled"}
+    
+    from src.core.chat_service import chat_service
+    response = await chat_service.handle_message(payload.session_id, payload.message)
+    return response
+
+
+@app.post("/api/upload/avatar")
+async def upload_avatar(file: UploadFile = File(...), token: str = Depends(verify_admin)):
+    """
+    Upload an avatar image.
+    Returns: { "url": "/images/filename.ext" }
+    """
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    
+    # Create directory if not exists
+    os.makedirs("data/images", exist_ok=True)
+    
+    # Generate unique filename
+    ext = file.filename.split(".")[-1] if "." in file.filename else "png"
+    filename = f"avatar_{uuid.uuid4().hex[:8]}.{ext}"
+    file_path = f"data/images/{filename}"
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    return {"url": f"/images/{filename}"}
+
+
+# Reindex Logic
+from src.scripts.reindex_vectors import reindex as run_reindex_script
+
+is_reindexing = False
+
+async def reindex_background_task():
+    global is_reindexing
+    try:
+        logger.info("Starting background reindexing task...")
+        is_reindexing = True
+        await run_reindex_script()
+    except Exception as e:
+        logger.error(f"Reindexing failed: {e}")
+    finally:
+        is_reindexing = False
+        logger.info("Background reindexing task finished.")
+
+@app.post("/api/admin/reindex")
+async def trigger_reindex(background_tasks: BackgroundTasks, token: str = Depends(verify_admin)):
+    global is_reindexing
+    if is_reindexing:
+        raise HTTPException(status_code=409, detail="Reindexing already in progress")
+    
+    background_tasks.add_task(reindex_background_task)
+    return {"status": "started", "message": "Reindexing started in background. Check logs for progress."}
+

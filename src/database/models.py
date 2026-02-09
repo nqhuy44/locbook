@@ -83,3 +83,13 @@ class AppConfig(Document):
 
     class Settings:
         name = "app_config"
+
+class ChatSession(Document):
+    session_id: str = Field(..., description="Unique Session ID")
+    messages: List[Dict[str, Any]] = Field(default_factory=list, description="List of messages {role, content, timestamp}")
+    seen_place_ids: List[str] = Field(default_factory=list, description="List of Place IDs suggested in this session")
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+    class Settings:
+        name = "chat_sessions"

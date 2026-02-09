@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     
     # App Version
-    APP_VERSION: str = "0.3.3"
+    APP_VERSION: str = "0.4.4"
 
     # AI Config
     AI_MODE: str = "gemini" # gemini or local
@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     FEAT_GEO_SEARCH: bool = True # Enable/Disable Contextual Geo-Search
     MAX_REVIEWS_FOR_AI: int = 5 # Limit reviews to save tokens
     ENABLE_BOT: bool = True # Enable/Disable Telegram Bot Logic
+    FEAT_AI_MATCHMAKE: bool = True # Enable/Disable AI Matchmaker
+
+    # ChromaDB
+    CHROMA_SERVER_HOST: str = "localhost"
+    CHROMA_SERVER_PORT: int = 8001
     
     MONGO_URI: str = "mongodb://localhost:27018"
     MONGO_DB_NAME: str = "locbook"
@@ -33,7 +38,7 @@ class Settings(BaseSettings):
     MAX_MESSAGE_AGE_SECONDS: int = 60 # Ignore messages older than 2 minutes by default
     RATE_LIMIT_PER_MINUTE: int = 5 # Max 5 requests per minute per user
 
-    model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True, env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True, env_file_encoding="utf-8", extra='ignore')
 
 @lru_cache
 def get_settings():

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Edit2, Trash2, Save, LogOut, Settings as SettingsIcon, MapPin, List, PlusCircle, Monitor } from 'lucide-react';
+import { Search, Edit2, Trash2, Save, LogOut, Settings as SettingsIcon, MapPin, List, PlusCircle, Monitor, Sparkles, User, MessageSquare, Database, RefreshCw } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -55,7 +55,7 @@ function App() {
 }
 
 const AdminPanel = ({ API_URL, token, onLogout }) => {
-    const [view, setView] = useState('places'); // 'places' | 'config'
+    const [view, setView] = useState('places'); // 'places' | 'config' | 'system' | 'marin'
     const [places, setPlaces] = useState([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
@@ -266,6 +266,13 @@ const AdminPanel = ({ API_URL, token, onLogout }) => {
                         >
                             <Monitor size={16} style={{ marginRight: '0.5rem', verticalAlign: 'middle' }} /> System
                         </button>
+                        <button
+                            className={`nav-link ${view === 'marin' ? 'active' : ''}`}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: view === 'marin' ? '#d8b4fe' : 'rgba(255,255,255,0.6)', padding: '0.5rem 1rem' }}
+                            onClick={() => setView('marin')}
+                        >
+                            <Sparkles size={16} style={{ marginRight: '0.5rem', verticalAlign: 'middle' }} /> Marin AI
+                        </button>
                     </div>
                 </div>
 
@@ -338,6 +345,8 @@ const AdminPanel = ({ API_URL, token, onLogout }) => {
                     )
                 ) : view === 'config' ? (
                     <ConfigPanel API_URL={API_URL} token={token} />
+                ) : view === 'marin' ? (
+                    <MarinPanel API_URL={API_URL} token={token} />
                 ) : (
                     <SystemPanel API_URL={API_URL} />
                 )
@@ -407,6 +416,8 @@ const ConfigPanel = ({ API_URL, token }) => {
     // Local state for Category Mapping editing (array format for easier rendering)
     const [categoryMappings, setCategoryMappings] = useState([]);
 
+
+
     useEffect(() => {
         fetchConfig();
     }, []);
@@ -428,7 +439,11 @@ const ConfigPanel = ({ API_URL, token }) => {
                 }));
                 // Sort by name or precedence? Keep default order.
                 setCategoryMappings(mappings);
+                setCategoryMappings(mappings);
             }
+
+            // Populate Marin Config
+
         } catch (e) {
             console.error(e);
         } finally {
@@ -456,6 +471,8 @@ const ConfigPanel = ({ API_URL, token }) => {
                     }
                 });
                 payload.CATEGORY_KEYWORDS = newKeywords;
+
+
             }
 
             const res = await fetch(`${API_URL}/api/config`, {
@@ -481,7 +498,10 @@ const ConfigPanel = ({ API_URL, token }) => {
                         keywords: Array.isArray(vals) ? vals.join(", ") : vals
                     }));
                     setCategoryMappings(mappings);
+                    setCategoryMappings(mappings);
                 }
+
+
             } else {
                 alert("Failed to save config");
             }
@@ -504,6 +524,8 @@ const ConfigPanel = ({ API_URL, token }) => {
     const updateCategoryMapping = (id, field, value) => {
         setCategoryMappings(categoryMappings.map(m => m.id === id ? { ...m, [field]: value } : m));
     };
+
+
 
     const commonInputStyle = {
         width: '100%',
@@ -536,129 +558,133 @@ const ConfigPanel = ({ API_URL, token }) => {
                     style={{ ...commonInputStyle, height: '500px', fontFamily: 'monospace', color: '#a5f3fc' }}
                 />
             ) : (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', alignItems: 'start' }}>
+                <>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', alignItems: 'start' }}>
 
-                    {/* LEFT COLUMN */}
-                    <div style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', gap: '2rem', minWidth: '300px' }}>
-                        {/* Feature Flags */}
-                        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '12px' }}>
-                            <h3 style={{ marginTop: 0, color: '#d8b4fe', marginBottom: '1rem' }}>Feature Flags</h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                                {Object.entries(config.FEATURES || {}).map(([key, val]) => (
-                                    <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', cursor: 'pointer', background: 'rgba(0,0,0,0.2)', padding: '0.8rem', borderRadius: '8px', border: val ? '1px solid #d8b4fe' : '1px solid transparent', transition: 'all 0.2s' }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={val}
-                                            onChange={e => setConfig({
-                                                ...config,
-                                                FEATURES: { ...config.FEATURES, [key]: e.target.checked }
-                                            })}
-                                            style={{ accentColor: '#d8b4fe', transform: 'scale(1.2)' }}
-                                        />
-                                        <span style={{ fontSize: '0.9rem', color: val ? 'white' : 'rgba(255,255,255,0.6)' }}>{key.replace('ENABLE_', '')}</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Links */}
-                        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '12px' }}>
-                            <h3 style={{ marginTop: 0, color: '#d8b4fe', marginBottom: '1rem' }}>External Links</h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                                {Object.entries(config.LINKS || {}).map(([key, val]) => (
-                                    <div key={key}>
-                                        <label style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.4rem', display: 'block' }}>
-                                            {key.replace(/_/g, " ")}
-                                        </label>
-                                        <input
-                                            style={commonInputStyle}
-                                            value={val}
-                                            onChange={e => setConfig({
-                                                ...config,
-                                                LINKS: { ...config.LINKS, [key]: e.target.value }
-                                            })}
-                                        />
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* RIGHT COLUMN */}
-                    <div style={{ flex: '1.5 1 500px', display: 'flex', flexDirection: 'column', gap: '2rem', minWidth: '300px' }}>
-                        {/* Home Categories */}
-                        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '12px' }}>
-                            <h3 style={{ marginTop: 0, color: '#d8b4fe' }}>Home Page Display Order</h3>
-                            <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.5rem', marginBottom: '1rem' }}>
-                                Which categories from above should appear on the homepage and in what order?
-                            </p>
-                            <textarea
-                                style={{ ...commonInputStyle, minHeight: '80px', color: '#a5f3fc' }}
-                                value={config.HOME_CATEGORIES?.join(", ")}
-                                onChange={e => setConfig({
-                                    ...config,
-                                    HOME_CATEGORIES: e.target.value.split(",").map(s => s.trim()).filter(Boolean)
-                                })}
-                            />
-                        </div>
-
-                        {/* Category Logic */}
-                        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '12px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                                <h3 style={{ margin: 0, color: '#d8b4fe' }}>Category Rules</h3>
-                                <button onClick={addCategoryMapping} className="bmc-button add-category-btn" style={{ fontSize: '0.9rem', padding: '0.6rem 1.2rem' }}>
-                                    <PlusCircle size={16} /> Add New Category Rule
-                                </button>
-                            </div>
-                            <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', marginTop: 0, marginBottom: '1.5rem' }}>
-                                Define keyword patterns to automatically detect categories.
-                            </p>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                {categoryMappings.map((mapping) => (
-                                    <div key={mapping.id} style={{
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '1rem',
-                                        background: 'rgba(255,255,255,0.02)',
-                                        padding: '1.2rem',
-                                        borderRadius: '12px',
-                                        border: '1px solid rgba(255,255,255,0.05)',
-                                        position: 'relative'
-                                    }}>
-                                        <button
-                                            onClick={() => removeCategoryMapping(mapping.id)}
-                                            style={{ position: 'absolute', top: '12px', right: '12px', background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', opacity: 0.7 }}
-                                            title="Remove"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-
-                                        <div>
-                                            <label style={{ fontSize: '0.7rem', color: '#94a3b8', marginBottom: '0.3rem', display: 'block', fontWeight: 600 }}>CATEGORY</label>
+                        {/* LEFT COLUMN */}
+                        <div style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', gap: '2rem', minWidth: '300px' }}>
+                            {/* Feature Flags */}
+                            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '12px' }}>
+                                <h3 style={{ marginTop: 0, color: '#d8b4fe', marginBottom: '1rem' }}>Feature Flags</h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                    {Object.entries(config.FEATURES || {}).map(([key, val]) => (
+                                        <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', cursor: 'pointer', background: 'rgba(0,0,0,0.2)', padding: '0.8rem', borderRadius: '8px', border: val ? '1px solid #d8b4fe' : '1px solid transparent', transition: 'all 0.2s' }}>
                                             <input
-                                                value={mapping.name}
-                                                onChange={(e) => updateCategoryMapping(mapping.id, 'name', e.target.value)}
-                                                style={commonInputStyle}
-                                                placeholder="Category Name"
+                                                type="checkbox"
+                                                checked={val}
+                                                onChange={e => setConfig({
+                                                    ...config,
+                                                    FEATURES: { ...config.FEATURES, [key]: e.target.checked }
+                                                })}
+                                                style={{ accentColor: '#d8b4fe', transform: 'scale(1.2)' }}
                                             />
-                                        </div>
-                                        <div>
-                                            <label style={{ fontSize: '0.7rem', color: '#94a3b8', marginBottom: '0.3rem', display: 'block', fontWeight: 600 }}>KEYWORDS</label>
-                                            <textarea
-                                                value={mapping.keywords}
-                                                onChange={(e) => updateCategoryMapping(mapping.id, 'keywords', e.target.value)}
-                                                style={{ ...commonInputStyle, minHeight: '60px', resize: 'vertical', color: '#d1d5db' }}
-                                                placeholder="comma, separated, keywords"
-                                            />
-                                        </div>
-                                    </div>
-                                ))}
+                                            <span style={{ fontSize: '0.9rem', color: val ? 'white' : 'rgba(255,255,255,0.6)' }}>{key.replace('ENABLE_', '')}</span>
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
-                            {categoryMappings.length === 0 && <div style={{ textAlign: 'center', opacity: 0.5, padding: '2rem' }}>No mappings defined.</div>}
+
+                            {/* Links */}
+                            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '12px' }}>
+                                <h3 style={{ marginTop: 0, color: '#d8b4fe', marginBottom: '1rem' }}>External Links</h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                    {Object.entries(config.LINKS || {}).map(([key, val]) => (
+                                        <div key={key}>
+                                            <label style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.4rem', display: 'block' }}>
+                                                {key.replace(/_/g, " ")}
+                                            </label>
+                                            <input
+                                                style={commonInputStyle}
+                                                value={val}
+                                                onChange={e => setConfig({
+                                                    ...config,
+                                                    LINKS: { ...config.LINKS, [key]: e.target.value }
+                                                })}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* RIGHT COLUMN */}
+                        <div style={{ flex: '1.5 1 500px', display: 'flex', flexDirection: 'column', gap: '2rem', minWidth: '300px' }}>
+                            {/* Home Categories */}
+                            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '12px' }}>
+                                <h3 style={{ marginTop: 0, color: '#d8b4fe' }}>Home Page Display Order</h3>
+                                <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.5rem', marginBottom: '1rem' }}>
+                                    Which categories from above should appear on the homepage and in what order?
+                                </p>
+                                <textarea
+                                    style={{ ...commonInputStyle, minHeight: '80px', color: '#a5f3fc' }}
+                                    value={config.HOME_CATEGORIES?.join(", ")}
+                                    onChange={e => setConfig({
+                                        ...config,
+                                        HOME_CATEGORIES: e.target.value.split(",").map(s => s.trim()).filter(Boolean)
+                                    })}
+                                />
+                            </div>
+
+                            {/* Category Logic */}
+                            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '12px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                                    <h3 style={{ margin: 0, color: '#d8b4fe' }}>Category Rules</h3>
+                                    <button onClick={addCategoryMapping} className="bmc-button add-category-btn" style={{ fontSize: '0.9rem', padding: '0.6rem 1.2rem' }}>
+                                        <PlusCircle size={16} /> Add New Category Rule
+                                    </button>
+                                </div>
+                                <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', marginTop: 0, marginBottom: '1.5rem' }}>
+                                    Define keyword patterns to automatically detect categories.
+                                </p>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    {categoryMappings.map((mapping) => (
+                                        <div key={mapping.id} style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '1rem',
+                                            background: 'rgba(255,255,255,0.02)',
+                                            padding: '1.2rem',
+                                            borderRadius: '12px',
+                                            border: '1px solid rgba(255,255,255,0.05)',
+                                            position: 'relative'
+                                        }}>
+                                            <button
+                                                onClick={() => removeCategoryMapping(mapping.id)}
+                                                style={{ position: 'absolute', top: '12px', right: '12px', background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', opacity: 0.7 }}
+                                                title="Remove"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+
+                                            <div>
+                                                <label style={{ fontSize: '0.7rem', color: '#94a3b8', marginBottom: '0.3rem', display: 'block', fontWeight: 600 }}>CATEGORY</label>
+                                                <input
+                                                    value={mapping.name}
+                                                    onChange={(e) => updateCategoryMapping(mapping.id, 'name', e.target.value)}
+                                                    style={commonInputStyle}
+                                                    placeholder="Category Name"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.7rem', color: '#94a3b8', marginBottom: '0.3rem', display: 'block', fontWeight: 600 }}>KEYWORDS</label>
+                                                <textarea
+                                                    value={mapping.keywords}
+                                                    onChange={(e) => updateCategoryMapping(mapping.id, 'keywords', e.target.value)}
+                                                    style={{ ...commonInputStyle, minHeight: '60px', resize: 'vertical', color: '#d1d5db' }}
+                                                    placeholder="comma, separated, keywords"
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                {categoryMappings.length === 0 && <div style={{ textAlign: 'center', opacity: 0.5, padding: '2rem' }}>No mappings defined.</div>}
+                            </div>
                         </div>
                     </div>
-                </div>
+
+
+                </>
             )}
 
             <div className="save-float-container" style={{ position: 'fixed', bottom: '2rem', right: '3rem', zIndex: 100 }}>
@@ -755,5 +781,274 @@ const VersionCard = ({ title, version, color }) => (
         <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: color }}>v{version}</div>
     </div>
 );
+
+const MarinPanel = ({ API_URL, token }) => {
+    const [config, setConfig] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [marinConfig, setMarinConfig] = useState({ AVATAR_NAME: "", AVATAR_IMAGE: "", SYSTEM_INSTRUCTION: "" });
+    const [marinSynonyms, setMarinSynonyms] = useState([]);
+
+    useEffect(() => {
+        fetchConfig();
+    }, []);
+
+    const fetchConfig = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch(`${API_URL}/api/config`);
+            const data = await res.json();
+            setConfig(data);
+
+            if (data.MARIN) {
+                setMarinConfig({
+                    AVATAR_NAME: data.MARIN.AVATAR_NAME || "",
+                    AVATAR_IMAGE: data.MARIN.AVATAR_IMAGE || "",
+                    SYSTEM_INSTRUCTION: data.MARIN.SYSTEM_INSTRUCTION || ""
+                });
+
+                if (data.MARIN.CATEGORY_SYNONYMS) {
+                    const synonyms = Object.entries(data.MARIN.CATEGORY_SYNONYMS).map(([key, vals]) => ({
+                        id: Math.random().toString(36).substr(2, 9),
+                        name: key,
+                        keywords: Array.isArray(vals) ? vals.join(", ") : vals
+                    }));
+                    setMarinSynonyms(synonyms);
+                }
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSave = async () => {
+        try {
+            // Reconstruct MARIN config
+            const newSynonyms = {};
+            marinSynonyms.forEach(item => {
+                if (item.name.trim()) {
+                    newSynonyms[item.name.trim()] = item.keywords.split(",").map(s => s.trim()).filter(Boolean);
+                }
+            });
+
+            const payload = {
+                ...config,
+                MARIN: {
+                    ...config.MARIN,
+                    AVATAR_NAME: marinConfig.AVATAR_NAME,
+                    AVATAR_IMAGE: marinConfig.AVATAR_IMAGE,
+                    SYSTEM_INSTRUCTION: marinConfig.SYSTEM_INSTRUCTION,
+                    CATEGORY_SYNONYMS: newSynonyms
+                }
+            };
+
+            const res = await fetch(`${API_URL}/api/config`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-admin-token': token
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                alert("Marin Configuration saved!");
+                const saved = await res.json();
+                setConfig(saved);
+
+                // Refresh local state
+                if (saved.MARIN) {
+                    setMarinConfig({
+                        AVATAR_NAME: saved.MARIN.AVATAR_NAME || "",
+                        AVATAR_IMAGE: saved.MARIN.AVATAR_IMAGE || "",
+                        SYSTEM_INSTRUCTION: saved.MARIN.SYSTEM_INSTRUCTION || ""
+                    });
+                    const synonyms = Object.entries(saved.MARIN.CATEGORY_SYNONYMS).map(([key, vals]) => ({
+                        id: Math.random().toString(36).substr(2, 9),
+                        name: key,
+                        keywords: Array.isArray(vals) ? vals.join(", ") : vals
+                    }));
+                    setMarinSynonyms(synonyms);
+                }
+
+            } else {
+                alert("Failed to save config");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error saving config");
+        }
+    };
+
+
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await fetch(`${API_URL}/api/upload/avatar`, {
+                method: 'POST',
+                headers: {
+                    'x-admin-token': token
+                },
+                body: formData
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setMarinConfig({ ...marinConfig, AVATAR_IMAGE: data.url });
+            } else {
+                alert("Upload failed");
+            }
+        } catch (error) {
+            console.error("Upload error:", error);
+            alert("Upload error");
+        }
+    };
+
+    const commonInputStyle = {
+        width: '100%',
+        background: 'rgba(0, 0, 0, 0.3)',
+        border: 'none',
+        color: 'white',
+        padding: '0.75rem 1rem',
+        borderRadius: '8px',
+        fontSize: '0.9rem',
+        fontFamily: 'inherit',
+        marginTop: '0.25rem'
+    };
+
+    if (loading) return <div>Loading Marin Config...</div>;
+    if (!config) return <div>Error loading config</div>;
+
+    return (
+        <div style={{ maxWidth: '800px', margin: '0 auto', paddingBottom: '4rem' }}>
+            <div className="config-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Sparkles size={24} color="#d8b4fe" /> Marin AI Configuration
+                </h2>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '2rem', borderRadius: '16px', border: '1px solid #d8b4fe' }}>
+                    <h3 style={{ marginTop: 0, color: '#d8b4fe', marginBottom: '1.5rem' }}>Persona & Identity</h3>
+
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <label className="detail-label" style={{ color: '#94a3b8', fontSize: '0.9rem', display: 'block', marginBottom: '0.5rem' }}>Avatar Name</label>
+                        <input
+                            style={commonInputStyle}
+                            value={marinConfig.AVATAR_NAME}
+                            onChange={e => setMarinConfig({ ...marinConfig, AVATAR_NAME: e.target.value })}
+                            placeholder="e.g. Marin 🎀"
+                        />
+                    </div>
+
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <label className="detail-label" style={{ color: '#94a3b8', fontSize: '0.9rem', display: 'block', marginBottom: '0.5rem' }}>Avatar Image URL</label>
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                            {marinConfig.AVATAR_IMAGE ? (
+                                <img
+                                    src={marinConfig.AVATAR_IMAGE.startsWith('http') ? marinConfig.AVATAR_IMAGE : `${API_URL}${marinConfig.AVATAR_IMAGE}`}
+                                    alt="Preview"
+                                    style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #d8b4fe' }}
+                                />
+                            ) : (
+                                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🖼️</div>
+                            )}
+                            <input
+                                style={{ ...commonInputStyle, marginTop: 0 }}
+                                value={marinConfig.AVATAR_IMAGE}
+                                onChange={e => setMarinConfig({ ...marinConfig, AVATAR_IMAGE: e.target.value })}
+                                placeholder="https://imgur.com/..."
+                            />
+                            <label style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.1)', padding: '0.8rem', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Upload Image">
+                                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileUpload} />
+                                ⬆️
+                            </label>
+                        </div>
+                        <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.25rem' }}>Paste a URL or upload an image.</p>
+                    </div>
+
+                    <div>
+                        <label className="detail-label" style={{ color: '#94a3b8', fontSize: '0.9rem', display: 'block', marginBottom: '0.5rem' }}>System Instruction / Persona</label>
+                        <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.5rem' }}>
+                            Define how Marin should behave, speak, and interact with users.
+                        </p>
+                        <textarea
+                            style={{ ...commonInputStyle, minHeight: '200px', lineHeight: '1.6', fontSize: '0.95rem' }}
+                            value={marinConfig.SYSTEM_INSTRUCTION}
+                            onChange={e => setMarinConfig({ ...marinConfig, SYSTEM_INSTRUCTION: e.target.value })}
+                            placeholder="You are Marin..."
+                        />
+                    </div>
+                </div>
+
+                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '2rem', borderRadius: '16px', border: '1px solid #d8b4fe' }}>
+                    <h3 style={{ marginTop: 0, color: '#d8b4fe', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Database size={20} /> Knowledge Base & Memory
+                    </h3>
+
+                    <div style={{ marginBottom: '1rem' }}>
+                        <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.7)', lineHeight: '1.5' }}>
+                            The Vector Database stores embeddings of all places to help Marin understand user intent and find relevant locations based on "vibes".
+                        </p>
+                        <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.5rem' }}>
+                            Trigger this if search results feel outdated or if you've manually edited the database.
+                        </p>
+                    </div>
+
+                    <button
+                        onClick={async () => {
+                            if (!window.confirm("Are you sure you want to reindex the Vector Database? This may take a few minutes.")) return;
+                            try {
+                                const res = await fetch(`${API_URL}/api/admin/reindex`, {
+                                    method: 'POST',
+                                    headers: { 'x-admin-token': token }
+                                });
+                                if (res.ok) {
+                                    alert("Reindexing started in background. It will complete in a few minutes.");
+                                } else {
+                                    const err = await res.json();
+                                    alert(`Failed: ${err.detail}`);
+                                }
+                            } catch (e) {
+                                alert("Error triggering reindex.");
+                            }
+                        }}
+                        style={{
+                            background: 'rgba(168, 85, 247, 0.2)',
+                            color: '#e879f9',
+                            border: '1px solid rgba(168, 85, 247, 0.4)',
+                            padding: '0.8rem 1.5rem',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontSize: '0.9rem',
+                            fontWeight: '600',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            transition: 'all 0.2s'
+                        }}
+                        onMouseOver={e => e.currentTarget.style.background = 'rgba(168, 85, 247, 0.3)'}
+                        onMouseOut={e => e.currentTarget.style.background = 'rgba(168, 85, 247, 0.2)'}
+                    >
+                        <RefreshCw size={18} /> Reindex Database
+                    </button>
+                </div>
+            </div>
+
+            <div className="save-float-container" style={{ position: 'fixed', bottom: '2rem', right: '3rem', zIndex: 100 }}>
+                <button onClick={handleSave} className="bmc-button" style={{ border: 'none', cursor: 'pointer', padding: '1rem 2rem', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
+                    <Save size={18} /> Save Marin Config
+                </button>
+            </div>
+        </div >
+    );
+};
 
 export default App;

@@ -62,7 +62,26 @@ services:
   #     options:
   #       max-size: "10m"
   #       max-file: "3"
-  
+  chromadb:
+    image: chromadb/chroma:latest
+    restart: always
+    volumes:
+      - ./chromadb:/chroma/chroma
+    ports:
+      - "8001:8000"
+    environment:
+      - IS_PERSISTENT=TRUE
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   mongo:
     image: mongo:latest
     restart: always

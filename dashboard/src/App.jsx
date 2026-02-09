@@ -23,6 +23,7 @@ import {
 import { CONFIG as DEFAULT_CONFIG } from './config';
 import MapView from './components/MapView';
 import CategoryRow from './components/CategoryRow';
+import ChatView from './components/ChatView';
 
 class ErrorBoundary extends React.Component {
     constructor(props) {
@@ -309,6 +310,16 @@ function App() {
                             </span>
                         )}
 
+                        {config.FEATURES.FEAT_AI_MATCHMAKE && (
+                            <span
+                                className={`nav-link ${currentView === 'chat' ? 'active' : ''}`}
+                                onClick={() => { setSearchTerm(''); setActiveVibes([]); setActiveCats([]); setCurrentView('chat') }}
+                                style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
+                            >
+                                <Sparkles size={16} /> Ask Marin
+                            </span>
+                        )}
+
 
                     </div>
                 </div>
@@ -326,53 +337,63 @@ function App() {
             </nav>
 
             {/* Filter Bar */}
-            <div className="filter-bar">
-                <div className="search-wrapper">
-                    <Search size={18} color="#d8b4fe" />
-                    <input
-                        className="search-input"
-                        type="text"
-                        placeholder="Find places, vibes..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
+            {currentView !== 'chat' && (
+                <div className="filter-bar">
+                    <div className="search-wrapper">
+                        <Search size={18} color="#d8b4fe" />
+                        <input
+                            className="search-input"
+                            type="text"
+                            placeholder="Find places, vibes..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
 
-                <div className="filter-group">
-                    <span className="filter-label">Vibes:</span>
-                    <div className="filter-scroll">
-                        {displayedVibes.map(vibe => (
-                            <button
-                                key={vibe}
-                                className={`filter-btn ${activeVibes.includes(vibe) ? 'active' : ''}`}
-                                onClick={() => toggleVibe(vibe)}
-                            >
-                                {vibe}
-                            </button>
-                        ))}
+                    <div className="filter-group">
+                        <span className="filter-label">Vibes:</span>
+                        <div className="filter-scroll">
+                            {displayedVibes.map(vibe => (
+                                <button
+                                    key={vibe}
+                                    className={`filter-btn ${activeVibes.includes(vibe) ? 'active' : ''}`}
+                                    onClick={() => toggleVibe(vibe)}
+                                >
+                                    {vibe}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="filter-group">
+                        <span className="filter-label">Categories:</span>
+                        <div className="filter-scroll">
+                            {displayedCategories.map(cat => (
+                                <button
+                                    key={cat}
+                                    className={`filter-btn ${activeCats.includes(cat) ? 'active' : ''}`}
+                                    onClick={() => toggleCat(cat)}
+                                >
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
-
-                <div className="filter-group">
-                    <span className="filter-label">Categories:</span>
-                    <div className="filter-scroll">
-                        {displayedCategories.map(cat => (
-                            <button
-                                key={cat}
-                                className={`filter-btn ${activeCats.includes(cat) ? 'active' : ''}`}
-                                onClick={() => toggleCat(cat)}
-                            >
-                                {cat}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            </div>
+            )}
 
 
             {/* Main Content */}
-            <main className="main-content" style={currentView === 'map' ? { padding: '0 2rem 2rem 2rem', overflow: 'hidden' } : {}}>
-                {currentView === 'map' ? (
+            <main className="main-content" style={
+                currentView === 'map' ? { padding: '0 2rem 2rem 2rem', overflow: 'hidden' } :
+                    currentView === 'chat' ? { padding: 0, overflow: 'hidden', height: 'calc(100vh - 74px)' } : // 74px approx navbar
+                        {}
+            }>
+                {currentView === 'chat' ? (
+                    <div style={{ height: '100%', width: '100%' }}>
+                        <ChatView onPlaceClick={openModal} config={config} />
+                    </div>
+                ) : currentView === 'map' ? (
                     <MapView places={isFiltering ? filteredPlaces : places} onPlaceClick={openModal} />
                 ) : (
                     isFiltering ? (
@@ -403,36 +424,39 @@ function App() {
                         })
                     )
                 )}
+
+                {/* Footer */}
+                {config.FEATURES.ENABLE_FOOTER && currentView !== 'map' && currentView !== 'chat' && (
+                    <footer className="footer">
+                        <div className="footer-content">
+                            <div className="footer-brand">LocBook</div>
+                            <div className="footer-links">
+                                {config.LINKS.LOC_REQUEST && (
+                                    <a href={config.LINKS.LOC_REQUEST} target="_blank" rel="noreferrer"><MapPin size={18} /> Request Place</a>
+                                )}
+                                {config.LINKS.GITHUB && (
+                                    <a href={config.LINKS.GITHUB} target="_blank" rel="noreferrer"><Github size={18} /> GitHub</a>
+                                )}
+                                {config.LINKS.AUTHOR_WEBSITE && (
+                                    <a href={config.LINKS.AUTHOR_WEBSITE} target="_blank" rel="noreferrer"><Globe size={18} /> Website</a>
+                                )}
+                                {config.LINKS.FEEDBACK && (
+                                    <a href={config.LINKS.FEEDBACK} target="_blank" rel="noreferrer"><MessageSquare size={18} /> Feedback</a>
+                                )}
+                            </div>
+                            <div className="footer-text">
+                                Made by nqhuy
+                            </div>
+                            <div className="footer-copyright">
+                                © {new Date().getFullYear()} LocBook. All rights reserved. v{__APP_VERSION__}
+                            </div>
+                        </div>
+                    </footer>
+                )}
             </main>
 
             {/* Footer */}
-            {config.FEATURES.ENABLE_FOOTER && currentView !== 'map' && (
-                <footer className="footer">
-                    <div className="footer-content">
-                        <div className="footer-brand">LocBook</div>
-                        <div className="footer-links">
-                            {config.LINKS.LOC_REQUEST && (
-                                <a href={config.LINKS.LOC_REQUEST} target="_blank" rel="noreferrer"><MapPin size={18} /> Request Place</a>
-                            )}
-                            {config.LINKS.GITHUB && (
-                                <a href={config.LINKS.GITHUB} target="_blank" rel="noreferrer"><Github size={18} /> GitHub</a>
-                            )}
-                            {config.LINKS.AUTHOR_WEBSITE && (
-                                <a href={config.LINKS.AUTHOR_WEBSITE} target="_blank" rel="noreferrer"><Globe size={18} /> Website</a>
-                            )}
-                            {config.LINKS.FEEDBACK && (
-                                <a href={config.LINKS.FEEDBACK} target="_blank" rel="noreferrer"><MessageSquare size={18} /> Feedback</a>
-                            )}
-                        </div>
-                        <div className="footer-text">
-                            Made by nqhuy
-                        </div>
-                        <div className="footer-copyright">
-                            © {new Date().getFullYear()} LocBook. All rights reserved. v{__APP_VERSION__}
-                        </div>
-                    </div>
-                </footer>
-            )}
+
 
 
             {/* Modal */}
@@ -461,6 +485,8 @@ function App() {
                                             </div>
 
                                             <div className="hero-actions">
+
+
                                                 <ShareButton />
                                                 {selectedPlace.google_maps_url ? (
                                                     <a href={selectedPlace.google_maps_url} target="_blank" rel="noreferrer" className="btn-primary">
@@ -519,6 +545,8 @@ function App() {
                     </div>
                 )
             }
+
+
         </div >
     )
 }
