@@ -1,0 +1,40 @@
+{
+    "name": "api",
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "apps/api/src",
+    "projectType": "application",
+    "targets": {
+        "serve": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "uvicorn src.api:app --reload --host 0.0.0.0 --port 8000",
+                "cwd": "apps/api"
+            }
+        },
+        "build-image": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "docker build -t nqh44/locbook:${ver:-latest} .",
+                "cwd": "apps/api"
+            }
+        },
+        "test": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "pytest",
+                "cwd": "apps/api"
+            }
+        },
+        "reindex": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "python src/scripts/reindex_vectors.py",
+                "cwd": "apps/api"
+            }
+        }
+    },
+    "tags": [
+        "type:backend",
+        "scope:api"
+    ]
+}

@@ -1,81 +1,29 @@
-# LocBook
+# LocBook Monorepo
 
-**LocBook** is a personal location bookmarking assistant powered by AI (Gemini) and Telegram. It allows you to save locations, extract metadata automatically, and view them in a beautiful dashboard.
+This repository is managed as an Nx monorepo.
 
-## Project Architecture
-- **Backend**: Python, FastAPI, Aiogram (Telegram Bot), Beanie (MongoDB ODM).
-- **Frontend**: React, Vite, Vanilla CSS.
-- **Database**: MongoDB.
-- **AI**: Google Gemini Flash.
+## Structure
 
-## Quick Start (Local)
+- `apps/api`: Python FastAPI backend.
+- `apps/dashboard`: User-facing React dashboard.
+- `apps/admin`: Admin React dashboard.
 
-1.  **Prerequisites**: Python 3.10+, Node.js 18+, Docker.
+## Commands
 
-2.  **Environment Setup**:
-    Copy `.env.example` to `.env` (if available) or create one with:
-    - `API_ID`, `API_HASH`, `BOT_TOKEN` (Telegram)
-    - `GEMINI_API_KEY`
-    - `MONGO_URI` (default: `mongodb://localhost:27017`)
-    - `OWNER_ID` (Your Telegram ID)
+Requires `nx` (install via `npm install -g nx` or use `npx nx`).
 
-3.  **Makefile Commands**:
-    The project uses a `Makefile` for common operations.
+### Development
 
-    | Command | Description |
-    | :--- | :--- |
-    | `make setup` | Create venv and install Python reqs |
-    | `make db-up` | Start MongoDB via Docker |
-    | `make run` | Run Backend (Bot + API) locally |
-    | `make fe-setup` | Install Frontend dependencies |
-    | `make fe-run` | Run Frontend dev server |
-    | `make clean` | Clean up venv and cache |
+- **Start API**: `nx serve api`
+- **Start Dashboard**: `nx serve dashboard`
+- **Start Admin**: `nx serve admin`
 
-4.  **Running Full Stack**:
-    Terminal 1:
-    ```bash
-    make db-up
-    make run
-    ```
-    Terminal 2:
-    ```bash
-    make fe-run
-    ```
+### Building
 
-## Operations & Deployment
+- **Build Dashboard**: `nx build dashboard`
+- **Build Admin**: `nx build admin`
+- **Build API Docker Image**: `nx run api:build-image`
 
-### Building Docker Images
-Use the included script query to build and push images (Docker Hub).
+### Testing
 
-```bash
-# Syntax: ./build_push.sh <target> <tag>
-
-# Build Backend only
-./build_push.sh be v1.0
-
-# Build Frontend only
-./build_push.sh fe v1.0
-```
-
-### Database Operations
-Scripts are provided for database management in the root directory.
-
-- **Backup**:
-  ```bash
-  ./backup_db.sh
-  # Creates a timestamped dump in ./backups/
-  ```
-
-- **Restore**:
-  ```bash
-  ./restore_db.sh <backup_file_path>
-  # Restores a specific dump to the MongoDB container
-  ```
-
-### Docker Compose
-To run the full stack (including compiled Frontend behind Nginx) via Docker:
-
-```bash
-docker compose up -d
-```
-*Make sure to uncomment the dashboard service in `docker-compose.yml` if you want to run the FE container.*
+- **API Tests**: `nx test api`

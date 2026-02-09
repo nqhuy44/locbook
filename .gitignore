@@ -1,37 +1,71 @@
+# Nx
+.nx/
+node_modules/
+dist/
+tmp/
+.cache/
+
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Virtual Environment
-venv/
+*.so
+.Python
 env/
+venv/
 .venv/
+build/
+develop-eggs/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Testing & Coverage
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+coverage.xml
+*.cover
 
 # Environment Variables
 .env
-
-# MacOS
-.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
 
 # IDEs
 .idea/
 .vscode/
+*.swp
+*.swo
 
 # Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
 
-# Test
-test/
+# OS
+.DS_Store
+Thumbs.db
+
+# Project Specific
 data/
-backups
-mongodb
-chromadb
-coverage/
-htmlcov/
-.pytest_cache/
+backups/
+mongodb/
+chromadb/
 
-# Dashboard artifacts (if not using dashboard/.gitignore)
-dashboard/node_modules
-dashboard/dist
-dashboard/.env.local
+# Temporary
+graph.json
