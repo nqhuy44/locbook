@@ -1,87 +1,4 @@
 services:
-  # app:
-  #   image: nqh44/locbook:v0.1.0
-  #   restart: always
-  #   command: uvicorn src.api:app --host 0.0.0.0 --port 8000
-  #   environment:
-  #     - MONGO_URI=mongodb://mongo:27017
-  #     - MONGO_DB_NAME=locbook
-  #     - PYTHONUNBUFFERED=1
-  #   env_file:
-  #     - .env
-  #   volumes:
-  #     - ./data:/app/data # Persist images
-  #   depends_on:
-  #     - mongo
-  #   deploy:
-  #     resources:
-  #       limits:
-  #         cpus: '0.50'
-  #         memory: 1G
-  #   logging:
-  #     driver: "json-file"
-  #     options:
-  #       max-size: "10m"
-  #       max-file: "3"
-
-  # dashboard:
-  #   image: nqh44/locbook-fe:v0.1.0
-  #   restart: always
-  #   depends_on:
-  #     - app
-  #   logging:
-  #     driver: "json-file"
-  #     options:
-  #       max-size: "10m"
-  #       max-file: "3"
-
-  # admin:
-  #   image: nqh44/locbook-adm:v0.1.0
-  #   restart: always
-  #   depends_on:
-  #     - app
-  #   logging:
-  #     driver: "json-file"
-  #     options:
-  #       max-size: "10m"
-  #       max-file: "3"
-
-  # nginx:
-  #   image: nginx:alpine
-  #   restart: always
-  #   ports:
-  #     - "80:80"
-  #   volumes:
-  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-  #   depends_on:
-  #     - app
-  #     - dashboard
-  #     - admin
-  #   logging:
-  #     driver: "json-file"
-  #     options:
-  #       max-size: "10m"
-  #       max-file: "3"
-
-
-  # mongo:
-  #   image: mongo:latest
-  #   restart: always
-  #   volumes:
-  #     - ./mongodb:/data/db
-  #   ports:
-  #     - "27018:27017" # Exposed on port 27018 to avoid conflict if needed, or stick to internal
-  #   deploy:
-  #     resources:
-  #       limits:
-  #         cpus: '1.0'
-  #         memory: 2G
-  #   logging:
-  #     driver: "json-file"
-  #     options:
-  #       max-size: "10m"
-  #       max-file: "3"
-
   postgres:
     build:
       context: .
@@ -101,6 +18,24 @@ services:
         limits:
           cpus: '1.0'
           memory: 2G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redisdata:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
     logging:
       driver: "json-file"
       options:

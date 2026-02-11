@@ -1,7 +1,7 @@
 
 import os
 import subprocess
-from src.config import get_settings
+from src.core.config import get_settings
 
 def list_models_curl():
     settings = get_settings()

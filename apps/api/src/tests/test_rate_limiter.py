@@ -1,7 +1,7 @@
 import unittest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch, MagicMock
-from src.core.rate_limiter import RateLimiter, rate_limiter
+from src.modules.bot.rate_limiter import RateLimiter, rate_limiter
 
 class TestRateLimiter(unittest.TestCase):
     def setUp(self):

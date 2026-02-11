@@ -3,7 +3,7 @@ from google.genai import types
 from typing import List, Optional
 import logging
 
-from src.config import get_settings
+from src.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 

@@ -1,0 +1,37 @@
+{
+    "type": "OBJECT",
+    "properties": {
+        "items": {
+            "type": "ARRAY",
+            "items": {
+                "type": "OBJECT",
+                "properties": {
+                    "name": {
+                        "type": "STRING"
+                    },
+                    "description": {
+                        "type": "STRING"
+                    },
+                    "price": {
+                        "type": "INTEGER"
+                    },
+                    "display_price": {
+                        "type": "STRING"
+                    },
+                    "is_signature": {
+                        "type": "BOOLEAN"
+                    },
+                    "category": {
+                        "type": "STRING"
+                    }
+                },
+                "required": [
+                    "name"
+                ]
+            }
+        }
+    },
+    "required": [
+        "items"
+    ]
+}

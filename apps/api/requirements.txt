@@ -2,16 +2,10 @@ python-telegram-bot[job-queue]
 fastapi
 uvicorn
 google-genai
-motor
-beanie
 python-dotenv
 pydantic
 pydantic-settings
-requests
 beautifulsoup4
-pillow
-aiofiles
-chromadb
 python-multipart
 sqlmodel
 asyncpg
@@ -20,3 +14,5 @@ geoalchemy2
 python-jose[cryptography]
 passlib[bcrypt]
 httpx
+arq
+redis

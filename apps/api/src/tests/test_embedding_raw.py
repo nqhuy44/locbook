@@ -3,7 +3,7 @@ import json
 import os
 import urllib.request
 import urllib.error
-from src.config import get_settings
+from src.core.config import get_settings
 
 def test_raw_embedding():
     settings = get_settings()

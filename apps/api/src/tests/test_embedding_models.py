@@ -3,7 +3,7 @@ import asyncio
 import os
 from google import genai
 from google.genai import types
-from src.config import get_settings
+from src.core.config import get_settings
 
 async def test_models():
     settings = get_settings()

@@ -1,0 +1,56 @@
+{
+    "type": "OBJECT",
+    "properties": {
+        "details": {
+            "type": "OBJECT",
+            "properties": {
+                "name": {
+                    "type": "STRING"
+                },
+                "address": {
+                    "type": "STRING"
+                },
+                "categories": {
+                    "type": "ARRAY",
+                    "items": {
+                        "type": "STRING"
+                    }
+                },
+                "vibes": {
+                    "type": "ARRAY",
+                    "items": {
+                        "type": "STRING"
+                    }
+                },
+                "mood": {
+                    "type": "ARRAY",
+                    "items": {
+                        "type": "STRING"
+                    }
+                },
+                "aesthetic_score": {
+                    "type": "INTEGER"
+                },
+                "rating": {
+                    "type": "NUMBER"
+                },
+                "price_level": {
+                    "type": "STRING"
+                },
+                "opening_hours": {
+                    "type": "STRING"
+                }
+            },
+            "required": [
+                "name"
+            ]
+        },
+        "marin_comment": {
+            "type": "STRING"
+        }
+    },
+    "required": [
+        "details",
+        "marin_comment"
+    ]
+}

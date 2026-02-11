@@ -1,7 +1,7 @@
 import os
 import asyncio
 from google import genai
-from src.config import get_settings
+from src.core.config import get_settings
 
 async def list_models():
     settings = get_settings()
@@ -9,8 +9,7 @@ async def list_models():
     
     print("Listing models...")
     # The client might differ in how to list models depending on version
-    # It seems to be the new Google GenAI SDK (google-genai) not google-generativeai?
-    # Let's check imports in vector_store.py again: `from google import genai`
+    # The client might differ depending on SDK version (google-genai vs google-generativeai)
     
     # If it is the google-genai package:
     try:

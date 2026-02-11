@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from src.core.parser import link_parser
+from src.modules.places.parser import link_parser
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

@@ -1,0 +1,15 @@
+{
+    "type": "OBJECT",
+    "properties": {
+        "aesthetic_score": {
+            "type": "INTEGER"
+        },
+        "reasoning": {
+            "type": "STRING"
+        }
+    },
+    "required": [
+        "aesthetic_score",
+        "reasoning"
+    ]
+}

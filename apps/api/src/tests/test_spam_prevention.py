@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import MagicMock, patch, AsyncMock
 from datetime import datetime, timedelta, timezone
-from src.bot.handlers import handle_message
-from src.config import Settings
+from src.modules.bot.handlers import handle_message
+from src.core.config import Settings
 
 class TestSpamPrevention(unittest.IsolatedAsyncioTestCase):
     async def test_handle_message_ignores_old_message(self):

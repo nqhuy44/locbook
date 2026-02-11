@@ -43,4 +43,4 @@ RUN chown -R appuser:appuser /app
 USER appuser
 
 # Run the application
-CMD ["python", "src/main.py"]
+CMD ["python", "src/services/main.py"]

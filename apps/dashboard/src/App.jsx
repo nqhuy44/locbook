@@ -12,6 +12,13 @@ import {
     Beer,
     PartyPopper,
     Heart,
+    ThumbsUp,
+    BookOpen,
+    Palette,
+    TrendingUp,
+    Clock,
+    Lock,
+    LogIn,
     Github,
     Globe,
     PlusCircle,
@@ -63,6 +70,11 @@ function App() {
     const [config, setConfig] = useState(DEFAULT_CONFIG);
     const [selectedPlace, setSelectedPlace] = useState(null);
     const [currentView, setCurrentView] = useState('list'); // 'list' | 'map'
+    const [sortMode, setSortMode] = useState('popular'); // 'popular' | 'trending' | 'newest'
+    const [activeTab, setActiveTab] = useState('info'); // 'info' | 'menu' in modal
+    const [menuItems, setMenuItems] = useState([]);
+    const [isGuest, setIsGuest] = useState(true); // Access control
+    const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
     // Filters
     const [searchTerm, setSearchTerm] = useState("");
@@ -246,20 +258,34 @@ function App() {
 
     const openModal = async (place) => {
         setSelectedPlace(place);
+        setActiveTab('info');
+        setMenuItems([]);
         document.body.style.overflow = 'hidden';
 
         // Update URL
-        const newUrl = `${window.location.pathname}?place=${place._id}`;
+        const placeId = place._id || place.id;
+        const newUrl = `${window.location.pathname}?place=${placeId}`;
         window.history.pushState({ path: newUrl }, '', newUrl);
 
         if (!place.raw_ai_response) {
             try {
-                const res = await fetch(`${API_URL}/api/places/${place._id}`);
+                const res = await fetch(`${API_URL}/api/places/${placeId}`);
                 const fullPlace = await res.json();
                 setSelectedPlace(fullPlace);
             } catch (e) {
                 console.error("Failed to fetch details", e);
             }
+        }
+
+        // Fetch menu
+        try {
+            const menuRes = await fetch(`${API_URL}/api/places/${placeId}/menu`);
+            if (menuRes.ok) {
+                const menuData = await menuRes.json();
+                setMenuItems(menuData.menu || []);
+            }
+        } catch (e) {
+            console.error("Failed to fetch menu", e);
         }
     };
     const closeModal = () => {
@@ -339,15 +365,34 @@ function App() {
             {/* Filter Bar */}
             {currentView !== 'chat' && (
                 <div className="filter-bar">
-                    <div className="search-wrapper">
-                        <Search size={18} color="#d8b4fe" />
-                        <input
-                            className="search-input"
-                            type="text"
-                            placeholder="Find places, vibes..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div className="search-wrapper">
+                            <Search size={18} color="#d8b4fe" />
+                            <input
+                                className="search-input"
+                                type="text"
+                                placeholder="Find places, vibes..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+
+                        {/* Sort Mode Selector */}
+                        <div className="sort-selector">
+                            {[
+                                { key: 'popular', icon: <ThumbsUp size={14} />, label: 'Popular' },
+                                { key: 'trending', icon: <TrendingUp size={14} />, label: 'Trending' },
+                                { key: 'newest', icon: <Clock size={14} />, label: 'Newest' },
+                            ].map(mode => (
+                                <button
+                                    key={mode.key}
+                                    className={`sort-btn ${sortMode === mode.key ? 'active' : ''}`}
+                                    onClick={() => setSortMode(mode.key)}
+                                >
+                                    {mode.icon} {mode.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     <div className="filter-group">
@@ -482,11 +527,24 @@ function App() {
                                                         ⭐ {selectedPlace.rating}
                                                     </span>
                                                 )}
+                                                {selectedPlace.aesthetic_score && (
+                                                    <span className="tag-soft" style={{ background: 'rgba(168,85,247,0.2)', color: '#c084fc' }}>
+                                                        <Palette size={12} style={{ marginRight: 4 }} /> {selectedPlace.aesthetic_score}/10
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {/* Stats Row */}
+                                            <div style={{ display: 'flex', gap: '1.2rem', marginTop: '0.8rem', fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)' }}>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                    <ThumbsUp size={14} /> {selectedPlace.upvote_count || 0} upvotes
+                                                </span>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                    <BookOpen size={14} /> {selectedPlace.memo_count || 0} memos
+                                                </span>
                                             </div>
 
                                             <div className="hero-actions">
-
-
                                                 <ShareButton />
                                                 {selectedPlace.google_maps_url ? (
                                                     <a href={selectedPlace.google_maps_url} target="_blank" rel="noreferrer" className="btn-primary">
@@ -497,47 +555,89 @@ function App() {
                                         </div>
                                     </div>
 
+                                    {/* Tab Bar: Info | Menu */}
+                                    <div className="modal-tabs">
+                                        <button className={`modal-tab ${activeTab === 'info' ? 'active' : ''}`} onClick={() => setActiveTab('info')}>
+                                            Info
+                                        </button>
+                                        <button className={`modal-tab ${activeTab === 'menu' ? 'active' : ''}`} onClick={() => setActiveTab('menu')}>
+                                            Menu {menuItems.length > 0 && <span className="tab-badge">{menuItems.length}</span>}
+                                        </button>
+                                    </div>
+
                                     <div className="modal-body">
-                                        <div className="col-main" style={{ flex: 2 }}>
-                                            {selectedPlace.raw_ai_response?.marin_comment && (
-                                                <div className="marin-box">
-                                                    <div className="marin-label">Marin's Take</div>
-                                                    <div className="marin-text">"{selectedPlace.raw_ai_response.marin_comment}"</div>
-                                                </div>
-                                            )}
+                                        {activeTab === 'info' ? (
+                                            <>
+                                                <div className="col-main" style={{ flex: 2 }}>
+                                                    {selectedPlace.raw_ai_response?.marin_comment && (
+                                                        <div className="marin-box">
+                                                            <div className="marin-label">Marin's Take</div>
+                                                            <div className="marin-text">"{selectedPlace.raw_ai_response.marin_comment}"</div>
+                                                        </div>
+                                                    )}
 
-                                            <div className="detail-row">
-                                                <div className="detail-label">Address</div>
-                                                <div className="detail-value">{selectedPlace.address}</div>
+                                                    <div className="detail-row">
+                                                        <div className="detail-label">Address</div>
+                                                        <div className="detail-value">{selectedPlace.address}</div>
+                                                    </div>
+
+                                                    {selectedPlace.opening_hours && (
+                                                        <div className="detail-row">
+                                                            <div className="detail-label">Hours</div>
+                                                            <div className="detail-value">{selectedPlace.opening_hours}</div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="col-side" style={{ flex: 1 }}>
+                                                    <div className="detail-row">
+                                                        <div className="detail-label">Vibes</div>
+                                                        <div className="pill-list">
+                                                            {selectedPlace.vibes?.map(v => (
+                                                                <span key={v} className="pill">{v}</span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="detail-row">
+                                                        <div className="detail-label">Categories</div>
+                                                        <div className="pill-list">
+                                                            {selectedPlace.categories?.map(c => (
+                                                                <span key={c} className="pill">{c}</span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            /* Menu Tab */
+                                            <div style={{ flex: 1 }}>
+                                                {menuItems.length === 0 ? (
+                                                    <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(255,255,255,0.4)' }}>
+                                                        <UtensilsCrossed size={40} style={{ marginBottom: '1rem', opacity: 0.3 }} />
+                                                        <p>No menu available yet</p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="menu-list">
+                                                        {menuItems.map((item, idx) => (
+                                                            <div key={idx} className="menu-item">
+                                                                <div className="menu-item-info">
+                                                                    <span className="menu-item-name">
+                                                                        {item.is_signature && <Star size={12} fill="#ffd700" color="#ffd700" style={{ marginRight: 4 }} />}
+                                                                        {item.name}
+                                                                    </span>
+                                                                    {item.description && <span className="menu-item-desc">{item.description}</span>}
+                                                                    {item.category && <span className="menu-item-cat">{item.category}</span>}
+                                                                </div>
+                                                                <span className="menu-item-price">
+                                                                    {item.display_price || (item.price ? `${(item.price / 1000).toFixed(0)}k` : '')}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
-
-                                            {selectedPlace.opening_hours && (
-                                                <div className="detail-row">
-                                                    <div className="detail-label">Hours</div>
-                                                    <div className="detail-value">{selectedPlace.opening_hours}</div>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="col-side" style={{ flex: 1 }}>
-                                            <div className="detail-row">
-                                                <div className="detail-label">Vibes</div>
-                                                <div className="pill-list">
-                                                    {selectedPlace.vibes?.map(v => (
-                                                        <span key={v} className="pill">{v}</span>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            <div className="detail-row">
-                                                <div className="detail-label">Categories</div>
-                                                <div className="pill-list">
-                                                    {selectedPlace.categories?.map(c => (
-                                                        <span key={c} className="pill">{c}</span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
+                                        )}
                                     </div>
                                 </ErrorBoundary>
                             </div>
@@ -571,6 +671,11 @@ function PlaceCard({ place, onClick }) {
                         <Star size={10} fill="currentColor" /> {place.rating}
                     </div>
                 )}
+                {place.aesthetic_score && (
+                    <div className="card-aesthetic-badge">
+                        <Palette size={10} /> {place.aesthetic_score}
+                    </div>
+                )}
             </div>
             <div className="card-content">
                 <h3 className="card-title" title={place.name}>{place.name}</h3>
@@ -580,6 +685,11 @@ function PlaceCard({ place, onClick }) {
                         <span key={v} className="tag-soft match">{v}</span>
                     ))}
                 </div>
+                {(place.upvote_count > 0) && (
+                    <div className="card-stats">
+                        <span><ThumbsUp size={11} /> {place.upvote_count}</span>
+                    </div>
+                )}
             </div>
         </div>
     )
@@ -611,6 +721,25 @@ function ShareButton() {
             {copied ? <Check size={20} color="#4ade80" /> : <Share2 size={20} />}
             {copied ? "Copied Link!" : "Share"}
         </button>
+    );
+}
+
+/* Login Prompt Overlay */
+function LoginPrompt({ onClose }) {
+    return (
+        <div className="login-prompt-overlay" onClick={onClose}>
+            <div className="login-prompt-card" onClick={e => e.stopPropagation()}>
+                <div className="login-prompt-close" onClick={onClose}><X size={20} /></div>
+                <Lock size={40} color="#d946ef" style={{ marginBottom: '1rem' }} />
+                <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.3rem' }}>Sign In Required</h2>
+                <p style={{ color: 'rgba(255,255,255,0.6)', margin: '0 0 1.5rem', fontSize: '0.9rem' }}>
+                    Create an account to upvote, bookmark, and save your favorite places.
+                </p>
+                <a href="/auth/login" className="btn-primary" style={{ justifyContent: 'center', width: '100%' }}>
+                    <LogIn size={18} /> Sign In with Google
+                </a>
+            </div>
+        </div>
     );
 }
 
