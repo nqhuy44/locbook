@@ -1,8 +1,9 @@
 import logging
 import asyncio
-from beanie import init_beanie
-from motor.motor_asyncio import AsyncIOMotorClient
-from src.database.models import Place, UserLog, AppConfig, ChatSession
+# from beanie import init_beanie
+# from motor.motor_asyncio import AsyncIOMotorClient
+# from src.database.models import UserLog, AppConfig, ChatSession # Place removed from Mongo models
+from src.database.postgres import init_postgres
 import uvicorn
 import os
 
@@ -17,21 +18,19 @@ async def init_db(settings):
     max_retries = 5
     retry_delay = 5
     
+
     for attempt in range(max_retries):
         try:
-            client = AsyncIOMotorClient(settings.MONGO_URI, serverSelectionTimeoutMS=5000)
-            # Verify connection
-            await client.admin.command('ping')
-            
-            await init_beanie(database=client[settings.MONGO_DB_NAME], document_models=[Place, UserLog, AppConfig, ChatSession])
-            logger.info("MongoDB Initialized.")
+            # Init Postgres
+            await init_postgres()
+            logger.info("PostgreSQL Initialized.")
             return
         except Exception as e:
-            logger.warning(f"Failed to connect to MongoDB (Attempt {attempt + 1}/{max_retries}): {e}")
+            logger.warning(f"Failed to connect to DB (Attempt {attempt + 1}/{max_retries}): {e}")
             if attempt < max_retries - 1:
                 await asyncio.sleep(retry_delay)
             else:
-                logger.error(f"Critical: Could not connect to MongoDB after {max_retries} attempts.")
+                logger.error(f"Critical: Could not connect to DB after {max_retries} attempts.")
                 raise e
 
 def main():

@@ -13,3 +13,10 @@ pillow
 aiofiles
 chromadb
 python-multipart
+sqlmodel
+asyncpg
+pgvector
+geoalchemy2
+python-jose[cryptography]
+passlib[bcrypt]
+httpx

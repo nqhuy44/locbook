@@ -13,7 +13,8 @@ This repository is managed as an Nx monorepo.
 Requires `nx` (install via `npm install -g nx` or use `npx nx`).
 
 ### Development
-
+- **Install dependencies**: `npm install`
+- **Setup API**: `nx run api:install`
 - **Start API**: `nx serve api`
 - **Start Dashboard**: `nx serve dashboard`
 - **Start Admin**: `nx serve admin`

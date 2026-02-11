@@ -33,7 +33,17 @@ class Settings(BaseSettings):
     
     MONGO_URI: str = "mongodb://localhost:27018"
     MONGO_DB_NAME: str = "locbook"
+    POSTGRES_URL: str | None = "postgresql+asyncpg://postgres:postgres@localhost:5432/locbook"
     ADMIN_SECRET: str | None = None
+    
+    # Auth
+    SECRET_KEY: str = "your-secret-key-change-me-in-production"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7 # 7 days
+    
+    # OAuth
+    GOOGLE_CLIENT_ID: str | None = None
+    GOOGLE_CLIENT_SECRET: str | None = None
 
     MAX_MESSAGE_AGE_SECONDS: int = 60 # Ignore messages older than 2 minutes by default
     RATE_LIMIT_PER_MINUTE: int = 5 # Max 5 requests per minute per user
