@@ -1,14 +1,12 @@
 import logging
 import asyncio
 from src.core.database.postgres import init_postgres
+from src.core.logger import setup_logging
 import uvicorn
 import os
 
 # Configure logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
+setup_logging()
 logger = logging.getLogger(__name__)
 
 async def init_db(settings):

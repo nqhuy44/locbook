@@ -19,17 +19,13 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a welcome message when /start is issued."""
     user = update.effective_user
     await update.message.reply_html(
-        f"Moshi Moshi! {user.mention_html()}! Mình là Marin, AI Location Scout. 📸\n"
-        "Gửi link Google Maps để mình phân tích và lưu vào LocBook nha!"
+        strings.WELCOME_MESSAGE.format(user_mention=user.mention_html())
     )
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send usage guide when /help is issued."""
-    await update.message.reply_text(
-        "📌 Gửi link Google Maps cho Marin để phân tích quán!\n"
-        "Ví dụ: https://maps.app.goo.gl/xxx"
-    )
+    await update.message.reply_text(strings.HELP_MESSAGE)
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):

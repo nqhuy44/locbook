@@ -25,9 +25,14 @@ async def init_postgres():
     if not db_url:
          db_url = "postgresql+asyncpg://postgres:postgres@localhost:5432/locbook"
          
-    engine = create_async_engine(db_url, echo=True)
+    engine = create_async_engine(db_url, echo=False)
     
     async with engine.begin() as conn:
+        # Create extensions
+        from sqlalchemy import text
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+        
         # Create tables
         await conn.run_sync(SQLModel.metadata.create_all)
     

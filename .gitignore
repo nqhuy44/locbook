@@ -67,6 +67,7 @@ backups/
 mongodb/
 chromadb/
 postgresdb/
+redisdata/
 
 # Temporary
 graph.json

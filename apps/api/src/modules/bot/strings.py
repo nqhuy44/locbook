@@ -6,7 +6,7 @@ WELCOME_MESSAGE = (
     "Moshi Moshi! {user_mention}! Mình là Marin, AI Location Scout. 📸\n"
     "Gửi link Google Maps để mình phân tích và lưu vào LocBook nha!"
 )
-HELP_MESSAGE = "📌 Gửi link Google Maps cho Marin để phân tích quán!"
+HELP_MESSAGE = "📌 Gửi link Google Maps cho Marin để check quán nha!"
 DEFAULT_RESPONSE = "😳 Gửi link Google Maps cho Marin đi! Marin chưa hiểu ý bạn nè."
 
 # Status
