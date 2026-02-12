@@ -82,6 +82,13 @@ class AuthService:
             )
             self.db.add(new_oauth)
             await self.db.commit()
+
+        # Determine if new (simple heuristic: if we just created the user object or profile)
+        # However, for simplicity let's rely on whether we had to create a NEW User object.
+        # Ideally we track this better, but for now:
+        is_new = False # Default
+        if not oauth_account and not existing_user:
+             is_new = True
             
         # Create Session Token
         access_token = create_access_token(data={"sub": str(user.id), "email": user.email, "role": user.role})
@@ -89,6 +96,7 @@ class AuthService:
         return {
             "access_token": access_token,
             "token_type": "bearer",
+            "is_new": is_new,
             "user": {
                 "id": str(user.id),
                 "email": user.email,

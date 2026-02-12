@@ -71,6 +71,7 @@ body {
     font-weight: 800;
     background: var(--accent-gradient);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
     letter-spacing: 1px;
     cursor: pointer;
@@ -514,6 +515,7 @@ body {
     margin: 0 0 0.5rem 0;
     background: linear-gradient(to right, #fff 60%, #fbcfe8 100%);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
@@ -728,6 +730,7 @@ body {
     font-size: 1.5rem;
     background: var(--accent-gradient);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
@@ -798,15 +801,70 @@ body {
         display: inline;
         /* Keep text visible */
     }
+}
 
-    .bmc-button svg {
-        width: 16px;
-        height: 16px;
+/* Footer BMC Button */
+.bmc-button-footer {
+    background: #ffdd00;
+    color: #000;
+    padding: 0.4rem 0.8rem;
+    border-radius: 99px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    transition: transform 0.2s;
+    border: 2px solid transparent;
+}
+
+.bmc-button-footer:hover {
+    transform: scale(1.05);
+    background: #ffee00;
+}
+
+/* User Menu & Dropdown */
+.user-menu-container {
+    position: relative;
+    z-index: 200;
+}
+
+.user-avatar {
+    transition: background 0.2s;
+}
+
+.user-avatar:hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.user-dropdown {
+    animation: fadeIn 0.1s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
     }
 
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.bmc-button svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Mobile Overrides */
+@media (max-width: 768px) {
     .nav-links {
         gap: 1rem;
     }
+
 
     /* Edge-to-Edge Scrolling for Filters */
     /* Safe Scrolling for Filters */
@@ -1079,8 +1137,13 @@ body {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 @media (max-width: 768px) {

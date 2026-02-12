@@ -26,11 +26,15 @@ async def get_my_profile(
     result = await db.execute(stmt)
     user = result.scalar_one()
 
+    profile = user.profile
     return {
         "id": str(user.id),
         "email": user.email,
         "role": user.role,
-        "profile": user.profile
+        "display_name": profile.display_name if profile else None,
+        "avatar_url": profile.avatar_url if profile else None,
+        "bio": profile.bio if profile else None,
+        "preferences": profile.preferences if profile else {}
     }
 
 @router.put("/me/profile")

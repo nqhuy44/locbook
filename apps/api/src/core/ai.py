@@ -13,22 +13,39 @@ def get_ai_client():
         return None
     return genai.Client(api_key=settings.GEMINI_API_KEY)
 
-def get_text_embedding(text: str) -> Optional[List[float]]:
+import asyncio
+
+async def get_text_embedding(text: str) -> Optional[List[float]]:
     client = get_ai_client()
     if not client:
-        logger.warning("Gemini API Key not set. Cannot generate embedding.")
+        # logger.warning("Gemini API Key not set. Cannot generate embedding.")
         return None
         
     try:
-        result = client.models.embed_content(
-            model="models/gemini-embedding-001",
-            contents=text,
-            config=types.EmbedContentConfig(
-                task_type="RETRIEVAL_DOCUMENT",
-                title="User Vibe or Place Embedding"
+        if hasattr(client, 'aio'):
+            # Use async client if available (newer google-genai)
+            result = await client.aio.models.embed_content(
+                model="models/gemini-embedding-001",
+                contents=text,
+                config=types.EmbedContentConfig(
+                    task_type="RETRIEVAL_DOCUMENT",
+                    title="User Vibe or Place Embedding"
+                )
             )
-        )
-        return result.embeddings[0].values
+            return result.embeddings[0].values
+        else:
+            # Fallback for older versions or if aio not present (should not happen with new lib)
+            def _generate():
+                 result = client.models.embed_content(
+                    model="models/gemini-embedding-001",
+                    contents=text,
+                    config=types.EmbedContentConfig(
+                        task_type="RETRIEVAL_DOCUMENT",
+                        title="User Vibe or Place Embedding"
+                    )
+                )
+                 return result.embeddings[0].values
+            return await asyncio.to_thread(_generate)
     except Exception as e:
         logger.error(f"Embedding generation failed: {e}")
         return None

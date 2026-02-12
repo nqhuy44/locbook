@@ -1,5 +1,6 @@
 import logging
 from telegram.ext import ApplicationBuilder
+from telegram.request import HTTPXRequest
 from src.core.config import get_settings
 from src.core.logger import setup_logging
 from src.modules.bot.handlers import get_handlers
@@ -16,7 +17,9 @@ def main():
 
     logger.info("Starting Telegram Bot...")
     
-    app = ApplicationBuilder().token(settings.TELEGRAM_BOT_TOKEN).build()
+    # Increase timeouts for slower startups/network
+    trequest = HTTPXRequest(connect_timeout=30.0, read_timeout=30.0)
+    app = ApplicationBuilder().token(settings.TELEGRAM_BOT_TOKEN).request(trequest).build()
     
     handlers = get_handlers()
     for handler in handlers:

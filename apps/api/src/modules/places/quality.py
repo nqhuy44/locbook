@@ -46,7 +46,7 @@ def generate_embedding_text(place: Place) -> str:
 async def regenerate_embedding(db: AsyncSession, place: Place) -> Place:
     """Re-generate embedding for a Place based on its current data."""
     text = generate_embedding_text(place)
-    embedding = get_text_embedding(text)
+    embedding = await get_text_embedding(text)
     if embedding:
         place.embedding = embedding
         logger.info(f"Regenerated embedding for place {place.id}")

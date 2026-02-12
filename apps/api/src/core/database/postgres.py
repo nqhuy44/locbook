@@ -5,15 +5,24 @@ from sqlmodel import SQLModel
 
 from src.core.config import get_settings
 
-async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
-    settings = get_settings()
-    
-    # Construct Async Database URL
-    db_url = settings.POSTGRES_URL
-    if not db_url:
-        db_url = "postgresql+asyncpg://postgres:postgres@localhost:5432/locbook"
+
+_engine = None
+
+def get_engine():
+    global _engine
+    if _engine is None:
+        settings = get_settings()
         
-    engine = create_async_engine(db_url, echo=False)
+        db_url = (
+            f"postgresql+asyncpg://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}"
+            f"@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
+        )
+        
+        _engine = create_async_engine(db_url, echo=False)
+    return _engine
+
+async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
+    engine = get_engine()
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     
     async with async_session() as session:
@@ -21,9 +30,10 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_postgres():
     settings = get_settings()
-    db_url = settings.POSTGRES_URL
-    if not db_url:
-         db_url = "postgresql+asyncpg://postgres:postgres@localhost:5432/locbook"
+    db_url = (
+        f"postgresql+asyncpg://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}"
+        f"@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
+    )
          
     engine = create_async_engine(db_url, echo=False)
     

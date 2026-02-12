@@ -59,6 +59,7 @@ class PlaceRead(SQLModel):
     opening_hours: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    raw_ai_response: Optional[Dict[str, Any]] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -111,6 +112,9 @@ class PlaceBase(SQLModel):
     # Dùng để FE vẽ map nhanh, sync với PostGIS column bên dưới
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+
+    # --- AI Data ---
+    raw_ai_response: Dict[str, Any] = Field(default={}, sa_column=Column(JSONB))
 
 # ==========================================
 # 2. DATABASE TABLES

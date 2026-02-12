@@ -20,9 +20,28 @@ class Settings(BaseSettings):
     ENABLE_BOT: bool = True            # Enable/Disable Telegram Bot Logic
     FEAT_AI_MATCHMAKE: bool = True     # Enable/Disable AI Matchmaker (web chat)
 
-    POSTGRES_URL: str | None = "postgresql+asyncpg://postgres:postgres@localhost:5432/locbook"
-    REDIS_URL: str = "redis://localhost:6379"
+    POSTGRES_HOST: str = "localhost"
+    POSTGRES_PORT: int = 5432
+    POSTGRES_USER: str = "postgres"
+    POSTGRES_PASSWORD: str = "postgres"
+    POSTGRES_DB: str = "locbook"
+
+    # POSTGRES_URL: str | None = "postgresql+asyncpg://postgres:postgres@localhost:5432/locbook"
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
     ADMIN_SECRET: str | None = None
+    
+    # Storage
+    STORAGE_TYPE: str = "LOCAL" # LOCAL, S3, GCS
+    
+    # AWS S3
+    AWS_ACCESS_KEY_ID: str | None = None
+    AWS_SECRET_ACCESS_KEY: str | None = None
+    AWS_REGION: str = "us-east-1"
+    AWS_BUCKET_NAME: str | None = None
+    
+    # Google Cloud Storage
+    GCS_BUCKET_NAME: str | None = None
     
     # Auth
     SECRET_KEY: str = "your-secret-key-change-me-in-production"

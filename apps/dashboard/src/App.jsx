@@ -31,6 +31,11 @@ import { CONFIG as DEFAULT_CONFIG } from './config';
 import MapView from './components/MapView';
 import CategoryRow from './components/CategoryRow';
 import ChatView from './components/ChatView';
+import { useAuth } from './context/AuthContext';
+import LoginButton from './components/auth/LoginButton';
+import UserMenu from './components/auth/UserMenu';
+import OnboardingPage from './pages/OnboardingPage';
+import ProfilePage from './pages/ProfilePage';
 
 class ErrorBoundary extends React.Component {
     constructor(props) {
@@ -65,15 +70,17 @@ class ErrorBoundary extends React.Component {
 const API_URL = import.meta.env.VITE_API_URL || '';
 
 function App() {
+    const { user, loading: authLoading } = useAuth();
     const [places, setPlaces] = useState([]);
     const [loading, setLoading] = useState(true);
     const [config, setConfig] = useState(DEFAULT_CONFIG);
     const [selectedPlace, setSelectedPlace] = useState(null);
-    const [currentView, setCurrentView] = useState('list'); // 'list' | 'map'
-    const [sortMode, setSortMode] = useState('popular'); // 'popular' | 'trending' | 'newest'
-    const [activeTab, setActiveTab] = useState('info'); // 'info' | 'menu' in modal
+    const [currentView, setCurrentView] = useState('list');
+    const [sortMode, setSortMode] = useState('popular');
+    const [activeTab, setActiveTab] = useState('info');
     const [menuItems, setMenuItems] = useState([]);
-    const [isGuest, setIsGuest] = useState(true); // Access control
+
+    // Auth State - controlled by AuthContext now, but we might show prompts
     const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
     // Filters
@@ -84,7 +91,6 @@ function App() {
     useEffect(() => {
         fetchData();
 
-        // Handle browser back checks if needed, or stick to simple pushState
         const handlePopState = () => {
             const params = new URLSearchParams(window.location.search);
             const placeId = params.get("place");
@@ -94,7 +100,6 @@ function App() {
         return () => window.removeEventListener('popstate', handlePopState);
     }, []);
 
-    // Deep Linking: Check URL when places load
     useEffect(() => {
         if (places.length > 0 && !selectedPlace) {
             const params = new URLSearchParams(window.location.search);
@@ -110,7 +115,6 @@ function App() {
         try {
             setLoading(true);
 
-            // Parallel fetch
             const [placesRes, configRes] = await Promise.all([
                 fetch(`${API_URL}/api/places?limit=150`),
                 fetch(`${API_URL}/api/config`)
@@ -119,7 +123,6 @@ function App() {
             const placesData = await placesRes.json();
             setPlaces(placesData.data);
 
-            // Safely handle config fetch
             if (configRes.ok) {
                 const contentType = configRes.headers.get("content-type");
                 if (contentType && contentType.includes("application/json")) {
@@ -136,46 +139,30 @@ function App() {
         }
     };
 
-    // 1. Precise Categorization Logic using CONFIG
     const categorizedPlaces = useMemo(() => {
         const groups = {};
         config.HOME_CATEGORIES.forEach(cat => groups[cat] = []);
-
-        // Add a default fallback if not in list
         if (!groups["Casual"]) groups["Casual"] = [];
 
         places.forEach(place => {
             const cats = place.categories?.join(" ").toLowerCase() || "";
             const vibes = place.vibes?.join(" ").toLowerCase() || "";
             const combined = cats + " " + vibes;
-            // Dynamic checking based on CONFIG
             for (const [category, keywords] of Object.entries(config.CATEGORY_KEYWORDS)) {
-                // Use regex with word boundaries to avoid partial matches (e.g., "barbecue" matching "bar")
                 if (groups[category] && keywords.some(k => new RegExp(`\\b${k}\\b`, 'i').test(combined))) {
                     groups[category].push(place);
                 }
             }
-
-            // Fallback removed: Places that don't match any keywords will not be shown in homepage categories.
-
         });
 
-        // Deduplicate within groups
         for (const key in groups) {
             groups[key] = [...new Set(groups[key])];
         }
 
         return groups;
-    }, [places]);
-
-    // 2. Filter Lists & Smart Facets
-    // We want to show options that are relevant to the *other* active filters.
-    // e.g. If I search "Pizza", I only want to see Vibes/Cats relevant to Pizza.
-    // However, within the same group (e.g. Vibes), we shouldn't filter out options just because
-    // one vibe is selected (since it's an OR filter).
+    }, [places, config]);
 
     const { displayedVibes, displayedCategories } = useMemo(() => {
-        // Helper to check match against Search
         const matchesSearch = (p) =>
             searchTerm === "" ||
             p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -183,14 +170,12 @@ function App() {
             p.vibes?.some(v => v.toLowerCase().includes(searchTerm.toLowerCase())) ||
             p.categories?.some(c => c.toLowerCase().includes(searchTerm.toLowerCase()));
 
-        // Helper: Available Vibes (Filter by Search + Categories, Ignore Vibes)
         const placesForVibes = places.filter(p => {
             const mSearch = matchesSearch(p);
             const mCat = activeCats.length === 0 || p.categories?.some(c => activeCats.includes(c));
             return mSearch && mCat;
         });
 
-        // Helper: Available Cats (Filter by Search + Vibes, Ignore Categories)
         const placesForCats = places.filter(p => {
             const mSearch = matchesSearch(p);
             const mVibe = activeVibes.length === 0 || p.vibes?.some(v => activeVibes.includes(v));
@@ -206,15 +191,9 @@ function App() {
         const availVibes = getUnique(placesForVibes, 'vibes');
         const availCats = getUnique(placesForCats, 'categories');
 
-        // Construct Final Lists: Active (sorted) + AvailableUnselected (sorted)
         const buildList = (available, active) => {
-            const availableSet = new Set(available);
-            // We keep ALL active items, even if they wouldn't match the current search
-            // (User requirement: "won't disappear... unless I unselect")
             const activeSorted = [...active].sort();
-
             const remaining = available.filter(x => !active.includes(x)).sort();
-
             return [...activeSorted, ...remaining];
         };
 
@@ -262,7 +241,6 @@ function App() {
         setMenuItems([]);
         document.body.style.overflow = 'hidden';
 
-        // Update URL
         const placeId = place._id || place.id;
         const newUrl = `${window.location.pathname}?place=${placeId}`;
         window.history.pushState({ path: newUrl }, '', newUrl);
@@ -277,7 +255,6 @@ function App() {
             }
         }
 
-        // Fetch menu
         try {
             const menuRes = await fetch(`${API_URL}/api/places/${placeId}/menu`);
             if (menuRes.ok) {
@@ -291,7 +268,6 @@ function App() {
     const closeModal = () => {
         setSelectedPlace(null);
         document.body.style.overflow = 'auto';
-        // Revert URL
         const baseUrl = window.location.pathname;
         window.history.pushState({ path: baseUrl }, '', baseUrl);
     };
@@ -305,9 +281,17 @@ function App() {
         return <UtensilsCrossed size={20} color="#fbbf24" />;
     };
 
-    if (loading) return <div className="loading-screen" style={{ color: 'white', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    if (loading || authLoading) return <div className="loading-screen" style={{ color: 'white', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Sparkles className="loader-icon" /> Loading Marin's Picks...
     </div>;
+
+    // Standalone pages – rendered without the main navbar/filter chrome
+    if (currentView === 'onboarding') {
+        return <OnboardingPage onComplete={() => setCurrentView('list')} />;
+    }
+    if (currentView === 'profile') {
+        return <ProfilePage onBack={() => setCurrentView('list')} />;
+    }
 
     return (
         <div className="app-container">
@@ -345,8 +329,6 @@ function App() {
                                 <Sparkles size={16} /> Ask Marin
                             </span>
                         )}
-
-
                     </div>
                 </div>
 
@@ -354,10 +336,14 @@ function App() {
                     <a href={config.LINKS.LOC_REQUEST || "#"} target="_blank" rel="noreferrer" className="nav-link desktop-only" style={{ marginRight: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                         <PlusCircle size={18} /> Request Place
                     </a>
-                    {config.FEATURES.ENABLE_BUY_ME_COFFEE && (
-                        <a href={config.LINKS.BUY_ME_COFFEE} target="_blank" rel="noreferrer" className="bmc-button">
-                            <Coffee size={16} /> <span className="bmc-text desktop-only">Buy me a coffee</span>
-                        </a>
+
+                    {/* Auth UI */}
+                    {user ? (
+                        <UserMenu onProfileClick={() => setCurrentView('profile')} />
+                    ) : (
+                        <LoginButton onLogin={(res) => {
+                            if (res?.isNew) setCurrentView('onboarding');
+                        }} />
                     )}
                 </div>
             </nav>
@@ -431,7 +417,7 @@ function App() {
             {/* Main Content */}
             <main className="main-content" style={
                 currentView === 'map' ? { padding: '0 2rem 2rem 2rem', overflow: 'hidden' } :
-                    currentView === 'chat' ? { padding: 0, overflow: 'hidden', height: 'calc(100vh - 74px)' } : // 74px approx navbar
+                    currentView === 'chat' ? { padding: 0, overflow: 'hidden', height: 'calc(100vh - 74px)' } :
                         {}
             }>
                 {currentView === 'chat' ? (
@@ -453,7 +439,6 @@ function App() {
                             </div>
                         </div>
                     ) : (
-                        // Use config for Home Categories Order
                         config.HOME_CATEGORIES.map(category => {
                             if (!categorizedPlaces[category] || categorizedPlaces[category].length === 0) return null;
                             return (
@@ -476,6 +461,11 @@ function App() {
                         <div className="footer-content">
                             <div className="footer-brand">LocBook</div>
                             <div className="footer-links">
+                                {config.FEATURES.ENABLE_BUY_ME_COFFEE && (
+                                    <a href={config.LINKS.BUY_ME_COFFEE} target="_blank" rel="noreferrer" className="bmc-button-footer">
+                                        <Coffee size={18} /> Buy me a coffee
+                                    </a>
+                                )}
                                 {config.LINKS.LOC_REQUEST && (
                                     <a href={config.LINKS.LOC_REQUEST} target="_blank" rel="noreferrer"><MapPin size={18} /> Request Place</a>
                                 )}
@@ -499,10 +489,6 @@ function App() {
                     </footer>
                 )}
             </main>
-
-            {/* Footer */}
-
-
 
             {/* Modal */}
             {
@@ -652,9 +638,18 @@ function App() {
 }
 
 function PlaceCard({ place, onClick }) {
-    const imageUrl = place.local_image_path
-        ? `${API_URL}/images/${place.local_image_path}`
-        : null;
+    let imageUrl = place.images?.length > 0 ? place.images[0] : place.local_image_path;
+
+    if (imageUrl) {
+        if (imageUrl.startsWith("http")) {
+        } else if (imageUrl.startsWith("/images/")) {
+            imageUrl = `${API_URL}${imageUrl}`;
+        } else if (imageUrl.startsWith("data/images/")) {
+            imageUrl = `${API_URL}/images/${imageUrl.replace("data/images/", "")}`;
+        } else {
+            imageUrl = `${API_URL}/images/${imageUrl}`;
+        }
+    }
 
     return (
         <div className="place-card" onClick={onClick}>
@@ -696,9 +691,18 @@ function PlaceCard({ place, onClick }) {
 }
 
 function PlaceHeroImage({ place }) {
-    const imageUrl = place.local_image_path
-        ? `${API_URL}/images/${place.local_image_path}`
-        : null;
+    let imageUrl = place.images?.length > 0 ? place.images[0] : place.local_image_path;
+
+    if (imageUrl) {
+        if (imageUrl.startsWith("http")) {
+        } else if (imageUrl.startsWith("/images/")) {
+            imageUrl = `${API_URL}${imageUrl}`;
+        } else if (imageUrl.startsWith("data/images/")) {
+            imageUrl = `${API_URL}/images/${imageUrl.replace("data/images/", "")}`;
+        } else {
+            imageUrl = `${API_URL}/images/${imageUrl}`;
+        }
+    }
 
     if (imageUrl) {
         return <img src={imageUrl} alt={place.name} />
@@ -721,25 +725,6 @@ function ShareButton() {
             {copied ? <Check size={20} color="#4ade80" /> : <Share2 size={20} />}
             {copied ? "Copied Link!" : "Share"}
         </button>
-    );
-}
-
-/* Login Prompt Overlay */
-function LoginPrompt({ onClose }) {
-    return (
-        <div className="login-prompt-overlay" onClick={onClose}>
-            <div className="login-prompt-card" onClick={e => e.stopPropagation()}>
-                <div className="login-prompt-close" onClick={onClose}><X size={20} /></div>
-                <Lock size={40} color="#d946ef" style={{ marginBottom: '1rem' }} />
-                <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.3rem' }}>Sign In Required</h2>
-                <p style={{ color: 'rgba(255,255,255,0.6)', margin: '0 0 1.5rem', fontSize: '0.9rem' }}>
-                    Create an account to upvote, bookmark, and save your favorite places.
-                </p>
-                <a href="/auth/login" className="btn-primary" style={{ justifyContent: 'center', width: '100%' }}>
-                    <LogIn size={18} /> Sign In with Google
-                </a>
-            </div>
-        </div>
     );
 }
 

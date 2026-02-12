@@ -359,16 +359,15 @@ async def upload_avatar(file: UploadFile = File(...), token: str = Depends(verif
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
     
-    os.makedirs("data/images", exist_ok=True)
+    from src.core.storage import get_storage
+    storage = get_storage()
     
     ext = file.filename.split(".")[-1] if "." in file.filename else "png"
     filename = f"avatar_{uuid.uuid4().hex[:8]}.{ext}"
-    file_path = f"data/images/{filename}"
     
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    public_url = await storage.save_upload_file(file, filename, folder="images")
         
-    return {"url": f"/images/{filename}"}
+    return {"url": public_url}
 
 
 # Reindex Logic

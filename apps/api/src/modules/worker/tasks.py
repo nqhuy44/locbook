@@ -133,6 +133,7 @@ async def process_google_maps_link(ctx: dict, chat_id: int, status_message_id: i
                 menu=menu_items,
                 latitude=latitude,
                 longitude=longitude,
+                raw_ai_response=analysis, # Save full AI response including marin_comment
             )
 
             # 4b. Download and save thumbnail
@@ -143,14 +144,18 @@ async def process_google_maps_link(ctx: dict, chat_id: int, status_message_id: i
                     if img_data:
                         img_bytes, content_type = img_data
                         ext = "jpg" if "jpeg" in content_type else content_type.split("/")[-1]
-                        os.makedirs("data/images", exist_ok=True)
+                        
+                        from src.core.storage import get_storage
+                        storage = get_storage()
+                        
                         filename = f"{place.id}.{ext}"
-                        filepath = f"data/images/{filename}"
-                        with open(filepath, "wb") as f:
-                            f.write(img_bytes)
-                        place.images = [f"/images/{filename}"]
-                        place.local_image_path = filepath
-                        logger.info(f"Saved thumbnail: {filepath}")
+                        # Save to 'images' folder
+                        public_path = await storage.save_file(img_bytes, filename, content_type, folder="images")
+                        
+                        # Store the public path/URL
+                        place.images = [public_path] 
+                        place.local_image_path = public_path # Legacy field, now also stores public path/URL
+                        logger.info(f"Saved thumbnail: {public_path}")
                 except Exception as e:
                     logger.warning(f"Failed to save thumbnail: {e}")
 

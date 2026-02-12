@@ -11,21 +11,7 @@ _pool: ArqRedis | None = None
 def get_redis_settings() -> RedisSettings:
     """Parse REDIS_URL into ARQ RedisSettings."""
     settings = get_settings()
-    url = settings.REDIS_URL
-    # redis://host:port or redis://host:port/db
-    url = url.replace("redis://", "")
-    parts = url.split("/")
-    host_port = parts[0]
-    database = int(parts[1]) if len(parts) > 1 else 0
-
-    if ":" in host_port:
-        host, port = host_port.split(":")
-        port = int(port)
-    else:
-        host = host_port
-        port = 6379
-
-    return RedisSettings(host=host, port=port, database=database)
+    return RedisSettings(host=settings.REDIS_HOST, port=settings.REDIS_PORT, database=0)
 
 
 async def get_arq_pool() -> ArqRedis:

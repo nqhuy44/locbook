@@ -67,6 +67,7 @@ backups/
 mongodb/
 chromadb/
 postgresdb/
+pgdata/
 redisdata/
 
 # Temporary

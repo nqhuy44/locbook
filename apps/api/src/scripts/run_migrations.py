@@ -13,7 +13,11 @@ sys.path.append(os.getcwd())
 
 async def run_migrations():
     settings = get_settings()
-    engine = create_async_engine(settings.POSTGRES_URL, echo=True)
+    db_url = (
+        f"postgresql+asyncpg://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}"
+        f"@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
+    )
+    engine = create_async_engine(db_url, echo=True)
 
     # 1. Ensure MigrationHistory table exists
     async with engine.begin() as conn:
