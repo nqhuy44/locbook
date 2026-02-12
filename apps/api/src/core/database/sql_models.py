@@ -86,7 +86,8 @@ class PlaceBase(SQLModel):
     categories: Optional[List[str]] = Field(default=None, sa_column=Column(ARRAY(String)))
     vibes: Optional[List[str]] = Field(default=None, sa_column=Column(ARRAY(String)))
     mood: Optional[List[str]] = Field(default=None, sa_column=Column(ARRAY(String)))
-    price_level: Optional[str] = None # $, $$, $$$
+    highlights: Optional[List[str]] = Field(default=None, sa_column=Column(ARRAY(String)))  # From Google Maps
+    price_level: Optional[str] = None # PRICE_LEVEL_MODERATE, etc.
     
     # --- Menu (JSONB) ---
     # Lưu danh sách món ăn. Backend thao tác như List[MenuItem]
@@ -180,7 +181,7 @@ class Profile(SQLModel, table=True):
     bio: Optional[str] = Field(sa_column=Column(Text))
     
     # AI Personalization
-    vibe_embedding: Optional[List[float]] = Field(default=None, sa_column=Column(Vector(768)))
+    vibe_embedding: Optional[List[float]] = Field(default=None, sa_column=Column(Vector(3072)))
     preferences: Dict = Field(default={}, sa_column=Column(JSONB)) # {"tags": ["quiet", "jazz"], ...}
 
     user: User = Relationship(back_populates="profile")
@@ -193,7 +194,7 @@ class Place(PlaceBase, table=True):
     location: Optional[Any] = Field(default=None, sa_column=Column(Geometry("POINT", srid=4326)))
     
     # Vector Embedding
-    embedding: Optional[List[float]] = Field(default=None, sa_column=Column(Vector(768)))
+    embedding: Optional[List[float]] = Field(default=None, sa_column=Column(Vector(3072)))
     
     created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
     updated_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now()))

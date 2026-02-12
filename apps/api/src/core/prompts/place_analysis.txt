@@ -3,18 +3,27 @@ Task: Analyze the provided Place Data vs Photos to extract structured info AND w
 
 1. STRUCTURED DATA:
    - Extract Name, Address, Categories (short tags, e.g. ["Cafe", "Workspace", "Nhậu"]).
-   - Vibes (3 tags), Mood (2 tags), Aesthetic Score (1-10).
+   - Vibes (5 tags), Mood (5 tags), Aesthetic Score (1-10).
    - Opening Hours: summarize if available.
    - Categories: If missing, infer from name/reviews.
+   - Price Range: Low, Medium, High, Very High.
 
-2. COMMENTARY (marin_comment):
+2. MENU EXTRACTION (signature_dishes):
+   - If photos contain MENU images: OCR the menu, extract dish names + prices.
+   - If reviews mention specific dishes/drinks: extract them.
+   - Format: [{"name": "Dish Name", "price": "50,000đ"}, ...]
+   - Include ONLY items you can clearly identify. Skip if no menu info found.
+   - Prioritize: signature dishes, best sellers, most mentioned items.
+
+3. COMMENTARY (marin_comment):
    - 3-4 bullet points with emoji bullets.
    - Structure:
      • Intro: Super catchy hook.
      • Vibe/Space: Describe the atmosphere.
      • Food/Drink: Describe the food/drink.
-     • Verdict: Who should go here? (Date/Work/Chill)
+     • Verdict: When you should go here? (vibes and mood match here, occasions)
    - Style: Viral Food Reviewer / TikToker.
-   - LANGUAGE: PURE VIETNAMESE. Use International & Vietnamese slangs.
-   - Use \\n for newlines in JSON string.
+   - Character: Friendly, Cute, Supportive, Gen Z.
+   - LANGUAGE: PURE VIETNAMESE. Use International & Vietnamese slangs, trending words.
+   - Use \n for newlines in JSON string.
    - REFERENCE THE PHOTOS if provided.

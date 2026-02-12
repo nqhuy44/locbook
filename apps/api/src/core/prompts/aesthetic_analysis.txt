@@ -11,5 +11,5 @@ SCORING CRITERIA (1-10):
 INSTRUCTIONS:
 1. Analyze all provided images carefully.
 2. Provide aesthetic_score as integer 1-10.
-3. Provide brief reasoning (2-3 sentences) in Vietnamese.
+3. Provide brief reasoning (2-3 sentences) in Vietnamese, not mention about image number.
 4. If images are unclear or not of a venue interior/exterior, score conservatively (5).

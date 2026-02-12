@@ -36,14 +36,14 @@ class LinkParser:
             base_fields = [
                 "places.name", "places.displayName", "places.formattedAddress",
                 "places.types", "places.rating", "places.userRatingCount",
-                "places.priceLevel", "places.currentOpeningHours", "places.location",
+                "places.priceLevel", "places.priceRange",
+                "places.currentOpeningHours", "places.location",
+                "places.editorialSummary", "places.googleMapsUri",
+                "places.photos",  # Always fetch for thumbnail
             ]
 
             if settings.MAX_REVIEWS_FOR_AI > 0:
                 base_fields.append("places.reviews")
-
-            if settings.FEAT_IMAGE_ANALYSIS:
-                base_fields.append("places.photos")
 
             headers = {
                 "Content-Type": "application/json",
@@ -155,14 +155,22 @@ class LinkParser:
             if search_query and search_query != "Unknown":
                 places_api_data = await self._call_places_api(search_query)
 
-            # Fetch photos from API
+            # Fetch thumbnail (first photo) & analysis photos from API
+            thumbnail_photo_name = None
             settings = get_settings()
-            if settings.FEAT_IMAGE_ANALYSIS and places_api_data and "photos" in places_api_data:
-                for p in places_api_data["photos"][:3]:
-                    if "name" in p:
-                        img_data = await self._fetch_photo_bytes(p["name"])
-                        if img_data:
-                            photos_bytes.append(img_data)
+            if places_api_data and "photos" in places_api_data:
+                # Always grab first photo name for thumbnail
+                if places_api_data["photos"]:
+                    thumbnail_photo_name = places_api_data["photos"][0].get("name")
+                
+                # Fetch images for AI analysis if enabled
+                if settings.FEAT_IMAGE_ANALYSIS:
+                    max_imgs = settings.MAX_IMAGES_FOR_AI
+                    for p in places_api_data["photos"][:max_imgs]:
+                        if "name" in p:
+                            img_data = await self._fetch_photo_bytes(p["name"])
+                            if img_data:
+                                photos_bytes.append(img_data)
 
             # Build context text in TOON format for token efficiency
             final_place_name = place_name_from_url
@@ -180,6 +188,20 @@ class LinkParser:
                     "rating": f"{places_api_data.get('rating', 'N/A')} ({places_api_data.get('userRatingCount', 0)} reviews)",
                     "price_level": places_api_data.get("priceLevel", "Unknown"),
                 }
+
+                # Price range (min/max)
+                price_range = places_api_data.get("priceRange")
+                if price_range:
+                    start = price_range.get("startPrice", {}).get("units", "")
+                    end = price_range.get("endPrice", {}).get("units", "")
+                    currency = price_range.get("startPrice", {}).get("currencyCode", "VND")
+                    if start or end:
+                        context_data["price_range"] = f"{start}-{end} {currency}"
+
+                # Editorial summary from Google
+                editorial = places_api_data.get("editorialSummary", {}).get("text")
+                if editorial:
+                    context_data["editorial_summary"] = editorial
 
                 # Opening hours
                 hours = places_api_data.get("currentOpeningHours", {}).get("weekdayDescriptions", [])
@@ -214,6 +236,7 @@ class LinkParser:
                 "raw_api": places_api_data,
                 "url": url,
                 "inferred_name": final_place_name,
+                "thumbnail_photo_name": thumbnail_photo_name,
             }
 
         except Exception as e:

@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     # Feature Flags
     FEAT_IMAGE_ANALYSIS: bool = False  # Fetch Google Places photos for AI analysis
     MAX_REVIEWS_FOR_AI: int = 5        # Limit reviews sent to AI to save tokens
+    MAX_IMAGES_FOR_AI: int = 5         # Limit photos sent to AI for analysis + menu OCR
     ENABLE_BOT: bool = True            # Enable/Disable Telegram Bot Logic
     FEAT_AI_MATCHMAKE: bool = True     # Enable/Disable AI Matchmaker (web chat)
 

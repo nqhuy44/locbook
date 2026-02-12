@@ -36,9 +36,13 @@ async def get_arq_pool() -> ArqRedis:
     return _pool
 
 
-async def enqueue_task(task_name: str, *args, **kwargs):
-    """Enqueue a task to the ARQ worker."""
+async def enqueue_task(task_name: str, *args, _expires: int = 60, **kwargs):
+    """Enqueue a task to the ARQ worker.
+    
+    Args:
+        _expires: Seconds before the job expires if not picked up (default: 60s).
+    """
     pool = await get_arq_pool()
-    job = await pool.enqueue_job(task_name, *args, **kwargs)
-    logger.info(f"Enqueued task: {task_name} (job_id={job.job_id})")
+    job = await pool.enqueue_job(task_name, *args, _expires=_expires, **kwargs)
+    logger.info(f"Enqueued task: {task_name} (job_id={job.job_id}, expires={_expires}s)")
     return job

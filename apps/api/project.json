@@ -36,9 +36,9 @@
             "executor": "nx:run-commands",
             "options": {
                 "commands": [
-                    "nx run api:serve-api",
-                    "nx run api:serve-bot",
-                    "nx run api:serve-worker"
+                    "nx run api:core",
+                    "nx run api:bot",
+                    "nx run api:worker"
                 ],
                 "parallel": true
             }
@@ -67,7 +67,7 @@
         "migrate": {
             "executor": "nx:run-commands",
             "options": {
-                "command": "../../venv/bin/python src/scripts/run_migrations.py",
+                "command": "../../venv/bin/python -m src.scripts.run_migrations",
                 "cwd": "apps/api"
             }
         },

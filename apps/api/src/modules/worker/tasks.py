@@ -4,6 +4,8 @@ These tasks are executed by the ARQ worker service, not by the Bot or API.
 The Bot enqueues tasks here; the Worker processes them and sends replies via Telegram.
 """
 import logging
+import os
+import httpx
 from sqlmodel import select
 
 from src.modules.places.parser import link_parser
@@ -83,6 +85,8 @@ async def process_google_maps_link(ctx: dict, chat_id: int, status_message_id: i
 
             details = analysis.get("details", {})
             marin_comment = analysis.get("marin_comment", strings.MARIN_BUSY)
+            # Fix literal \n from JSON — replace with actual newlines
+            marin_comment = marin_comment.replace("\\n", "\n")
 
             # 4. Build Place
             categories = details.get("categories", [])
@@ -96,6 +100,24 @@ async def process_google_maps_link(ctx: dict, chat_id: int, status_message_id: i
                 longitude = loc_api["longitude"]
                 location_geom = f"SRID=4326;POINT({longitude} {latitude})"
 
+            # Use API values directly for accuracy (override AI-inferred ones)
+            api_rating = None
+            api_price_level = details.get("price_level")
+            if raw_info.get("raw_api"):
+                raw_api = raw_info["raw_api"]
+                api_rating = raw_api.get("rating")
+                api_price_level = raw_api.get("priceLevel", api_price_level)
+
+            # Extract menu items from AI analysis
+            menu_items = []
+            for dish in analysis.get("signature_dishes", []):
+                if dish.get("name"):
+                    menu_items.append({
+                        "name": dish["name"],
+                        "display_price": dish.get("price", ""),
+                        "is_signature": True,
+                    })
+
             place = Place(
                 name=details.get("name", raw_info.get("inferred_name", "Unknown Spot")),
                 address=details.get("address"),
@@ -105,12 +127,32 @@ async def process_google_maps_link(ctx: dict, chat_id: int, status_message_id: i
                 mood=details.get("mood", []),
                 aesthetic_score=details.get("aesthetic_score"),
                 google_maps_url=url,
-                rating=details.get("rating"),
-                price_level=details.get("price_level"),
+                rating=api_rating or details.get("rating"),
+                price_level=api_price_level,
                 opening_hours=details.get("opening_hours"),
+                menu=menu_items,
                 latitude=latitude,
                 longitude=longitude,
             )
+
+            # 4b. Download and save thumbnail
+            thumbnail_photo_name = raw_info.get("thumbnail_photo_name")
+            if thumbnail_photo_name:
+                try:
+                    img_data = await link_parser._fetch_photo_bytes(thumbnail_photo_name)
+                    if img_data:
+                        img_bytes, content_type = img_data
+                        ext = "jpg" if "jpeg" in content_type else content_type.split("/")[-1]
+                        os.makedirs("data/images", exist_ok=True)
+                        filename = f"{place.id}.{ext}"
+                        filepath = f"data/images/{filename}"
+                        with open(filepath, "wb") as f:
+                            f.write(img_bytes)
+                        place.images = [f"/images/{filename}"]
+                        place.local_image_path = filepath
+                        logger.info(f"Saved thumbnail: {filepath}")
+                except Exception as e:
+                    logger.warning(f"Failed to save thumbnail: {e}")
 
             # 5. Save (with quality hooks: sync location + embed)
             from src.modules.places.quality import on_place_save

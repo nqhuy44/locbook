@@ -39,6 +39,8 @@ class WorkerSettings:
     on_startup = startup
     on_shutdown = shutdown
     max_jobs = 10
+    job_timeout = 120       # Max 2 min per job
+    max_tries = 1           # Don't retry failed jobs
 
 if __name__ == "__main__":
     logger.info("Starting ARQ Worker...")
