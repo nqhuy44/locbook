@@ -4,6 +4,7 @@ import { divIcon } from 'leaflet';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MapPin, Navigation, Crosshair } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { API_URL } from '../utils/config';
 
 // Custom Marker Icon for Places
 const createCustomIcon = () => {
@@ -59,7 +60,6 @@ const MapController = ({ center, zoom, userLocation }) => {
     return null;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || '';
 
 const MapView = ({ places, onPlaceClick }) => {
     // Default center (HCMC)
@@ -71,18 +71,31 @@ const MapView = ({ places, onPlaceClick }) => {
     useEffect(() => {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
-                (position) => {
+                async (position) => { // Made the callback async to use await
                     const { latitude, longitude } = position.coords;
                     const pos = [latitude, longitude];
                     setUserLocation(pos);
                     // We let MapController handle the flyTo
+                    try {
+                        // Fetch recommended places
+                        // Note: 'query' needs to be defined or passed if this search is intended to be dynamic.
+                        // For now, assuming 'query' is an empty string or defined elsewhere.
+                        const response = await fetch(`${API_URL}/api/discovery/search?q=${encodeURIComponent(query)}`);
+                        const data = await response.json();
+
+                        if (data && data.length > 0) {
+                            setSuggestedPlaces(data);
+                        }
+                    } catch (err) {
+                        console.error("Error searching places:", err);
+                    }
                 },
                 (error) => {
                     console.log("Error getting location: ", error);
                 }
             );
         }
-    }, []);
+    }, [query]); // Added query to dependency array if it's meant to trigger a re-fetch
 
     // Filter valid places (GeoJSON: location.coordinates = [lon, lat])
     // Mongo uses [lon, lat], Leaflet uses [lat, lon]
@@ -99,10 +112,10 @@ const MapView = ({ places, onPlaceClick }) => {
                 zoom={zoom}
                 style={{ height: '100%', width: '100%' }}
             >
-                {/* CartoDB Dark Matter Tiles for a cleaner, darker look that fits Marin theme */}
+                {/* CartoDB Positron Tiles for Light Theme */}
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                    url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                    url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                 />
 
                 <MapController center={center} zoom={zoom} userLocation={userLocation} />

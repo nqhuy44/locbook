@@ -25,7 +25,8 @@ import {
     MessageSquare,
     Settings,
     Share2,
-    Check
+    Check,
+    User as UserIcon
 } from 'lucide-react';
 import { CONFIG as DEFAULT_CONFIG } from './config';
 import MapView from './components/MapView';
@@ -34,8 +35,11 @@ import ChatView from './components/ChatView';
 import { useAuth } from './context/AuthContext';
 import LoginButton from './components/auth/LoginButton';
 import UserMenu from './components/auth/UserMenu';
+import BottomNav from './components/BottomNav';
 import OnboardingPage from './pages/OnboardingPage';
 import ProfilePage from './pages/ProfilePage';
+import BooksPage from './pages/BooksPage';
+import BookDetailPage from './pages/BookDetailPage';
 
 class ErrorBoundary extends React.Component {
     constructor(props) {
@@ -70,7 +74,7 @@ class ErrorBoundary extends React.Component {
 const API_URL = import.meta.env.VITE_API_URL || '';
 
 function App() {
-    const { user, loading: authLoading } = useAuth();
+    const { user, loading: authLoading, loginResponse } = useAuth();
     const [places, setPlaces] = useState([]);
     const [loading, setLoading] = useState(true);
     const [config, setConfig] = useState(DEFAULT_CONFIG);
@@ -79,14 +83,41 @@ function App() {
     const [sortMode, setSortMode] = useState('popular');
     const [activeTab, setActiveTab] = useState('info');
     const [menuItems, setMenuItems] = useState([]);
+    const [bookId, setBookId] = useState(null);
+
+    // Custom navigation handler for deep links / internal navigation
+    useEffect(() => {
+        const handleNavigate = (e) => {
+            const path = e.detail.path;
+            if (path && path.startsWith('/books')) {
+                const parts = path.split('/');
+                if (parts.length > 2) {
+                    setBookId(parts[2]);
+                    setCurrentView('book-detail');
+                } else {
+                    setCurrentView('books');
+                }
+            }
+        };
+        window.addEventListener('navigate', handleNavigate);
+        return () => window.removeEventListener('navigate', handleNavigate);
+    }, [user]);
 
     // Auth State - controlled by AuthContext now, but we might show prompts
     const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
     // Filters
+    console.log("Current API_URL:", API_URL);
     const [searchTerm, setSearchTerm] = useState("");
     const [activeVibes, setActiveVibes] = useState([]);
     const [activeCats, setActiveCats] = useState([]);
+
+    // Handle Onboarding Redirect
+    useEffect(() => {
+        if (user && loginResponse?.is_new) {
+            setCurrentView('onboarding');
+        }
+    }, [user, loginResponse]);
 
     useEffect(() => {
         fetchData();
@@ -95,10 +126,24 @@ function App() {
             const params = new URLSearchParams(window.location.search);
             const placeId = params.get("place");
             if (!placeId) setSelectedPlace(null);
+
+            // Simple check for books route
+            if (window.location.pathname.startsWith('/books/')) {
+                const parts = window.location.pathname.split('/');
+                if (parts.length > 2) {
+                    setBookId(parts[2]);
+                    setCurrentView('book-detail');
+                } else {
+                    setCurrentView('books');
+                }
+            } else if (window.location.pathname === '/books') {
+                setCurrentView('books');
+                setBookId(null);
+            }
         };
         window.addEventListener('popstate', handlePopState);
         return () => window.removeEventListener('popstate', handlePopState);
-    }, []);
+    }, [user]);
 
     useEffect(() => {
         if (places.length > 0 && !selectedPlace) {
@@ -289,9 +334,7 @@ function App() {
     if (currentView === 'onboarding') {
         return <OnboardingPage onComplete={() => setCurrentView('list')} />;
     }
-    if (currentView === 'profile') {
-        return <ProfilePage onBack={() => setCurrentView('list')} />;
-    }
+
 
     return (
         <div className="app-container">
@@ -337,19 +380,32 @@ function App() {
                         <PlusCircle size={18} /> Request Place
                     </a>
 
-                    {/* Auth UI */}
-                    {user ? (
-                        <UserMenu onProfileClick={() => setCurrentView('profile')} />
-                    ) : (
-                        <LoginButton onLogin={(res) => {
-                            if (res?.isNew) setCurrentView('onboarding');
-                        }} />
-                    )}
+                    {/* Auth UI - Hide on mobile, move to Profile page */}
+                    <div className="desktop-only">
+                        {user ? (
+                            <UserMenu onProfileClick={() => setCurrentView('profile')} />
+                        ) : (
+                            <div
+                                onClick={() => setCurrentView('profile')}
+                                style={{
+                                    width: '32px', height: '32px',
+                                    borderRadius: '50%',
+                                    background: '#e5e7eb',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    color: '#6b7280'
+                                }}
+                                title="Login"
+                            >
+                                <UserIcon size={20} />
+                            </div>
+                        )}
+                    </div>
                 </div>
             </nav>
 
             {/* Filter Bar */}
-            {currentView !== 'chat' && (
+            {currentView !== 'chat' && currentView !== 'profile' && currentView !== 'books' && currentView !== 'book-detail' && (
                 <div className="filter-bar">
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                         <div className="search-wrapper">
@@ -381,35 +437,7 @@ function App() {
                         </div>
                     </div>
 
-                    <div className="filter-group">
-                        <span className="filter-label">Vibes:</span>
-                        <div className="filter-scroll">
-                            {displayedVibes.map(vibe => (
-                                <button
-                                    key={vibe}
-                                    className={`filter-btn ${activeVibes.includes(vibe) ? 'active' : ''}`}
-                                    onClick={() => toggleVibe(vibe)}
-                                >
-                                    {vibe}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
 
-                    <div className="filter-group">
-                        <span className="filter-label">Categories:</span>
-                        <div className="filter-scroll">
-                            {displayedCategories.map(cat => (
-                                <button
-                                    key={cat}
-                                    className={`filter-btn ${activeCats.includes(cat) ? 'active' : ''}`}
-                                    onClick={() => toggleCat(cat)}
-                                >
-                                    {cat}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
                 </div>
             )}
 
@@ -418,7 +446,8 @@ function App() {
             <main className="main-content" style={
                 currentView === 'map' ? { padding: '0 2rem 2rem 2rem', overflow: 'hidden' } :
                     currentView === 'chat' ? { padding: 0, overflow: 'hidden', height: 'calc(100vh - 74px)' } :
-                        {}
+                        currentView === 'profile' ? { padding: 0, height: 'calc(100vh - 74px)', overflow: 'hidden' } :
+                            {}
             }>
                 {currentView === 'chat' ? (
                     <div style={{ height: '100%', width: '100%' }}>
@@ -426,6 +455,19 @@ function App() {
                     </div>
                 ) : currentView === 'map' ? (
                     <MapView places={isFiltering ? filteredPlaces : places} onPlaceClick={openModal} />
+                ) : currentView === 'profile' ? (
+                    <ProfilePage onBack={() => setCurrentView('list')} />
+                ) : currentView === 'books' ? (
+                    <BooksPage />
+                ) : currentView === 'book-detail' && bookId ? (
+                    <BookDetailPage
+                        bookId={bookId}
+                        onBack={() => {
+                            window.history.pushState(null, '', '/books');
+                            window.dispatchEvent(new CustomEvent('navigate', { detail: { path: '/books' } }));
+                        }}
+                        onPlaceClick={openModal}
+                    />
                 ) : (
                     isFiltering ? (
                         <div className="section-wrapper">
@@ -455,186 +497,199 @@ function App() {
                     )
                 )}
 
-                {/* Footer */}
-                {config.FEATURES.ENABLE_FOOTER && currentView !== 'map' && currentView !== 'chat' && (
-                    <footer className="footer">
-                        <div className="footer-content">
-                            <div className="footer-brand">LocBook</div>
-                            <div className="footer-links">
-                                {config.FEATURES.ENABLE_BUY_ME_COFFEE && (
-                                    <a href={config.LINKS.BUY_ME_COFFEE} target="_blank" rel="noreferrer" className="bmc-button-footer">
-                                        <Coffee size={18} /> Buy me a coffee
-                                    </a>
-                                )}
-                                {config.LINKS.LOC_REQUEST && (
-                                    <a href={config.LINKS.LOC_REQUEST} target="_blank" rel="noreferrer"><MapPin size={18} /> Request Place</a>
-                                )}
-                                {config.LINKS.GITHUB && (
-                                    <a href={config.LINKS.GITHUB} target="_blank" rel="noreferrer"><Github size={18} /> GitHub</a>
-                                )}
-                                {config.LINKS.AUTHOR_WEBSITE && (
-                                    <a href={config.LINKS.AUTHOR_WEBSITE} target="_blank" rel="noreferrer"><Globe size={18} /> Website</a>
-                                )}
-                                {config.LINKS.FEEDBACK && (
-                                    <a href={config.LINKS.FEEDBACK} target="_blank" rel="noreferrer"><MessageSquare size={18} /> Feedback</a>
-                                )}
-                            </div>
-                            <div className="footer-text">
-                                Made by nqhuy
-                            </div>
-                            <div className="footer-copyright">
-                                © {new Date().getFullYear()} LocBook. All rights reserved. v{__APP_VERSION__}
-                            </div>
-                        </div>
-                    </footer>
-                )}
+
             </main>
 
+            {/* Bottom Navigation (Mobile) */}
+            <BottomNav
+                currentView={currentView}
+                onViewChange={(view) => {
+                    if (view !== 'profile') {
+                        setSearchTerm('');
+                        setActiveVibes([]);
+                        setActiveCats([]);
+                    }
+                    if (view === 'list') setCurrentView('list');
+                    else if (view === 'map') setCurrentView('map');
+                    else if (view === 'chat') setCurrentView('chat');
+                    else if (view === 'books') setCurrentView('books');
+                }}
+                onProfileClick={() => setCurrentView('profile')}
+            />
+
+            {/* Footer - Desktop Only */}
+            {config.FEATURES.ENABLE_FOOTER && currentView !== 'map' && currentView !== 'chat' && (
+                <footer className="footer desktop-only">
+                    <div className="footer-content">
+                        <div className="footer-brand">LocBook</div>
+                        <div className="footer-links">
+                            {config.FEATURES.ENABLE_BUY_ME_COFFEE && (
+                                <a href={config.LINKS.BUY_ME_COFFEE} target="_blank" rel="noreferrer" className="bmc-button-footer">
+                                    <Coffee size={18} /> Buy me a coffee
+                                </a>
+                            )}
+                            {config.LINKS.LOC_REQUEST && (
+                                <a href={config.LINKS.LOC_REQUEST} target="_blank" rel="noreferrer"><MapPin size={18} /> Request Place</a>
+                            )}
+                            {config.LINKS.GITHUB && (
+                                <a href={config.LINKS.GITHUB} target="_blank" rel="noreferrer"><Github size={18} /> GitHub</a>
+                            )}
+                            {config.LINKS.AUTHOR_WEBSITE && (
+                                <a href={config.LINKS.AUTHOR_WEBSITE} target="_blank" rel="noreferrer"><Globe size={18} /> Website</a>
+                            )}
+                            {config.LINKS.FEEDBACK && (
+                                <a href={config.LINKS.FEEDBACK} target="_blank" rel="noreferrer"><MessageSquare size={18} /> Feedback</a>
+                            )}
+                        </div>
+                        <div className="footer-text">
+                            Made by nqhuy
+                        </div>
+                        <div className="footer-copyright">
+                            © {new Date().getFullYear()} LocBook. All rights reserved. v{__APP_VERSION__}
+                        </div>
+                    </div>
+                </footer>
+            )}
+
             {/* Modal */}
-            {
-                selectedPlace && (
-                    <div className="modal-overlay" onClick={closeModal}>
-                        <div className="modal-overlay" onClick={closeModal}>
-                            <div className="modal-content" onClick={e => e.stopPropagation()}>
-                                <ErrorBoundary>
-                                    <div className="modal-close" onClick={closeModal}>
-                                        <X size={24} />
+            {selectedPlace && (
+                <div className="modal-overlay" onClick={closeModal}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <ErrorBoundary>
+                            <div className="modal-close" onClick={closeModal}>
+                                <X size={24} />
+                            </div>
+
+                            <div className="modal-hero">
+                                <PlaceHeroImage place={selectedPlace} />
+                                <div className="hero-overlay"></div>
+                                <div className="hero-info">
+                                    <h1 className="hero-title">{selectedPlace.name}</h1>
+                                    <div className="card-tags" style={{ fontSize: '1rem' }}>
+                                        {selectedPlace.price_level && <span className="tag-soft">{selectedPlace.price_level}</span>}
+                                        {selectedPlace.rating && (
+                                            <span className="tag-soft" style={{ background: 'rgba(255,215,0,0.2)', color: '#ffd700' }}>
+                                                ⭐ {selectedPlace.rating}
+                                            </span>
+                                        )}
+                                        {selectedPlace.aesthetic_score && (
+                                            <span className="tag-soft" style={{ background: 'rgba(168,85,247,0.2)', color: '#c084fc' }}>
+                                                <Palette size={12} style={{ marginRight: 4 }} /> {selectedPlace.aesthetic_score}/10
+                                            </span>
+                                        )}
                                     </div>
 
-                                    <div className="modal-hero">
-                                        <PlaceHeroImage place={selectedPlace} />
-                                        <div className="hero-overlay"></div>
-                                        <div className="hero-info">
-                                            <h1 className="hero-title">{selectedPlace.name}</h1>
-                                            <div className="card-tags" style={{ fontSize: '1rem' }}>
-                                                {selectedPlace.price_level && <span className="tag-soft">{selectedPlace.price_level}</span>}
-                                                {selectedPlace.rating && (
-                                                    <span className="tag-soft" style={{ background: 'rgba(255,215,0,0.2)', color: '#ffd700' }}>
-                                                        ⭐ {selectedPlace.rating}
-                                                    </span>
-                                                )}
-                                                {selectedPlace.aesthetic_score && (
-                                                    <span className="tag-soft" style={{ background: 'rgba(168,85,247,0.2)', color: '#c084fc' }}>
-                                                        <Palette size={12} style={{ marginRight: 4 }} /> {selectedPlace.aesthetic_score}/10
-                                                    </span>
-                                                )}
+                                    {/* Stats Row */}
+                                    <div style={{ display: 'flex', gap: '1.2rem', marginTop: '0.8rem', fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)' }}>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <ThumbsUp size={14} /> {selectedPlace.upvote_count || 0} upvotes
+                                        </span>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <BookOpen size={14} /> {selectedPlace.memo_count || 0} memos
+                                        </span>
+                                    </div>
+
+                                    <div className="hero-actions">
+                                        <ShareButton />
+                                        {selectedPlace.google_maps_url ? (
+                                            <a href={selectedPlace.google_maps_url} target="_blank" rel="noreferrer" className="btn-primary">
+                                                <Navigation size={20} /> Get Directions
+                                            </a>
+                                        ) : null}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Tab Bar: Info | Menu */}
+                            <div className="modal-tabs">
+                                <button className={`modal-tab ${activeTab === 'info' ? 'active' : ''}`} onClick={() => setActiveTab('info')}>
+                                    Info
+                                </button>
+                                <button className={`modal-tab ${activeTab === 'menu' ? 'active' : ''}`} onClick={() => setActiveTab('menu')}>
+                                    Menu {menuItems.length > 0 && <span className="tab-badge">{menuItems.length}</span>}
+                                </button>
+                            </div>
+
+                            <div className="modal-body">
+                                {activeTab === 'info' ? (
+                                    <>
+                                        <div className="col-main" style={{ flex: 2 }}>
+                                            {selectedPlace.raw_ai_response?.marin_comment && (
+                                                <div className="marin-box">
+                                                    <div className="marin-label">Marin's Take</div>
+                                                    <div className="marin-text">"{selectedPlace.raw_ai_response.marin_comment}"</div>
+                                                </div>
+                                            )}
+
+                                            <div className="detail-row">
+                                                <div className="detail-label">Address</div>
+                                                <div className="detail-value">{selectedPlace.address}</div>
                                             </div>
 
-                                            {/* Stats Row */}
-                                            <div style={{ display: 'flex', gap: '1.2rem', marginTop: '0.8rem', fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)' }}>
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                    <ThumbsUp size={14} /> {selectedPlace.upvote_count || 0} upvotes
-                                                </span>
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                    <BookOpen size={14} /> {selectedPlace.memo_count || 0} memos
-                                                </span>
+                                            {selectedPlace.opening_hours && (
+                                                <div className="detail-row">
+                                                    <div className="detail-label">Hours</div>
+                                                    <div className="detail-value">{selectedPlace.opening_hours}</div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="col-side" style={{ flex: 1 }}>
+                                            <div className="detail-row">
+                                                <div className="detail-label">Vibes</div>
+                                                <div className="pill-list">
+                                                    {selectedPlace.vibes?.map(v => (
+                                                        <span key={v} className="pill">{v}</span>
+                                                    ))}
+                                                </div>
                                             </div>
 
-                                            <div className="hero-actions">
-                                                <ShareButton />
-                                                {selectedPlace.google_maps_url ? (
-                                                    <a href={selectedPlace.google_maps_url} target="_blank" rel="noreferrer" className="btn-primary">
-                                                        <Navigation size={20} /> Get Directions
-                                                    </a>
-                                                ) : null}
+                                            <div className="detail-row">
+                                                <div className="detail-label">Categories</div>
+                                                <div className="pill-list">
+                                                    {selectedPlace.categories?.map(c => (
+                                                        <span key={c} className="pill">{c}</span>
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-
-                                    {/* Tab Bar: Info | Menu */}
-                                    <div className="modal-tabs">
-                                        <button className={`modal-tab ${activeTab === 'info' ? 'active' : ''}`} onClick={() => setActiveTab('info')}>
-                                            Info
-                                        </button>
-                                        <button className={`modal-tab ${activeTab === 'menu' ? 'active' : ''}`} onClick={() => setActiveTab('menu')}>
-                                            Menu {menuItems.length > 0 && <span className="tab-badge">{menuItems.length}</span>}
-                                        </button>
-                                    </div>
-
-                                    <div className="modal-body">
-                                        {activeTab === 'info' ? (
-                                            <>
-                                                <div className="col-main" style={{ flex: 2 }}>
-                                                    {selectedPlace.raw_ai_response?.marin_comment && (
-                                                        <div className="marin-box">
-                                                            <div className="marin-label">Marin's Take</div>
-                                                            <div className="marin-text">"{selectedPlace.raw_ai_response.marin_comment}"</div>
-                                                        </div>
-                                                    )}
-
-                                                    <div className="detail-row">
-                                                        <div className="detail-label">Address</div>
-                                                        <div className="detail-value">{selectedPlace.address}</div>
-                                                    </div>
-
-                                                    {selectedPlace.opening_hours && (
-                                                        <div className="detail-row">
-                                                            <div className="detail-label">Hours</div>
-                                                            <div className="detail-value">{selectedPlace.opening_hours}</div>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                <div className="col-side" style={{ flex: 1 }}>
-                                                    <div className="detail-row">
-                                                        <div className="detail-label">Vibes</div>
-                                                        <div className="pill-list">
-                                                            {selectedPlace.vibes?.map(v => (
-                                                                <span key={v} className="pill">{v}</span>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="detail-row">
-                                                        <div className="detail-label">Categories</div>
-                                                        <div className="pill-list">
-                                                            {selectedPlace.categories?.map(c => (
-                                                                <span key={c} className="pill">{c}</span>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </>
+                                    </>
+                                ) : (
+                                    /* Menu Tab */
+                                    <div style={{ flex: 1 }}>
+                                        {menuItems.length === 0 ? (
+                                            <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(255,255,255,0.4)' }}>
+                                                <UtensilsCrossed size={40} style={{ marginBottom: '1rem', opacity: 0.3 }} />
+                                                <p>No menu available yet</p>
+                                            </div>
                                         ) : (
-                                            /* Menu Tab */
-                                            <div style={{ flex: 1 }}>
-                                                {menuItems.length === 0 ? (
-                                                    <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(255,255,255,0.4)' }}>
-                                                        <UtensilsCrossed size={40} style={{ marginBottom: '1rem', opacity: 0.3 }} />
-                                                        <p>No menu available yet</p>
+                                            <div className="menu-list">
+                                                {menuItems.map((item, idx) => (
+                                                    <div key={idx} className="menu-item">
+                                                        <div className="menu-item-info">
+                                                            <span className="menu-item-name">
+                                                                {item.is_signature && <Star size={12} fill="#ffd700" color="#ffd700" style={{ marginRight: 4 }} />}
+                                                                {item.name}
+                                                            </span>
+                                                            {item.description && <span className="menu-item-desc">{item.description}</span>}
+                                                            {item.category && <span className="menu-item-cat">{item.category}</span>}
+                                                        </div>
+                                                        <span className="menu-item-price">
+                                                            {item.display_price || (item.price ? `${(item.price / 1000).toFixed(0)}k` : '')}
+                                                        </span>
                                                     </div>
-                                                ) : (
-                                                    <div className="menu-list">
-                                                        {menuItems.map((item, idx) => (
-                                                            <div key={idx} className="menu-item">
-                                                                <div className="menu-item-info">
-                                                                    <span className="menu-item-name">
-                                                                        {item.is_signature && <Star size={12} fill="#ffd700" color="#ffd700" style={{ marginRight: 4 }} />}
-                                                                        {item.name}
-                                                                    </span>
-                                                                    {item.description && <span className="menu-item-desc">{item.description}</span>}
-                                                                    {item.category && <span className="menu-item-cat">{item.category}</span>}
-                                                                </div>
-                                                                <span className="menu-item-price">
-                                                                    {item.display_price || (item.price ? `${(item.price / 1000).toFixed(0)}k` : '')}
-                                                                </span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
+                                                ))}
                                             </div>
                                         )}
                                     </div>
-                                </ErrorBoundary>
+                                )}
                             </div>
-                        </div>
+                        </ErrorBoundary>
                     </div>
-                )
-            }
-
-
-        </div >
-    )
+                </div>
+            )}
+        </div>
+    );
 }
 
 function PlaceCard({ place, onClick }) {
@@ -714,16 +769,32 @@ function PlaceHeroImage({ place }) {
 function ShareButton() {
     const [copied, setCopied] = useState(false);
 
-    const handleShare = () => {
-        navigator.clipboard.writeText(window.location.href);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+    const handleShare = async () => {
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: document.title,
+                    url: window.location.href
+                });
+            } catch (err) {
+                console.log('Error sharing:', err);
+            }
+        } else {
+            try {
+                await navigator.clipboard.writeText(window.location.href);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            } catch (err) {
+                console.error('Failed to copy:', err);
+                alert('Could not copy link to clipboard');
+            }
+        }
     };
 
     return (
-        <button className="btn-secondary" onClick={handleShare} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.8rem 1.2rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'white', cursor: 'pointer', transition: 'all 0.2s' }}>
+        <button className="btn-secondary" onClick={handleShare} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.8rem 1.2rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: 'white', cursor: 'pointer', transition: 'all 0.2s', backdropFilter: 'blur(4px)' }}>
             {copied ? <Check size={20} color="#4ade80" /> : <Share2 size={20} />}
-            {copied ? "Copied Link!" : "Share"}
+            {copied ? "Copied!" : "Share"}
         </button>
     );
 }

@@ -63,6 +63,17 @@ class Settings(BaseSettings):
     S3_SECRET_KEY: str | None = None
     S3_PUBLIC_URL: str | None = None
 
+    # CORS
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:5173",
+        "http://localhost:8000",
+        "https://dev.firstdraft.sh",
+        "http://dev.firstdraft.sh",
+        "http://dev.firstdraft.sh:5173",
+        "http://dev.firstdraft.sh:5174",
+        "http://localhost:5174",
+    ]
+
     model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True, env_file_encoding="utf-8", extra='ignore')
 
 @lru_cache

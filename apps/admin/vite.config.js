@@ -14,7 +14,9 @@ export default defineConfig({
         target: 'http://localhost:8000',
         changeOrigin: true,
       }
-    }
+    },
+    host: true,
+    allowedHosts: ['dev.firstdraft.sh', 'localhost', '127.0.0.1', '100.69.194.28',]
   },
   define: {
     '__APP_VERSION__': JSON.stringify(process.env.npm_package_version),

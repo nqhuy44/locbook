@@ -7,9 +7,10 @@ export default function LoginButton({ onLogin }) {
     // We access login function from AuthContext to keep state unified
     const { loginWithGoogle } = useAuth();
 
-    const handleLogin = async () => {
-        const result = await loginWithGoogle();
-        if (onLogin) onLogin(result);
+    const handleLogin = () => {
+        loginWithGoogle();
+        // onLogin is handled via AuthContext state change in parent
+        if (onLogin) onLogin();
     };
 
     return (
@@ -25,7 +26,7 @@ export default function LoginButton({ onLogin }) {
             }}
         >
             <LogIn size={16} />
-            <span className="desktop-only">Sign In</span>
+            <span>Sign In with Google</span>
         </button>
     );
 }

@@ -27,5 +27,10 @@ async def login_google(
         raise HTTPException(status_code=400, detail=f"Google Auth Failed: {str(e)}")
         
     # 2. Login or Register
-    auth_data = await service.login_or_register_google(google_user)
-    return auth_data
+    try:
+        auth_data = await service.login_or_register_google(google_user)
+        return auth_data
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Login Logic Failed: {str(e)}")

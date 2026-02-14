@@ -26,6 +26,29 @@ class AuthService:
                 raise HTTPException(status_code=400, detail="Invalid Google Token")
             return resp.json()
 
+    async def _generate_unique_username(self, email: str) -> str:
+        """Generate a unique username from email."""
+        base_name = email.split("@")[0]
+        # Sanitize: remove special chars if needed, keep it simple for now
+        import re
+        base_name = re.sub(r'[^a-zA-Z0-9_\.]', '', base_name).lower()
+        if not base_name: 
+            base_name = "user"
+
+        username = base_name
+        counter = 1
+        
+        while True:
+            # Check if exists
+            stmt = select(User).where(User.username == username)
+            result = await self.db.execute(stmt)
+            if not result.scalar_one_or_none():
+                return username
+            
+            # If exists, append counter
+            username = f"{base_name}_{counter}"
+            counter += 1
+
     async def login_or_register_google(self, google_data: Dict[str, Any]) -> Dict[str, Any]:
         email = google_data.get("email")
         sub = google_data.get("sub")
@@ -36,7 +59,6 @@ class AuthService:
              raise HTTPException(status_code=400, detail="Invalid Google Data")
 
         # Check if OAuth account exists
-        # SQLModel select is compatible with SQLAlchemy select
         stmt = select(OAuthAccount).where(
             OAuthAccount.provider == "google",
             OAuthAccount.provider_user_id == sub
@@ -60,7 +82,10 @@ class AuthService:
                 user = existing_user
             else:
                 # Register new user
-                user = User(email=email)
+                # Generate unique username
+                username = await self._generate_unique_username(email)
+                
+                user = User(email=email, username=username)
                 self.db.add(user)
                 await self.db.flush() # Get ID
                 
@@ -83,15 +108,14 @@ class AuthService:
             self.db.add(new_oauth)
             await self.db.commit()
 
-        # Determine if new (simple heuristic: if we just created the user object or profile)
-        # However, for simplicity let's rely on whether we had to create a NEW User object.
-        # Ideally we track this better, but for now:
-        is_new = False # Default
+        # Determine if new (heuristic)
+        is_new = False
         if not oauth_account and not existing_user:
              is_new = True
             
         # Create Session Token
-        access_token = create_access_token(data={"sub": str(user.id), "email": user.email, "role": user.role})
+        # Include username in token if needed, or just role
+        access_token = create_access_token(data={"sub": str(user.id), "email": user.email, "role": user.role.value})
         
         return {
             "access_token": access_token,
@@ -100,6 +124,7 @@ class AuthService:
             "user": {
                 "id": str(user.id),
                 "email": user.email,
+                "username": user.username,
                 "role": user.role,
                 "display_name": name,
                 "avatar_url": picture

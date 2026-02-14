@@ -4,7 +4,9 @@ from enum import Enum
 import uuid
 
 from sqlmodel import SQLModel, Field, Relationship
-from sqlalchemy import String, Column, DateTime, text, Numeric, Text, ARRAY, Integer, UniqueConstraint, func, Boolean
+from sqlalchemy import String, Column, DateTime, text, Numeric, Text, ARRAY, Integer, UniqueConstraint, func, Boolean, Enum as SAEnum
+
+
 from sqlalchemy.dialects.postgresql import JSONB
 from pgvector.sqlalchemy import Vector
 from geoalchemy2 import Geometry
@@ -145,6 +147,7 @@ class User(SQLModel, table=True):
     __tablename__ = "users"
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     email: str = Field(unique=True, index=True)
+    username: Optional[str] = Field(default=None, sa_column=Column(String, unique=True, index=True))
     role: Role = Field(default=Role.USER)
     is_active: bool = Field(default=True)
     
@@ -158,6 +161,7 @@ class User(SQLModel, table=True):
     interactions: List["Interaction"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     memos: List["Memo"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     collections: List["Collection"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    lists: List["UserList"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     chat_sessions: List["ChatSession"] = Relationship(back_populates="user")
     
     # Note: Relationship Followers/Following cần config phức tạp hơn trong SQLModel nếu muốn access trực tiếp,
@@ -366,3 +370,31 @@ class Notification(SQLModel, table=True):
     is_read: bool = Field(default=False, index=True)
     
     created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+
+# ==========================================
+# 5. USER LISTS MODEL
+# ==========================================
+
+class ListPrivacy(str, Enum):
+    PUBLIC = "public"
+    PRIVATE = "private"
+    SHARED = "shared"
+
+class UserList(SQLModel, table=True):
+    __tablename__ = "user_lists"
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    user_id: uuid.UUID = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
+    
+    name: str
+    description: Optional[str] = None
+    privacy: ListPrivacy = Field(
+        default=ListPrivacy.PUBLIC,
+        sa_column=Column(SAEnum(ListPrivacy, values_callable=lambda obj: [e.value for e in obj]))
+    )
+    # items: List of { "place_id": str, "suggested_dishes": [str] }
+    items: List[Dict] = Field(default=[], sa_column=Column(JSONB)) 
+    
+    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    updated_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now()))
+
+    user: User = Relationship(back_populates="lists")

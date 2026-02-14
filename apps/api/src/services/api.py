@@ -20,6 +20,7 @@ from src.modules.auth.onboarding_router import router as onboarding_router
 from src.modules.analytics.router import router as analytics_router
 from src.modules.notification.router import router as notifications_router
 from src.modules.places.menu_router import router as menu_router
+from src.modules.lists.router import router as lists_router
 
 logger = logging.getLogger(__name__)
 
@@ -50,11 +51,15 @@ app.include_router(onboarding_router)
 app.include_router(analytics_router)
 app.include_router(notifications_router)
 app.include_router(menu_router)
+app.include_router(lists_router)
 
 # CORS
+origins = get_settings().CORS_ORIGINS
+print(f"DEBUG: Loaded CORS Origins: {origins}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=origins, 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -279,19 +284,26 @@ DEFAULT_APP_CONFIG = {
     "AVATAR_IMAGE": "",
     "SYSTEM_INSTRUCTION": "You are Marin, an AI local guide for Ho Chi Minh City. You are helpful, friendly, and knowledgeable about Saigon's nightlife and cafes.",
     "CATEGORY_SYNONYMS": {
-        "bar": ["pub", "lounge", "club", "speakeasy", "nightlife", "cocktail"],
-        "pub": ["bar", "gastropub", "izakaya", "beer", "brewery", "nightlife"],
-        "cafe": ["coffee", "tea", "bakery", "dessert", "bistro", "brunch"],
-        "restaurant": ["dining", "eatery", "bistro", "food", "dinner", "lunch"],
+        "bar": ["lounge", "speakeasy", "nightlife", "cocktail"],
+        "pub": ["gastropub", "izakaya", "beer", "brewery", "nightlife", "pub"],
+        "club": ["club", "nightclub"],
+        "nhậu": ["nhậu", "beer", "bia", "quán nhậu"],
+        "bakery": ["bakery", "dessert","cake"],
+        "cafe": ["coffee", "tea",  "bistro", "brunch"],
+        "restaurant": ["dining", "eatery", "bistro", "food", "dinner", "lunch", "cuisine"],
         "casual": ["bình dân", "street food", "vỉa hè", "local"]
     },
     "PROMPT_CATEGORY_MAPPING": {
-        "nhậu": "Pub",
-        "ăn tối": "Restaurant",
-        "tâm sự": "Bar",
-        "quẩy": "Bar",
+        "nhậu": "nhậu",
+        "quẩy": "club",
+        "ăn xế": "snack",
+        "tâm sự": ["intimate", "speakeasy", "quiet"],
         "bình dân": "Casual",
-        "cafe": "Cafe"
+        "cafe": "Cafe",
+        "bánh": "bakery",
+        "trà sữa": "milktea",
+        "nướng": ["bbq", "grill"],
+        "đặc sản": ["specialty", "local cuisine"]
     }
   }
 }

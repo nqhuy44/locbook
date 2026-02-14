@@ -13,7 +13,9 @@ router = APIRouter(prefix="/api/users", tags=["Users"])
 
 class ProfileUpdate(BaseModel):
     display_name: Optional[str] = None
+    username: Optional[str] = None
     bio: Optional[str] = None
+    avatar_url: Optional[str] = None
     preferences: Optional[Dict] = None
 
 @router.get("/me")
@@ -30,6 +32,7 @@ async def get_my_profile(
     return {
         "id": str(user.id),
         "email": user.email,
+        "username": user.username,
         "role": user.role,
         "display_name": profile.display_name if profile else None,
         "avatar_url": profile.avatar_url if profile else None,
@@ -37,12 +40,31 @@ async def get_my_profile(
         "preferences": profile.preferences if profile else {}
     }
 
-@router.put("/me/profile")
+@router.put("/me/update")
 async def update_my_profile(
     update_data: ProfileUpdate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
+    print(f"Update Profile Request: {update_data}")
+    # Update User fields (username)
+    if update_data.username is not None:
+        # Check uniqueness if changed
+        if update_data.username != current_user.username:
+            # Simple validation regex
+            import re
+            if not re.match(r'^[a-zA-Z0-9_\.]+$', update_data.username):
+                 raise HTTPException(status_code=400, detail="Username contains invalid characters")
+            
+            # Check DB
+            stmt = select(User).where(User.username == update_data.username)
+            result = await db.execute(stmt)
+            if result.scalar_one_or_none():
+                raise HTTPException(status_code=400, detail="Username already taken")
+            
+            current_user.username = update_data.username
+            db.add(current_user)
+
     # Fetch profile
     stmt = select(Profile).where(Profile.user_id == current_user.id)
     result = await db.execute(stmt)
@@ -54,13 +76,29 @@ async def update_my_profile(
     
     if update_data.display_name is not None:
         profile.display_name = update_data.display_name
+    if update_data.avatar_url is not None:
+        print(f"Setting avatar_url to: {update_data.avatar_url}")
+        profile.avatar_url = update_data.avatar_url
     if update_data.bio is not None:
         profile.bio = update_data.bio
     if update_data.preferences is not None:
-        if profile.preferences is None:
-             profile.preferences = {}
-        profile.preferences.update(update_data.preferences) # Merge
+        # Force new dict reference for JSONB tracking
+        current_prefs = dict(profile.preferences) if profile.preferences else {}
+        current_prefs.update(update_data.preferences)
+        profile.preferences = current_prefs
+        print(f"Updated preferences: {profile.preferences}")
         
+    db.add(profile)
     await db.commit()
     await db.refresh(profile)
-    return profile
+    
+    # Return matched structure
+    return {
+        "id": str(current_user.id),
+        "username": current_user.username,
+        "email": current_user.email,
+        "display_name": profile.display_name,
+        "avatar_url": profile.avatar_url,
+        "bio": profile.bio,
+        "preferences": profile.preferences
+    }

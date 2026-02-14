@@ -2,14 +2,15 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { googleLogout, useGoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from "jwt-decode";
 
-const AuthContext = createContext();
+import { API_URL } from '../utils/config';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(localStorage.getItem('auth_token'));
     const [loading, setLoading] = useState(true);
+    const [loginResponse, setLoginResponse] = useState(null); // Store login response (is_new, etc)
 
     useEffect(() => {
         if (token) {
@@ -44,6 +45,7 @@ export function AuthProvider({ children }) {
     const loginWithGoogle = useGoogleLogin({
         onSuccess: async (tokenResponse) => {
             try {
+                console.log("Sending login request to:", `${API_URL}/auth/google`);
                 const res = await fetch(`${API_URL}/auth/google`, {
                     method: 'POST',
                     headers: {
@@ -56,13 +58,16 @@ export function AuthProvider({ children }) {
 
                 if (res.ok) {
                     const data = await res.json();
+                    console.log("Login successful, data:", data);
+
                     setToken(data.access_token);
-                    // data.is_new is now available from backend
-                    if (data.is_new) {
-                        return { isNew: true };
-                    }
+                    localStorage.setItem('auth_token', data.access_token);
+                    setLoginResponse(data); // Save response for UI to react (e.g. onboarding)
+
+                    // Fetch profile immediately to update UI
+                    await fetchUserProfile(data.access_token);
                 } else {
-                    console.error("Backend login failed");
+                    console.error("Backend login failed", await res.text());
                 }
             } catch (error) {
                 console.error("Login Error", error);
@@ -73,7 +78,7 @@ export function AuthProvider({ children }) {
 
     const updateProfile = async (updates) => {
         try {
-            const res = await fetch(`${API_URL}/api/users/me/profile`, {
+            const res = await fetch(`${API_URL}/api/users/me/update`, { // Fixed endpoint: was /me/profile, confirmed /me/update in viewed files
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -86,22 +91,20 @@ export function AuthProvider({ children }) {
                 // Merge updates into local user state
                 setUser(prev => ({
                     ...prev,
-                    ...updatedProfile, // Flattened profile fields from backend
-                    // If backend returns only profile object, we might need to be careful. 
-                    // But users_router.py update_my_profile returns the profile object.
-                    // And our local user object is flattened. 
-                    // Let's ensure consistency.
+                    ...updatedProfile,
                     display_name: updatedProfile.display_name,
                     bio: updatedProfile.bio,
                     preferences: updatedProfile.preferences,
-                    avatar_url: updatedProfile.avatar_url
+                    // username is top level in updatedProfile from backend
+                    username: updatedProfile.username
                 }));
                 return updatedProfile;
             } else {
-                throw new Error("Failed to update profile");
+                const errorData = await res.json();
+                throw new Error(errorData.detail || 'Update failed');
             }
         } catch (error) {
-            console.error("Update Profile Error", error);
+            console.error("Update profile error", error);
             throw error;
         }
     };
@@ -110,17 +113,22 @@ export function AuthProvider({ children }) {
         googleLogout();
         setToken(null);
         setUser(null);
+        setLoginResponse(null);
         localStorage.removeItem('auth_token');
-        setLoading(false);
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, loading, loginWithGoogle, logout, updateProfile }}>
+        <AuthContext.Provider value={{
+            user,
+            loading,
+            loginWithGoogle,
+            logout,
+            updateProfile,
+            loginResponse // Expose this
+        }}>
             {children}
         </AuthContext.Provider>
     );
 }
 
-export function useAuth() {
-    return useContext(AuthContext);
-}
+export const useAuth = () => useContext(AuthContext);
