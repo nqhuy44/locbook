@@ -1,8 +1,10 @@
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Home, Map, Sparkles, User, List } from 'lucide-react';
 
 const BottomNav = ({ currentView, onViewChange, onProfileClick }) => {
     const { user } = useAuth();
+    const { t } = useLanguage();
 
     // Helper to get avatar URL (reused logic, ideally shared utils)
     const getAvatar = () => {
@@ -19,12 +21,12 @@ const BottomNav = ({ currentView, onViewChange, onProfileClick }) => {
         <div className="bottom-nav">
             <div className={`nav-item ${currentView === 'list' ? 'active' : ''}`} onClick={() => onViewChange('list')}>
                 <Home size={24} />
-                <span>Home</span>
+                <span>{t('nav.home')}</span>
             </div>
 
             <div className={`nav-item ${currentView === 'map' ? 'active' : ''}`} onClick={() => onViewChange('map')}>
                 <Map size={24} />
-                <span>Map</span>
+                <span>{t('nav.map')}</span>
             </div>
 
             <div className={`nav-item ${currentView === 'chat' ? 'active' : ''}`} onClick={() => onViewChange('chat')}>
@@ -36,7 +38,7 @@ const BottomNav = ({ currentView, onViewChange, onProfileClick }) => {
 
             <div className={`nav-item ${currentView === 'books' ? 'active' : ''}`} onClick={() => onViewChange('books')}>
                 <List size={24} />
-                <span>Books</span>
+                <span>{t('nav.books')}</span>
             </div>
 
             <div className={`nav-item ${currentView === 'profile' ? 'active' : ''}`} onClick={onProfileClick}>
@@ -54,7 +56,7 @@ const BottomNav = ({ currentView, onViewChange, onProfileClick }) => {
                 ) : (
                     <User size={24} />
                 )}
-                <span>Profile</span>
+                <span>{t('nav.profile')}</span>
             </div>
         </div>
     );

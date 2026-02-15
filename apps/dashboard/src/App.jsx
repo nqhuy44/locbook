@@ -26,13 +26,15 @@ import {
     Settings,
     Share2,
     Check,
-    User as UserIcon
+    User as UserIcon,
+    Menu
 } from 'lucide-react';
 import { CONFIG as DEFAULT_CONFIG } from './config';
 import MapView from './components/MapView';
 import CategoryRow from './components/CategoryRow';
 import ChatView from './components/ChatView';
-import { useAuth } from './context/AuthContext';
+import { useAuth, AuthProvider } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
 import LoginButton from './components/auth/LoginButton';
 import UserMenu from './components/auth/UserMenu';
 import BottomNav from './components/BottomNav';
@@ -40,6 +42,8 @@ import OnboardingPage from './pages/OnboardingPage';
 import ProfilePage from './pages/ProfilePage';
 import BooksPage from './pages/BooksPage';
 import BookDetailPage from './pages/BookDetailPage';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
+import SettingsModal from './components/common/SettingsModal';
 
 class ErrorBoundary extends React.Component {
     constructor(props) {
@@ -73,8 +77,9 @@ class ErrorBoundary extends React.Component {
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
-function App() {
+function AppContent() {
     const { user, loading: authLoading, loginResponse } = useAuth();
+    const { t } = useLanguage();
     const [places, setPlaces] = useState([]);
     const [loading, setLoading] = useState(true);
     const [config, setConfig] = useState(DEFAULT_CONFIG);
@@ -105,6 +110,7 @@ function App() {
 
     // Auth State - controlled by AuthContext now, but we might show prompts
     const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
 
     // Filters
     console.log("Current API_URL:", API_URL);
@@ -119,31 +125,80 @@ function App() {
         }
     }, [user, loginResponse]);
 
+    // State for Profile View
+    const [viewingProfile, setViewingProfile] = useState(null); // { username: string } or null for self
+
     useEffect(() => {
         fetchData();
 
-        const handlePopState = () => {
+        const handleUrlChange = () => {
+            const path = window.location.pathname;
             const params = new URLSearchParams(window.location.search);
-            const placeId = params.get("place");
-            if (!placeId) setSelectedPlace(null);
 
-            // Simple check for books route
-            if (window.location.pathname.startsWith('/books/')) {
-                const parts = window.location.pathname.split('/');
-                if (parts.length > 2) {
-                    setBookId(parts[2]);
-                    setCurrentView('book-detail');
-                } else {
-                    setCurrentView('books');
+            // 1. Places (via /place/:id or ?place=:id)
+            if (path.startsWith('/place/')) {
+                const placeId = path.split('/')[2];
+                if (placeId) {
+                    // Fetch place details if not in memory? 
+                    // For now, let's assume we fetch all places or handle it in fetchData
+                    // Ideally we should fetch specific place if not found
+                    fetch(`${API_URL}/api/discovery/places/${placeId}`, {
+                        headers: user ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {}
+                    })
+                        .then(res => res.json())
+                        .then(place => {
+                            if (place && !place.detail) setSelectedPlace(place);
+                        })
+                        .catch(err => console.error("Failed to load deep-linked place:", err));
                 }
-            } else if (window.location.pathname === '/books') {
+            } else if (params.get("place")) {
+                const placeId = params.get("place");
+                // Existing logic...
+            } else {
+                setSelectedPlace(null);
+            }
+
+            // 2. Books / Lists
+            if (path.startsWith('/book/')) {
+                const bId = path.split('/')[2];
+                if (bId) {
+                    setBookId(bId);
+                    setCurrentView('book-detail');
+                }
+            } else if (path === '/books') {
                 setCurrentView('books');
                 setBookId(null);
             }
+
+            // 3. Profiles
+            if (path.startsWith('/profile/')) {
+                const username = path.split('/')[2];
+                if (username) {
+                    setViewingProfile({ username }); // Switch to public profile view
+                    setCurrentView('profile');
+                }
+            } else if (path === '/profile') {
+                setViewingProfile(null); // Self
+                setCurrentView('profile');
+            } else if (path === '/' || path === '') {
+                // Default
+                if (!path.startsWith('/place/')) {
+                    setCurrentView('list'); // or 'map' based on preference?
+                }
+            }
         };
-        window.addEventListener('popstate', handlePopState);
-        return () => window.removeEventListener('popstate', handlePopState);
+
+        window.addEventListener('popstate', handleUrlChange);
+        // Initial check
+        handleUrlChange();
+
+        return () => window.removeEventListener('popstate', handleUrlChange);
     }, [user]);
+
+    // Helper to update URL without reload
+    const updateUrl = (path) => {
+        window.history.pushState({}, '', path);
+    };
 
     useEffect(() => {
         if (places.length > 0 && !selectedPlace) {
@@ -327,7 +382,7 @@ function App() {
     };
 
     if (loading || authLoading) return <div className="loading-screen" style={{ color: 'white', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Sparkles className="loader-icon" /> Loading Marin's Picks...
+        <Sparkles className="loader-icon" /> {t('home.loading')}
     </div>;
 
     // Standalone pages – rendered without the main navbar/filter chrome
@@ -341,8 +396,9 @@ function App() {
             {/* Navbar */}
             <nav className="navbar">
                 <div className="nav-left">
-                    <div className="brand" onClick={() => { setSearchTerm(''); setActiveVibes([]); setActiveCats([]); setCurrentView('list') }}>
-                        LocBook <span className="brand-subtitle">by Marin</span>
+                    <div className="brand" onClick={() => { setSearchTerm(''); setActiveVibes([]); setActiveCats([]); setCurrentView('list') }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <img src="/logo-transparent.png" alt="Logo" style={{ width: '32px', height: '32px' }} />
+                        Spotary
                     </div>
                     <div className="nav-links">
                         {config.FEATURES.ENABLE_DISCOVER && (
@@ -350,7 +406,7 @@ function App() {
                                 className={`nav-link ${currentView === 'list' && !isFiltering ? 'active' : ''}`}
                                 onClick={() => { setSearchTerm(''); setActiveVibes([]); setActiveCats([]); setCurrentView('list') }}
                             >
-                                Discover
+                                {t('nav.discover')}
                             </span>
                         )}
 
@@ -359,7 +415,7 @@ function App() {
                                 className={`nav-link ${currentView === 'map' ? 'active' : ''}`}
                                 onClick={() => setCurrentView('map')}
                             >
-                                Map
+                                {t('nav.map')}
                             </span>
                         )}
 
@@ -369,16 +425,23 @@ function App() {
                                 onClick={() => { setSearchTerm(''); setActiveVibes([]); setActiveCats([]); setCurrentView('chat') }}
                                 style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
                             >
-                                <Sparkles size={16} /> Ask Marin
+                                <Sparkles size={16} /> {t('nav.ask_marin')}
                             </span>
                         )}
                     </div>
                 </div>
 
                 <div className="nav-right">
-                    <a href={config.LINKS.LOC_REQUEST || "#"} target="_blank" rel="noreferrer" className="nav-link desktop-only" style={{ marginRight: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <PlusCircle size={18} /> Request Place
-                    </a>
+                    <button
+                        // Removed desktop-only to show on mobile
+                        className="nav-link"
+                        onClick={() => setShowSettings(true)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        title={t('settings.title')}
+                    >
+                        {/* Changed from Settings to Menu icon as requested */}
+                        <Menu size={24} color="var(--text-secondary)" />
+                    </button>
 
                     {/* Auth UI - Hide on mobile, move to Profile page */}
                     <div className="desktop-only">
@@ -413,7 +476,7 @@ function App() {
                             <input
                                 className="search-input"
                                 type="text"
-                                placeholder="Find places, vibes..."
+                                placeholder={t('home.search_placeholder')}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -422,9 +485,9 @@ function App() {
                         {/* Sort Mode Selector */}
                         <div className="sort-selector">
                             {[
-                                { key: 'popular', icon: <ThumbsUp size={14} />, label: 'Popular' },
-                                { key: 'trending', icon: <TrendingUp size={14} />, label: 'Trending' },
-                                { key: 'newest', icon: <Clock size={14} />, label: 'Newest' },
+                                { key: 'popular', icon: <ThumbsUp size={14} />, label: t('home.popular') },
+                                { key: 'trending', icon: <TrendingUp size={14} />, label: t('home.trending') },
+                                { key: 'newest', icon: <Clock size={14} />, label: t('home.newest') },
                             ].map(mode => (
                                 <button
                                     key={mode.key}
@@ -456,7 +519,7 @@ function App() {
                 ) : currentView === 'map' ? (
                     <MapView places={isFiltering ? filteredPlaces : places} onPlaceClick={openModal} />
                 ) : currentView === 'profile' ? (
-                    <ProfilePage onBack={() => setCurrentView('list')} />
+                    <ProfilePage onBack={() => setCurrentView('list')} viewingProfile={viewingProfile} />
                 ) : currentView === 'books' ? (
                     <BooksPage />
                 ) : currentView === 'book-detail' && bookId ? (
@@ -472,7 +535,7 @@ function App() {
                     isFiltering ? (
                         <div className="section-wrapper">
                             <h2 className="section-title">
-                                Search Results ({filteredPlaces.length})
+                                {t('home.search_results')} ({filteredPlaces.length})
                             </h2>
                             <div className="places-grid" style={{ marginTop: '1.5rem' }}>
                                 {filteredPlaces.map(place => (
@@ -483,10 +546,21 @@ function App() {
                     ) : (
                         config.HOME_CATEGORIES.map(category => {
                             if (!categorizedPlaces[category] || categorizedPlaces[category].length === 0) return null;
+
+                            // Map category to translation key
+                            const categoryKeyMap = {
+                                "Casual": "casual",
+                                "Cafe & Coffee": "cafe",
+                                "Special Occasion": "special",
+                                "Bar": "bar"
+                            };
+                            const catKey = categoryKeyMap[category] || category.toLowerCase();
+                            const translatedTitle = catKey ? t(`categories.${catKey}`) : category;
+
                             return (
                                 <CategoryRow
                                     key={category}
-                                    title={category}
+                                    title={translatedTitle === `categories.${catKey}` ? category : translatedTitle}
                                     icon={getSectionIcon(category)}
                                     places={categorizedPlaces[category]}
                                     onPlaceClick={openModal}
@@ -517,19 +591,18 @@ function App() {
                 onProfileClick={() => setCurrentView('profile')}
             />
 
+            {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+
             {/* Footer - Desktop Only */}
             {config.FEATURES.ENABLE_FOOTER && currentView !== 'map' && currentView !== 'chat' && (
                 <footer className="footer desktop-only">
                     <div className="footer-content">
-                        <div className="footer-brand">LocBook</div>
+                        <div className="footer-brand">Spotary</div>
                         <div className="footer-links">
                             {config.FEATURES.ENABLE_BUY_ME_COFFEE && (
                                 <a href={config.LINKS.BUY_ME_COFFEE} target="_blank" rel="noreferrer" className="bmc-button-footer">
-                                    <Coffee size={18} /> Buy me a coffee
+                                    <Coffee size={18} /> {t('settings.coffee')}
                                 </a>
-                            )}
-                            {config.LINKS.LOC_REQUEST && (
-                                <a href={config.LINKS.LOC_REQUEST} target="_blank" rel="noreferrer"><MapPin size={18} /> Request Place</a>
                             )}
                             {config.LINKS.GITHUB && (
                                 <a href={config.LINKS.GITHUB} target="_blank" rel="noreferrer"><Github size={18} /> GitHub</a>
@@ -538,14 +611,14 @@ function App() {
                                 <a href={config.LINKS.AUTHOR_WEBSITE} target="_blank" rel="noreferrer"><Globe size={18} /> Website</a>
                             )}
                             {config.LINKS.FEEDBACK && (
-                                <a href={config.LINKS.FEEDBACK} target="_blank" rel="noreferrer"><MessageSquare size={18} /> Feedback</a>
+                                <a href={config.LINKS.FEEDBACK} target="_blank" rel="noreferrer"><MessageSquare size={18} /> {t('settings.feedback')}</a>
                             )}
                         </div>
                         <div className="footer-text">
                             Made by nqhuy
                         </div>
                         <div className="footer-copyright">
-                            © {new Date().getFullYear()} LocBook. All rights reserved. v{__APP_VERSION__}
+                            © {new Date().getFullYear()} Spotary. All rights reserved. v{__APP_VERSION__}
                         </div>
                     </div>
                 </footer>
@@ -553,10 +626,16 @@ function App() {
 
             {/* Modal */}
             {selectedPlace && (
-                <div className="modal-overlay" onClick={closeModal}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                <div className="popup-overlay" onClick={() => {
+                    closeModal();
+                    window.history.pushState({}, '', '/');
+                }}>
+                    <div className="popup-container" onClick={e => e.stopPropagation()} style={{ width: '900px', maxWidth: '96vw', height: '90vh', maxHeight: '90vh' }}>
                         <ErrorBoundary>
-                            <div className="modal-close" onClick={closeModal}>
+                            <div className="modal-close" onClick={() => {
+                                closeModal();
+                                window.history.pushState({}, '', '/');
+                            }}>
                                 <X size={24} />
                             </div>
 
@@ -692,6 +771,18 @@ function App() {
     );
 }
 
+function App() {
+    return (
+        <LanguageProvider>
+            <AuthProvider>
+                <ToastProvider>
+                    <AppContent />
+                </ToastProvider>
+            </AuthProvider>
+        </LanguageProvider>
+    );
+};
+
 function PlaceCard({ place, onClick }) {
     let imageUrl = place.images?.length > 0 ? place.images[0] : place.local_image_path;
 
@@ -707,7 +798,11 @@ function PlaceCard({ place, onClick }) {
     }
 
     return (
-        <div className="place-card" onClick={onClick}>
+        <div className="place-card" onClick={() => {
+            if (onClick) onClick();
+            // Sync URL
+            window.history.pushState({}, '', `/place/${place.id}`);
+        }}>
             <div className="card-media">
                 {imageUrl ? (
                     <img src={imageUrl} alt={place.name} className="card-img" loading="lazy" />

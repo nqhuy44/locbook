@@ -4,6 +4,7 @@ from sqlmodel import select, func, col
 from sqlalchemy import text
 from typing import List, Optional
 from enum import Enum
+import uuid
 
 from src.core.database.postgres import get_db_session
 from src.core.database.sql_models import Place, User, Profile, PlaceRead, Interaction
@@ -19,6 +20,17 @@ class SortMode(str, Enum):
     NEWEST = "newest"        # Most recently added
 
 
+@router.get("/places/{place_id}", response_model=PlaceRead)
+async def get_place_details(
+    place_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Get public details of a specific place."""
+    place = await db.get(Place, place_id)
+    if not place:
+        raise HTTPException(status_code=404, detail="Place not found")
+    return PlaceRead.model_validate(place)
+    
 @router.get("/places", response_model=List[PlaceRead])
 async def discover_places(
     limit: int = Query(20, ge=1, le=100),

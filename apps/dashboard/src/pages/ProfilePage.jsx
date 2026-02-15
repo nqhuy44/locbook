@@ -1,7 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { ArrowLeft, Save, Sparkles, Check, RefreshCw, Plus, LogIn } from 'lucide-react';
 import LoginButton from '../components/auth/LoginButton';
+import ShareButton from '../components/common/ShareButton';
 
 const DICEBEAR_STYLES = ['thumbs', 'adventurer', 'avataaars', 'bottts', 'fun-emoji', 'lorelei', 'notionists', 'open-peeps', 'pixel-art', 'shapes'];
 
@@ -22,8 +24,51 @@ const PERSONALITY_TAGS = [
     'Coffee Addict', 'Wine Enthusiast', 'Explorer', 'Homebody'
 ].sort();
 
-export default function ProfilePage({ onBack }) {
+const API_URL = import.meta.env.VITE_API_URL || '';
+
+export default function ProfilePage({ onBack, viewingProfile }) {
     const { user, updateProfile, loginWithGoogle } = useAuth();
+    const { t } = useLanguage();
+
+    // State for viewing other profile
+    const [publicProfile, setPublicProfile] = useState(null);
+    const [profileLoading, setProfileLoading] = useState(!!viewingProfile); // Load if viewingProfile is set
+
+    // If viewingProfile is set, use that. Else use current user.
+    const isSelf = !viewingProfile || (user && user.username === viewingProfile.username);
+    const displayedUser = isSelf ? user : publicProfile;
+
+    useEffect(() => {
+        if (viewingProfile && viewingProfile.username) {
+            setProfileLoading(true);
+            fetch(`${API_URL}/api/users/${viewingProfile.username}`)
+                .then(res => {
+                    if (!res.ok) throw new Error("User not found");
+                    return res.json();
+                })
+                .then(data => {
+                    // Map API response to expected UI structure
+                    // API returns: { id, username, display_name, avatar_url, bio, public_lists: [] }
+                    // UI expects: { display_name, username, bio, preferences: { vibes, personality ... } }
+                    // Public endpoint doesn't return preferences unless we update it to do so. 
+                    // Let's assume we update backend or handle missing prefs.
+                    setPublicProfile({
+                        ...data,
+                        preferences: { // Mock or default since API might not return all prefs yet
+                            vibes: [],
+                            personality: [],
+                            avatar_style: 'thumbs',
+                            avatar_seed: data.username
+                        },
+                        // If API returns preferences, use them.
+                    });
+                })
+                .catch(err => console.error("Failed to load profile", err))
+                .finally(() => setProfileLoading(false));
+        } else {
+            setPublicProfile(null);
+        }
+    }, [viewingProfile]);
 
     // Hooks must be at top level
     const [isEditing, setIsEditing] = useState(false);
@@ -60,7 +105,7 @@ export default function ProfilePage({ onBack }) {
 
 
     const avatarUrl = useMemo(() => getDiceBearUrl(avatarStyle, avatarSeed), [avatarStyle, avatarSeed]);
-    const userAvatarUrl = user?.avatar_url || getDiceBearUrl(user?.preferences?.avatar_style || 'thumbs', user?.preferences?.avatar_seed || user?.display_name || 'default');
+    const userAvatarUrl = displayedUser?.avatar_url || getDiceBearUrl(displayedUser?.preferences?.avatar_style || 'thumbs', displayedUser?.preferences?.avatar_seed || displayedUser?.display_name || 'default');
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -120,7 +165,7 @@ export default function ProfilePage({ onBack }) {
         } catch (error) {
             console.error("Update profile failed:", error);
             const errorMsg = error.response?.data?.detail || 'Có lỗi xảy ra, vui lòng thử lại.';
-            setMessage({ text: errorMsg, type: 'error' });
+            setMessage({ text: t('common.error_occurred'), type: 'error' });
         } finally {
             setLoading(false);
         }
@@ -128,28 +173,39 @@ export default function ProfilePage({ onBack }) {
 
     const { logout } = useAuth(); // Destructure logout
 
-    if (!user) {
-        return (
-            <div className="profile-wrapper" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                <div style={{ textAlign: 'center', padding: '2rem' }}>
-                    <div style={{
-                        width: '80px', height: '80px', background: 'var(--accent-gradient)',
-                        borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        margin: '0 auto 1.5rem auto', color: 'white', boxShadow: '0 10px 25px rgba(217, 70, 239, 0.4)'
-                    }}>
-                        <LogIn size={40} />
-                    </div>
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>Đăng nhập vào LocBook</h2>
-                    <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-                        Đăng nhập để lưu hồ sơ, tạo danh sách yêu thích và chat với Marin!
-                    </p>
-                    <div style={{ display: 'flex', justifyContent: 'center' }}>
-                        <LoginButton />
+    if (profileLoading) return <div className="loading-screen" style={{ color: 'white', padding: '2rem' }}>Loading profile...</div>;
+
+    if (!displayedUser) {
+        // If trying to view self but not logged in -> Show Login
+        if (isSelf) {
+            return (
+                <div className="profile-wrapper" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                    <div style={{ textAlign: 'center', padding: '2rem' }}>
+                        <div style={{
+                            width: '80px', height: '80px', background: 'var(--accent-gradient)',
+                            borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            margin: '0 auto 1.5rem auto', color: 'white', boxShadow: '0 10px 25px rgba(217, 70, 239, 0.4)'
+                        }}>
+                            <LogIn size={40} />
+                        </div>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>{t('profile.login_title')}</h2>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
+                            {t('profile.login_desc')}
+                        </p>
+                        <div style={{ display: 'flex', justifyContent: 'center' }}>
+                            <LoginButton />
+                        </div>
                     </div>
                 </div>
-            </div>
-        );
+            );
+        }
+        // If trying to view other but not found
+        return <div className="loading-screen" style={{ color: 'white', padding: '2rem' }}>User not found</div>;
     }
+
+    // Determine if we can edit
+    const canEdit = isSelf && !isEditing; // Show edit button only if self and not currently editing
+    const modeEdit = isSelf && isEditing; // Actually in edit mode
 
     return (
         <div className="profile-wrapper">
@@ -158,13 +214,21 @@ export default function ProfilePage({ onBack }) {
             <div className="profile-layout">
                 {/* Header Section: Avatar + Name (Visible in both modes, but editable only in edit mode) */}
                 <div className="profile-header">
+                    <div className="profile-actions-top" style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+                        <ShareButton
+                            title={`@${displayedUser.username} on Spotary`}
+                            url={window.location.href}
+                            style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', borderRadius: '50%', padding: '8px', cursor: 'pointer' }}
+                        />
+                    </div>
+
                     <div className="avatar-section">
                         <div className="avatar-container">
                             <div className="avatar-main">
-                                <img src={isEditing ? avatarUrl : (userAvatarUrl)} alt="Avatar" />
+                                <img src={modeEdit ? avatarUrl : (userAvatarUrl)} alt="Avatar" />
                             </div>
                         </div>
-                        {isEditing && (
+                        {modeEdit && (
                             <button className="avatar-randomize" onClick={randomizeSeed} title="Randomize Avatar">
                                 <RefreshCw size={18} />
                             </button>
@@ -173,15 +237,15 @@ export default function ProfilePage({ onBack }) {
 
                     <div className="user-info-header">
                         <div className="display-name">
-                            {isEditing ? (formData.display_name || 'Chưa đặt tên') : (user.display_name || 'Chưa đặt tên')}
+                            {modeEdit ? (formData.display_name || 'Chưa đặt tên') : (displayedUser.display_name || 'Chưa đặt tên')}
                         </div>
                         <div className="username">
-                            @{isEditing ? (formData.username || 'username') : (user.username || 'username')}
+                            @{modeEdit ? (formData.username || 'username') : (displayedUser.username || 'username')}
                         </div>
 
                         {isEditing && (
                             <div className="avatar-styles-section">
-                                <div className="form-label" style={{ marginBottom: '4px', fontSize: '0.8rem' }}>Chọn kiểu avatar</div>
+                                <div className="form-label" style={{ marginBottom: '4px', fontSize: '0.8rem' }}>{t('profile.choose_avatar_style')}</div>
                                 <div className="avatar-styles">
                                     {DICEBEAR_STYLES.map(style => (
                                         <button
@@ -199,99 +263,116 @@ export default function ProfilePage({ onBack }) {
                     </div>
                 </div>
 
-                {!isEditing ? (
+                {!modeEdit ? (
                     /* ================= READ ONLY MODE ================= */
                     <div className="content-area">
                         <div className="section-card">
-                            <div className="section-title"><Sparkles size={18} /> Thông tin cá nhân</div>
-                            {user.bio ? (
-                                <p style={{ lineHeight: 1.6, color: 'var(--text-secondary)' }}>{user.bio}</p>
+                            <div className="section-title"><Sparkles size={18} /> {t('profile.personal_info')}</div>
+                            {displayedUser.bio ? (
+                                <p style={{ lineHeight: 1.6, color: 'var(--text-secondary)' }}>{displayedUser.bio}</p>
                             ) : (
-                                <p style={{ color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Chưa có mô tả.</p>
+                                <p style={{ color: 'var(--text-tertiary)', fontStyle: 'italic' }}>{t('profile.no_bio')}</p>
                             )}
                         </div>
 
                         <div className="section-card">
                             <div className="section-title">
-                                <Sparkles size={18} color="#d946ef" /> Vibes yêu thích
+                                <Sparkles size={18} color="#d946ef" /> {t('profile.vibes_title')}
                             </div>
                             <div className="chip-grid">
-                                {user.preferences?.vibes?.length > 0 ? (
-                                    user.preferences.vibes.map(vibe => (
+                                {displayedUser.preferences?.vibes?.length > 0 ? (
+                                    displayedUser.preferences.vibes.map(vibe => (
                                         <div key={vibe} className="chip active" style={{ cursor: 'default' }}>
                                             {vibe}
                                         </div>
                                     ))
                                 ) : (
-                                    <span style={{ color: 'var(--text-tertiary)' }}>Chưa chọn vibe nào.</span>
+                                    <span style={{ color: 'var(--text-tertiary)' }}>{t('profile.no_vibes')}</span>
                                 )}
                             </div>
                         </div>
 
                         <div className="section-card">
-                            <div className="section-title">🎭 Tính cách</div>
+                            <div className="section-title">🎭 {t('profile.personality_title')}</div>
                             <div className="chip-grid">
-                                {user.preferences?.personality?.length > 0 ? (
-                                    user.preferences.personality.map(tag => (
+                                {displayedUser.preferences?.personality?.length > 0 ? (
+                                    displayedUser.preferences.personality.map(tag => (
                                         <div key={tag} className="chip active" style={{ cursor: 'default' }}>
                                             {tag}
                                         </div>
                                     ))
                                 ) : (
-                                    <span style={{ color: 'var(--text-tertiary)' }}>Chưa chọn tính cách.</span>
+                                    <span style={{ color: 'var(--text-tertiary)' }}>{t('profile.no_personality')}</span>
                                 )}
                             </div>
                         </div>
 
-                        <div className="action-btn-group">
-                            <button className="edit-mode-btn" onClick={() => setIsEditing(true)}>
-                                <Sparkles size={18} /> Chỉnh sửa hồ sơ
-                            </button>
+                        {/* Public Lists Section */}
+                        {displayedUser.public_lists && displayedUser.public_lists.length > 0 && (
+                            <div className="section-card">
+                                <div className="section-title">📚 {t('profile.public_lists')}</div>
+                                <div className="chip-grid" style={{ flexDirection: 'column', gap: '0.5rem', alignItems: 'stretch' }}>
+                                    {displayedUser.public_lists.map(list => (
+                                        <div key={list.id} className="list-item" onClick={() => window.history.pushState({}, '', `/book/${list.id}`)} style={{ padding: '0.75rem', background: 'var(--bg-secondary)', borderRadius: '8px', cursor: 'pointer' }}>
+                                            <div style={{ fontWeight: 'bold' }}>{list.name}</div>
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{list.item_count} places</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
-                            <button className="logout-btn" onClick={logout}>
-                                <LogIn size={18} style={{ transform: 'rotate(180deg)' }} /> Đăng xuất
-                            </button>
-                        </div>
+                        {canEdit && (
+                            <div className="action-btn-group">
+                                <button className="edit-mode-btn" onClick={() => setIsEditing(true)}>
+                                    <Sparkles size={18} /> {t('profile.edit_profile')}
+                                </button>
+
+                                <button className="logout-btn" onClick={logout}>
+                                    <LogIn size={18} style={{ transform: 'rotate(180deg)' }} /> {t('nav.sign_out')}
+                                </button>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     /* ================= EDIT MODE ================= */
                     <div className="content-area">
                         <form onSubmit={handleSubmit}>
                             <div className="section-card">
-                                <div className="section-title"><Sparkles size={18} /> Thông tin cá nhân</div>
+                                <div className="section-title"><Sparkles size={18} /> {t('profile.personal_info')}</div>
 
                                 <div className="form-group">
-                                    <label className="form-label">Tên người dùng (Unique ID)</label>
+                                    <label className="form-label">{t('profile.username_label')}</label>
                                     <input
                                         type="text"
                                         name="username"
                                         value={formData.username}
                                         onChange={handleChange}
-                                        placeholder="tên_duy_nhất"
+                                        placeholder="username"
                                         className="form-input"
                                         style={{ fontFamily: 'monospace' }}
                                     />
                                 </div>
 
                                 <div className="form-group">
-                                    <label className="form-label">Tên hiển thị</label>
+                                    <label className="form-label">{t('profile.display_name_label')}</label>
                                     <input
                                         type="text"
                                         name="display_name"
                                         value={formData.display_name}
                                         onChange={handleChange}
-                                        placeholder="VD: Marin Explorer"
+                                        placeholder="Marin Explorer"
                                         className="form-input"
                                     />
                                 </div>
 
                                 <div className="form-group">
-                                    <label className="form-label">Mô tả về bạn</label>
+                                    <label className="form-label">{t('profile.bio_label')}</label>
                                     <textarea
                                         name="bio"
                                         value={formData.bio}
                                         onChange={handleChange}
-                                        placeholder="Chia sẻ đôi điều về bản thân..."
+                                        placeholder={t('profile.bio_placeholder')}
                                         className="form-input form-textarea"
                                     />
                                 </div>
@@ -300,10 +381,10 @@ export default function ProfilePage({ onBack }) {
                             {/* Vibes */}
                             <div className="section-card">
                                 <div className="section-title">
-                                    <Sparkles size={18} color="#d946ef" /> Vibes yêu thích
+                                    <Sparkles size={18} color="#d946ef" /> {t('profile.vibes_title')}
                                 </div>
                                 <p style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', marginBottom: '1rem' }}>
-                                    Chọn những vibes phù hợp với bạn nhất
+                                    {t('profile.vibes_desc')}
                                 </p>
                                 <div className="vibe-tags" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                                     {[...AVAILABLE_VIBES]
@@ -345,7 +426,7 @@ export default function ProfilePage({ onBack }) {
                                     />
                                 ) : (
                                     <button type="button" className="add-tag-btn" onClick={() => setIsAddingTag(true)}>
-                                        <Plus size={14} /> Thêm tag
+                                        <Plus size={14} /> {t('profile.add_tag')}
                                     </button>
                                 )}
                             </div>
@@ -353,10 +434,10 @@ export default function ProfilePage({ onBack }) {
                             {/* Personality */}
                             <div className="section-card">
                                 <div className="section-title">
-                                    🎭 Tính cách
+                                    🎭 {t('profile.personality_title')}
                                 </div>
                                 <p style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', marginBottom: '1rem' }}>
-                                    Bạn là kiểu người...?
+                                    {t('profile.personality_desc')}
                                 </p>
                                 <div className="chip-grid">
                                     {[...PERSONALITY_TAGS]
@@ -398,12 +479,12 @@ export default function ProfilePage({ onBack }) {
                                 </div>
 
                                 <button type="button" className="cancel-btn" onClick={() => setIsEditing(false)} disabled={loading}>
-                                    Hủy
+                                    {t('common.cancel')}
                                 </button>
 
                                 <button type="submit" className="save-btn" disabled={loading}>
                                     <Save size={18} />
-                                    {loading ? 'Đang lưu...' : 'Lưu thay đổi'}
+                                    {loading ? t('profile.saving') : t('profile.save_changes')}
                                 </button>
                             </div>
                         </form>

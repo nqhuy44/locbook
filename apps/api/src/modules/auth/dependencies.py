@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 import uuid
-
+from typing import Optional
 from src.core.database.postgres import get_db_session
 from src.core.database.sql_models import User, Profile
 from src.core.security import verify_token
@@ -43,3 +43,27 @@ async def get_current_user(
         raise credentials_exception
         
     return user
+
+async def get_optional_current_user(
+    token: str = Depends(OAuth2PasswordBearer(tokenUrl="auth/token", auto_error=False)),
+    db: AsyncSession = Depends(get_db_session)
+) -> Optional[User]:
+    if not token:
+        return None
+    
+    try:
+        payload = verify_token(token)
+        if payload is None:
+            return None
+            
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            return None
+            
+        # Fetch User
+        stmt = select(User).where(User.id == uuid.UUID(user_id))
+        result = await db.execute(stmt)
+        user = result.scalar_one_or_none()
+        return user
+    except Exception:
+        return None

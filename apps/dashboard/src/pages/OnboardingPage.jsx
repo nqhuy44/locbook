@@ -25,7 +25,7 @@ export default function OnboardingPage({ onComplete }) {
         <div className="onboarding-container">
             <div className="onboarding-card">
                 <h1 className="onboarding-title">
-                    Welcome to LocBook!
+                    Welcome to Spotary!
                 </h1>
                 <p className="onboarding-subtitle">
                     Let's get you set up. What should we call you?

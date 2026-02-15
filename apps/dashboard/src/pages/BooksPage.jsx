@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, ChevronRight, Book as BookIcon, Globe, Lock } from 'lucide-react';
+import { Plus, ChevronRight, Book as BookIcon, Globe, Lock, X } from 'lucide-react';
 
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { LogIn } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
 function BooksPage() {
     const { user } = useAuth();
+    const { t } = useLanguage();
     const [lists, setLists] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -93,15 +95,15 @@ function BooksPage() {
                         <div className="login-icon-circle">
                             <BookIcon size={40} />
                         </div>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>Login to use Books</h2>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>{t('books.login_title')}</h2>
                         <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-                            Create collections of your favorite places, share them with friends, and more!
+                            {t('books.login_desc')}
                         </p>
 
                         <div className="login-prompt-card">
                             <LogIn size={24} color="#d946ef" style={{ marginBottom: '0.5rem' }} />
                             <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                                Go to the <strong>Profile</strong> to sign in.
+                                {t('books.login_prompt')}
                             </div>
                         </div>
                     </div>
@@ -117,13 +119,13 @@ function BooksPage() {
         <div className="books-page-container">
             {/* Header */}
             <div className="books-header">
-                <h1 style={{ fontSize: '1.25rem', fontWeight: '700', margin: 0 }}>My Books</h1>
+                <h1 style={{ fontSize: '1.25rem', fontWeight: '700', margin: 0 }}>{t('books.title')}</h1>
                 <button
                     onClick={() => setShowCreateModal(true)}
                     className="btn-primary"
                     style={{ padding: '0.5rem 1rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
                 >
-                    <Plus size={18} /> New Book
+                    <Plus size={18} /> {t('books.new_book')}
                 </button>
             </div>
 
@@ -132,8 +134,8 @@ function BooksPage() {
                 {lists.length === 0 ? (
                     <div className="empty-state">
                         <BookIcon size={48} className="empty-state-icon" />
-                        <p>You haven't created any books yet.</p>
-                        <p style={{ fontSize: '0.9rem' }}>Create a book to collect your favorite places!</p>
+                        <p>{t('books.empty_title')}</p>
+                        <p style={{ fontSize: '0.9rem' }}>{t('books.empty_desc')}</p>
                     </div>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -168,80 +170,87 @@ function BooksPage() {
 
             {/* Create Modal */}
             {showCreateModal && (
-                <div className="modal-overlay">
-                    <div className="modal-content" style={{ maxWidth: '450px', height: 'auto', padding: '2rem', margin: '1rem' }}>
-                        <h2 style={{ marginTop: 0, fontSize: '1.5rem', marginBottom: '1.5rem' }}>Create New Book</h2>
+                <div className="popup-overlay" onClick={() => setShowCreateModal(false)}>
+                    <div className="popup-container" onClick={e => e.stopPropagation()} style={{ maxWidth: '450px' }}>
+                        <div className="popup-header">
+                            <h2 className="popup-title">{t('books.create_title')}</h2>
+                            <button onClick={() => setShowCreateModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}>
+                                <X size={24} />
+                            </button>
+                        </div>
                         <form onSubmit={handleCreateList}>
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Book Name</label>
-                                <input
-                                    type="text"
-                                    value={newListName}
-                                    onChange={e => setNewListName(e.target.value)}
-                                    placeholder="e.g. Weekend Brunch, Best Coffee"
-                                    className="input-field"
-                                    required
-                                />
-                            </div>
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Privacy</label>
-                                <div style={{ display: 'flex', gap: '1rem' }}>
-                                    <button
-                                        type="button"
-                                        onClick={() => setNewListPrivacy('private')}
-                                        style={{
-                                            flex: 1,
-                                            padding: '0.75rem',
-                                            borderRadius: '8px',
-                                            border: newListPrivacy === 'private' ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
-                                            background: newListPrivacy === 'private' ? 'rgba(217, 70, 239, 0.1)' : 'var(--bg-secondary)',
-                                            color: newListPrivacy === 'private' ? 'var(--primary-color)' : 'var(--text-primary)',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            gap: '0.5rem'
-                                        }}
-                                    >
-                                        <Lock size={20} />
-                                        <span>Private</span>
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setNewListPrivacy('public')}
-                                        style={{
-                                            flex: 1,
-                                            padding: '0.75rem',
-                                            borderRadius: '8px',
-                                            border: newListPrivacy === 'public' ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
-                                            background: newListPrivacy === 'public' ? 'rgba(217, 70, 239, 0.1)' : 'var(--bg-secondary)',
-                                            color: newListPrivacy === 'public' ? 'var(--primary-color)' : 'var(--text-primary)',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            gap: '0.5rem'
-                                        }}
-                                    >
-                                        <Globe size={20} />
-                                        <span>Public</span>
-                                    </button>
+                            <div className="popup-body">
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>{t('books.name_label')}</label>
+                                    <input
+                                        type="text"
+                                        value={newListName}
+                                        onChange={e => setNewListName(e.target.value)}
+                                        placeholder={t('books.name_placeholder')}
+                                        className="input-field"
+                                        required
+                                    />
+                                </div>
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>{t('books.privacy_label')}</label>
+                                    <div style={{ display: 'flex', gap: '1rem' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setNewListPrivacy('private')}
+                                            style={{
+                                                flex: 1,
+                                                padding: '0.75rem',
+                                                borderRadius: '8px',
+                                                border: newListPrivacy === 'private' ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
+                                                background: newListPrivacy === 'private' ? 'rgba(217, 70, 239, 0.1)' : 'var(--bg-secondary)',
+                                                color: newListPrivacy === 'private' ? 'var(--primary-color)' : 'var(--text-primary)',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                gap: '0.5rem'
+                                            }}
+                                        >
+                                            <Lock size={20} />
+                                            <span>{t('books.privacy_private')}</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setNewListPrivacy('public')}
+                                            style={{
+                                                flex: 1,
+                                                padding: '0.75rem',
+                                                borderRadius: '8px',
+                                                border: newListPrivacy === 'public' ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
+                                                background: newListPrivacy === 'public' ? 'rgba(217, 70, 239, 0.1)' : 'var(--bg-secondary)',
+                                                color: newListPrivacy === 'public' ? 'var(--primary-color)' : 'var(--text-primary)',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                gap: '0.5rem'
+                                            }}
+                                        >
+                                            <Globe size={20} />
+                                            <span>{t('books.privacy_public')}</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div style={{ marginBottom: '2rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>{t('books.desc_label')}</label>
+                                    <textarea
+                                        value={newListDesc}
+                                        onChange={e => setNewListDesc(e.target.value)}
+                                        placeholder={t('books.desc_placeholder')}
+                                        className="input-field"
+                                        style={{ minHeight: '100px', resize: 'vertical' }}
+                                    />
                                 </div>
                             </div>
-                            <div style={{ marginBottom: '2rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Description (Optional)</label>
-                                <textarea
-                                    value={newListDesc}
-                                    onChange={e => setNewListDesc(e.target.value)}
-                                    placeholder="What is this book about?"
-                                    className="input-field"
-                                    style={{ minHeight: '100px', resize: 'vertical' }}
-                                />
-                            </div>
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                                <button type="button" onClick={() => setShowCreateModal(false)} className="btn-secondary" disabled={createLoading}>Cancel</button>
+                            <div className="popup-footer">
+                                <button type="button" onClick={() => setShowCreateModal(false)} className="btn-secondary" disabled={createLoading}>{t('common.cancel')}</button>
                                 <button type="submit" className="btn-primary" disabled={createLoading}>
-                                    {createLoading ? 'Creating...' : 'Create Book'}
+                                    {createLoading ? t('books.creating') : t('books.create_btn')}
                                 </button>
                             </div>
                         </form>

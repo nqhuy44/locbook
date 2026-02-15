@@ -3,11 +3,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
 from pydantic import BaseModel
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 from src.core.database.postgres import get_db_session
-from src.core.database.sql_models import User, Profile
-from src.modules.auth.dependencies import get_current_user
+from src.core.database.sql_models import User, Profile, UserList, ListPrivacy
+from src.modules.auth.dependencies import get_current_user, get_optional_current_user
 
 router = APIRouter(prefix="/api/users", tags=["Users"])
 
@@ -101,4 +101,45 @@ async def update_my_profile(
         "avatar_url": profile.avatar_url,
         "bio": profile.bio,
         "preferences": profile.preferences
+    }
+
+@router.get("/{username}")
+async def get_public_profile(
+    username: str,
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Get public profile info and public lists."""
+    stmt = select(User).options(selectinload(User.profile)).where(User.username == username)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+    
+    if not user:
+         raise HTTPException(status_code=404, detail="User not found")
+         
+    profile = user.profile
+    
+    # Fetch public lists
+    stmt_lists = select(UserList).where(
+        UserList.user_id == user.id, 
+        UserList.privacy == ListPrivacy.PUBLIC
+    ).order_by(UserList.updated_at.desc())
+    
+    result_lists = await db.execute(stmt_lists)
+    public_lists = result_lists.scalars().all()
+    
+    return {
+        "id": str(user.id),
+        "username": user.username,
+        "display_name": profile.display_name if profile else None,
+        "avatar_url": profile.avatar_url if profile else None,
+        "bio": profile.bio if profile else None,
+        "public_lists": [
+            {
+                "id": str(l.id),
+                "name": l.name,
+                "description": l.description,
+                "item_count": len(l.items)
+            } for l in public_lists
+        ]
     }

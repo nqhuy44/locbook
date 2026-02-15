@@ -6,7 +6,7 @@ import uuid
 
 from src.core.database.postgres import get_db_session
 from src.core.database.sql_models import User, UserList, Place, PlaceRead, ListPrivacy
-from src.modules.auth.dependencies import get_current_user
+from src.modules.auth.dependencies import get_current_user, get_optional_current_user
 from src.modules.places.service import get_or_create_place_from_url
 
 router = APIRouter(prefix="/api/lists", tags=["Lists"])
@@ -131,15 +131,21 @@ async def update_list(
 @router.get("/{list_id}", response_model=UserListDetail)
 async def get_list_detail(
     list_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
-    stmt = select(UserList).where(UserList.id == list_id, UserList.user_id == current_user.id)
+    # Fetch list by ID (ignoring user_id for now)
+    stmt = select(UserList).where(UserList.id == list_id)
     result = await db.execute(stmt)
     user_list = result.scalar_one_or_none()
     
     if not user_list:
         raise HTTPException(status_code=404, detail="List not found")
+        
+    # Check Privacy
+    is_owner = current_user and user_list.user_id == current_user.id
+    if user_list.privacy == ListPrivacy.PRIVATE and not is_owner:
+         raise HTTPException(status_code=404, detail="List not found or private")
         
     # Hydrate places
     # items = [{"place_id": str, "suggested_dishes": []}, ...]

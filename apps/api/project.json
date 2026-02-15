@@ -37,7 +37,6 @@
             "options": {
                 "commands": [
                     "nx run api:core",
-                    "nx run api:bot",
                     "nx run api:worker"
                 ],
                 "parallel": true

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { LogOut, User as UserIcon } from 'lucide-react';
 
 function getDiceBearAvatar(seed) {
@@ -8,6 +9,7 @@ function getDiceBearAvatar(seed) {
 
 export default function UserMenu({ onProfileClick }) {
     const { user, logout } = useAuth();
+    const { t } = useLanguage();
     const [isOpen, setIsOpen] = useState(false);
 
     if (!user) return null;
@@ -66,7 +68,7 @@ export default function UserMenu({ onProfileClick }) {
                         boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
                     }}>
                         <div className="dropdown-header" style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-color)', marginBottom: '8px' }}>
-                            <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)' }}>Signed in as</div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)' }}>{t('nav.signed_in_as')}</div>
                             <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%', color: 'var(--text-primary)' }}>{user.email}</div>
                         </div>
 
@@ -90,7 +92,7 @@ export default function UserMenu({ onProfileClick }) {
                             onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-secondary)'}
                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                         >
-                            <UserIcon size={16} /> Profile
+                            <UserIcon size={16} /> {t('nav.profile')}
                         </button>
 
                         <button
@@ -112,7 +114,7 @@ export default function UserMenu({ onProfileClick }) {
                             onMouseEnter={e => e.currentTarget.style.background = '#fee2e2'}
                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                         >
-                            <LogOut size={16} /> Sign Out
+                            <LogOut size={16} /> {t('nav.sign_out')}
                         </button>
                     </div>
                 </>

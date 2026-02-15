@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, MapPin, Trash2, ExternalLink, Utensils, Settings, Edit2, Globe, Lock } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
+import { ArrowLeft, Plus, MapPin, Trash2, ExternalLink, Utensils, Settings, Edit2, Globe, Lock, X } from 'lucide-react';
+import ShareButton from '../components/common/ShareButton';
+import ConfirmModal from '../components/common/ConfirmModal';
+import { useToast } from '../context/ToastContext';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
 function BookDetailPage({ bookId, onBack, onPlaceClick }) {
+    const { t } = useLanguage();
     const [book, setBook] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -11,12 +16,20 @@ function BookDetailPage({ bookId, onBack, onPlaceClick }) {
     const [addLoading, setAddLoading] = useState(false);
     const [items, setItems] = useState([]);
 
-    // Edit State
+    // Edit Form State
     const [showEditModal, setShowEditModal] = useState(false);
     const [editName, setEditName] = useState("");
     const [editDesc, setEditDesc] = useState("");
     const [editPrivacy, setEditPrivacy] = useState("private");
     const [editLoading, setEditLoading] = useState(false);
+
+    // Custom Confirm Modal State
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [showDeletePlaceConfirm, setShowDeletePlaceConfirm] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState(null);
+
+    // Toast
+    const { showToast } = useToast();
 
     useEffect(() => {
         fetchBookDetails();
@@ -25,21 +38,24 @@ function BookDetailPage({ bookId, onBack, onPlaceClick }) {
     const fetchBookDetails = async () => {
         try {
             const token = localStorage.getItem('auth_token');
-            if (!token) return;
+            const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
 
             const res = await fetch(`${API_URL}/api/lists/${bookId}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                headers: headers
             });
+
             if (res.ok) {
                 const data = await res.json();
                 setBook(data);
                 setItems(data.items || []);
-                // Init edit state
+                // Init edit state - only if owner? Backend checks logic for update anyway.
+                // We'll hide edit buttons if not owner later or let backend reject it.
+                // For now, let's assume if privacy is public and no token, we can't edit.
                 setEditName(data.name);
                 setEditDesc(data.description || "");
                 setEditPrivacy(data.privacy || "private");
+            } else {
+                console.error("Failed to fetch book:", res.status);
             }
         } catch (err) {
             console.error("Failed to fetch book details", err);
@@ -83,8 +99,14 @@ function BookDetailPage({ bookId, onBack, onPlaceClick }) {
         }
     };
 
-    const handleDeleteItem = async (placeId) => {
-        if (!confirm("Remove this place from the book?")) return;
+    const handleDeleteItem = (placeId) => {
+        setItemToDelete(placeId);
+        setShowDeletePlaceConfirm(true);
+    };
+
+    const executeDeleteItem = async () => {
+        if (!itemToDelete) return;
+        const placeId = itemToDelete;
         try {
             const token = localStorage.getItem('auth_token');
             const res = await fetch(`${API_URL}/api/lists/${bookId}/items/${placeId}`, {
@@ -99,11 +121,14 @@ function BookDetailPage({ bookId, onBack, onPlaceClick }) {
             }
         } catch (err) {
             console.error("Failed to delete item", err);
+        } finally {
+            setShowDeletePlaceConfirm(false);
+            setItemToDelete(null);
         }
     };
 
     const handleDeleteBook = async () => {
-        if (!confirm("Are you sure you want to delete this book? This action cannot be undone.")) return;
+        // Confirm handled by UI button (ConfirmModal now)
         try {
             const token = localStorage.getItem('auth_token');
             const res = await fetch(`${API_URL}/api/lists/${bookId}`, {
@@ -114,13 +139,16 @@ function BookDetailPage({ bookId, onBack, onPlaceClick }) {
             });
 
             if (res.ok) {
+                showToast("Book deleted successfully", "success");
                 onBack(); // Go back to list
             } else {
-                alert("Failed to delete book");
+                showToast("Failed to delete book", "error");
             }
         } catch (err) {
             console.error("Failed to delete book", err);
-            alert("Error deleting book");
+            showToast("Error deleting book", "error");
+        } finally {
+            setShowDeleteConfirm(false); // Close modal
         }
     };
 
@@ -157,7 +185,7 @@ function BookDetailPage({ bookId, onBack, onPlaceClick }) {
     };
 
 
-    if (loading) return <div className="loading-screen" style={{ color: 'white', padding: '2rem' }}>Loading book...</div>;
+    if (loading) return <div className="loading-screen" style={{ color: 'white', padding: '2rem' }}>{t('common.loading')}</div>;
     if (!book) return <div className="loading-screen" style={{ color: 'white', padding: '2rem' }}>Book not found</div>;
 
     return (
@@ -176,33 +204,35 @@ function BookDetailPage({ bookId, onBack, onPlaceClick }) {
                     {book.description && <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{book.description}</p>}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <button
-                        onClick={handleDeleteBook}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <ShareButton
+                        title={`Check out "${book.name}" on Spotary`}
+                        url={window.location.href}
                         className="btn-secondary"
-                        style={{ padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '50%', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)', marginRight: '1rem' }}
-                        title="Delete Book"
-                    >
-                        <Trash2 size={18} />
-                    </button>
+                        iconOnly={true}
+                        style={{ padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '50%' }}
+                    />
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                        {/* Delete button moved to Edit Modal */}
 
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button
-                            onClick={() => setShowEditModal(true)}
-                            className="btn-secondary"
-                            style={{ padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '50%' }}
-                            title="Edit Book"
-                        >
-                            <Edit2 size={18} />
-                        </button>
-                        <button
-                            onClick={() => setShowAddModal(true)}
-                            className="btn-primary"
-                            style={{ padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', width: '36px', height: '36px' }}
-                            title="Add Place"
-                        >
-                            <Plus size={20} />
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button
+                                onClick={() => setShowEditModal(true)}
+                                className="btn-secondary"
+                                style={{ padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '50%' }}
+                                title={t('books.edit_title')}
+                            >
+                                <Edit2 size={18} />
+                            </button>
+                            <button
+                                onClick={() => setShowAddModal(true)}
+                                className="btn-primary"
+                                style={{ padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', width: '36px', height: '36px' }}
+                                title={t('books.add_place_title')}
+                            >
+                                <Plus size={20} />
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -212,13 +242,13 @@ function BookDetailPage({ bookId, onBack, onPlaceClick }) {
                 {items.length === 0 ? (
                     <div className="empty-state">
                         <MapPin size={48} className="empty-state-icon" />
-                        <p>No places in this book yet.</p>
+                        <p>{t('books.no_places')}</p>
                         <button
                             onClick={() => setShowAddModal(true)}
                             className="btn-secondary"
                             style={{ marginTop: '1rem' }}
                         >
-                            Add from Google Maps
+                            {t('books.add_from_maps')}
                         </button>
                     </div>
                 ) : (
@@ -262,7 +292,7 @@ function BookDetailPage({ bookId, onBack, onPlaceClick }) {
                                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                             {item.suggested_dishes?.length > 0 && (
                                                 <span style={{ fontSize: '0.85rem', color: '#ffd700', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                    <Utensils size={14} /> {item.suggested_dishes.length} suggestions
+                                                    <Utensils size={14} /> {item.suggested_dishes.length} {t('books.suggestions')}
                                                 </span>
                                             )}
                                         </div>
@@ -280,30 +310,37 @@ function BookDetailPage({ bookId, onBack, onPlaceClick }) {
                 )}
             </div>
 
-            {/* Add Modal */}
+            {/* Add Place Modal */}
             {showAddModal && (
-                <div className="modal-overlay">
-                    <div className="modal-content" style={{ maxWidth: '450px', height: 'auto', padding: '2rem', margin: '1rem' }}>
-                        <h2 style={{ marginTop: 0, fontSize: '1.5rem', marginBottom: '1rem' }}>Add Place</h2>
+                <div className="popup-overlay" onClick={() => setShowAddModal(false)}>
+                    <div className="popup-container" onClick={e => e.stopPropagation()} style={{ maxWidth: '450px' }}>
+                        <div className="popup-header">
+                            <h2 className="popup-title">{t('books.add_place_title')}</h2>
+                            <button onClick={() => setShowAddModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}>
+                                <X size={24} />
+                            </button>
+                        </div>
                         <form onSubmit={handleAddPlace}>
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Google Maps Link</label>
-                                <input
-                                    type="url"
-                                    value={addUrl}
-                                    onChange={e => setAddUrl(e.target.value)}
-                                    placeholder="https://maps.app.goo.gl/..."
-                                    className="input-field"
-                                    required
-                                />
-                                <p style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', marginTop: '0.5rem' }}>
-                                    Paste a Google Maps link. We'll analyze it and add it to your book.
-                                </p>
+                            <div className="popup-body">
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>{t('books.add_place_url_label')}</label>
+                                    <input
+                                        type="url"
+                                        value={addUrl}
+                                        onChange={e => setAddUrl(e.target.value)}
+                                        placeholder="https://maps.app.goo.gl/..."
+                                        className="input-field"
+                                        required
+                                    />
+                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', marginTop: '0.5rem' }}>
+                                        {t('books.add_place_help')}
+                                    </p>
+                                </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                                <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary" disabled={addLoading}>Cancel</button>
+                            <div className="popup-footer">
+                                <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary" disabled={addLoading}>{t('common.cancel')}</button>
                                 <button type="submit" className="btn-primary" disabled={addLoading}>
-                                    {addLoading ? 'Analyzing...' : 'Add Place'}
+                                    {addLoading ? t('books.analyzing') : t('books.add_btn')}
                                 </button>
                             </div>
                         </form>
@@ -313,86 +350,146 @@ function BookDetailPage({ bookId, onBack, onPlaceClick }) {
 
             {/* Edit Modal */}
             {showEditModal && (
-                <div className="modal-overlay">
-                    <div className="modal-content" style={{ maxWidth: '450px', height: 'auto', padding: '2rem', margin: '1rem' }}>
-                        <h2 style={{ marginTop: 0, fontSize: '1.5rem', marginBottom: '1.5rem' }}>Edit Book</h2>
+                <div className="popup-overlay" onClick={() => setShowEditModal(false)}>
+                    <div className="popup-container" onClick={e => e.stopPropagation()} style={{ maxWidth: '450px' }}>
+                        <div className="popup-header">
+                            <h2 className="popup-title">{t('books.edit_title')}</h2>
+                            <button onClick={() => setShowEditModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}>
+                                <X size={24} />
+                            </button>
+                        </div>
                         <form onSubmit={handleUpdateBook}>
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Book Name</label>
-                                <input
-                                    type="text"
-                                    value={editName}
-                                    onChange={e => setEditName(e.target.value)}
-                                    placeholder="e.g. Weekend Brunch"
-                                    className="input-field"
-                                    required
-                                />
-                            </div>
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Privacy</label>
-                                <div style={{ display: 'flex', gap: '1rem' }}>
+                            <div className="popup-body">
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>{t('books.name_label')}</label>
+                                    <input
+                                        type="text"
+                                        value={editName}
+                                        onChange={e => setEditName(e.target.value)}
+                                        placeholder={t('books.name_placeholder')}
+                                        className="input-field"
+                                        required
+                                    />
+                                </div>
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>{t('books.privacy_label')}</label>
+                                    <div style={{ display: 'flex', gap: '1rem' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setEditPrivacy('private')}
+                                            style={{
+                                                flex: 1,
+                                                padding: '0.75rem',
+                                                borderRadius: '8px',
+                                                border: editPrivacy === 'private' ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
+                                                background: editPrivacy === 'private' ? 'rgba(217, 70, 239, 0.1)' : 'var(--bg-secondary)',
+                                                color: editPrivacy === 'private' ? 'var(--primary-color)' : 'var(--text-primary)',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                gap: '0.5rem'
+                                            }}
+                                        >
+                                            <Lock size={20} />
+                                            <span>{t('books.privacy_private')}</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setEditPrivacy('public')}
+                                            style={{
+                                                flex: 1,
+                                                padding: '0.75rem',
+                                                borderRadius: '8px',
+                                                border: editPrivacy === 'public' ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
+                                                background: editPrivacy === 'public' ? 'rgba(217, 70, 239, 0.1)' : 'var(--bg-secondary)',
+                                                color: editPrivacy === 'public' ? 'var(--primary-color)' : 'var(--text-primary)',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                gap: '0.5rem'
+                                            }}
+                                        >
+                                            <Globe size={20} />
+                                            <span>{t('books.privacy_public')}</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div style={{ marginBottom: '2rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>{t('books.desc_label')}</label>
+                                    <textarea
+                                        value={editDesc}
+                                        onChange={e => setEditDesc(e.target.value)}
+                                        placeholder={t('books.desc_placeholder')}
+                                        className="input-field"
+                                        style={{ minHeight: '100px', resize: 'vertical' }}
+                                    />
+                                </div>
+                                <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)' }}>
                                     <button
                                         type="button"
-                                        onClick={() => setEditPrivacy('private')}
+                                        onClick={() => setShowDeleteConfirm(true)}
+                                        className="btn-secondary"
                                         style={{
-                                            flex: 1,
-                                            padding: '0.75rem',
-                                            borderRadius: '8px',
-                                            border: editPrivacy === 'private' ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
-                                            background: editPrivacy === 'private' ? 'rgba(217, 70, 239, 0.1)' : 'var(--bg-secondary)',
-                                            color: editPrivacy === 'private' ? 'var(--primary-color)' : 'var(--text-primary)',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            gap: '0.5rem'
+                                            width: '100%',
+                                            color: '#ef4444',
+                                            borderColor: 'rgba(239, 68, 68, 0.2)',
+                                            background: 'rgba(239, 68, 68, 0.05)',
+                                            justifyContent: 'center',
+                                            height: '48px'
                                         }}
                                     >
-                                        <Lock size={20} />
-                                        <span>Private</span>
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setEditPrivacy('public')}
-                                        style={{
-                                            flex: 1,
-                                            padding: '0.75rem',
-                                            borderRadius: '8px',
-                                            border: editPrivacy === 'public' ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
-                                            background: editPrivacy === 'public' ? 'rgba(217, 70, 239, 0.1)' : 'var(--bg-secondary)',
-                                            color: editPrivacy === 'public' ? 'var(--primary-color)' : 'var(--text-primary)',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            gap: '0.5rem'
-                                        }}
-                                    >
-                                        <Globe size={20} />
-                                        <span>Public</span>
+                                        <Trash2 size={18} style={{ marginRight: '8px' }} />
+                                        {t('books.delete_book')}
                                     </button>
                                 </div>
                             </div>
-                            <div style={{ marginBottom: '2rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Description (Optional)</label>
-                                <textarea
-                                    value={editDesc}
-                                    onChange={e => setEditDesc(e.target.value)}
-                                    placeholder="What is this book about?"
-                                    className="input-field"
-                                    style={{ minHeight: '100px', resize: 'vertical' }}
-                                />
-                            </div>
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                                <button type="button" onClick={() => setShowEditModal(false)} className="btn-secondary" disabled={editLoading}>Cancel</button>
-                                <button type="submit" className="btn-primary" disabled={editLoading}>
-                                    {editLoading ? 'Saving...' : 'Save Changes'}
+                            <div className="popup-footer" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', paddingBottom: '1.5rem' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowEditModal(false)}
+                                    className="btn-secondary"
+                                    disabled={editLoading}
+                                    style={{ justifyContent: 'center', height: '48px' }}
+                                >
+                                    {t('common.cancel')}
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="btn-primary"
+                                    disabled={editLoading}
+                                    style={{ justifyContent: 'center', height: '48px', width: '100%' }}
+                                >
+                                    {editLoading ? t('profile.saving') : t('profile.save_changes')}
                                 </button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
+
+            <ConfirmModal
+                isOpen={showDeleteConfirm}
+                title={t('books.delete_book')}
+                message={t('books.delete_book_confirm')}
+                onConfirm={handleDeleteBook}
+                onCancel={() => setShowDeleteConfirm(false)}
+                confirmText={t('common.delete')}
+                cancelText={t('common.cancel')}
+                type="danger"
+            />
+
+            <ConfirmModal
+                isOpen={showDeletePlaceConfirm}
+                title={t('books.remove_place_title')}
+                message={t('books.remove_place_msg')}
+                onConfirm={executeDeleteItem}
+                onCancel={() => setShowDeletePlaceConfirm(false)}
+                confirmText={t('books.remove_btn')}
+                cancelText={t('common.cancel')}
+                type="danger"
+            />
         </div>
     );
 }

@@ -1,0 +1,114 @@
+export const en = {
+    // Navigation
+    nav: {
+        discover: "Discover",
+        map: "Map",
+        ask_marin: "Ask Marin",
+        request_place: "Request Place",
+        login: "Login",
+        profile: "Profile",
+        sign_out: "Sign Out",
+        settings: "Settings",
+        signed_in_as: "Signed in as",
+        home: "Home",
+        books: "Books"
+    },
+    // Settings Modal
+    settings: {
+        title: "Settings",
+        language: "Language",
+        feedback: "Feedback & Bug Report",
+        feedback_desc: "Help us improve Spotary",
+        coffee: "Buy me a coffee",
+        coffee_desc: "Support the creator ☕",
+        about: "About Spotary",
+        version: "Version"
+    },
+    // Common
+    common: {
+        loading: "Loading...",
+        cancel: "Cancel",
+        save: "Save",
+        delete: "Delete",
+        edit: "Edit",
+        close: "Close"
+    },
+    // Home
+    home: {
+        search_placeholder: "Find places, vibes...",
+        popular: "Popular",
+        trending: "Trending",
+        newest: "Newest",
+        search_results: "Search Results",
+        search_results_count: "Search Results",
+        loading: "Loading Marin's Picks...",
+        search_placeholder: "Find places, vibes..."
+    },
+    // Categories
+    categories: {
+        casual: "Casual",
+        cafe: "Cafe & Coffee",
+        special: "Special Occasion",
+        bar: "Bar",
+        dessert: "Dessert",
+        bakery: "Bakery"
+    },
+    // Books
+    books: {
+        title: "My Books",
+        new_book: "New Book",
+        empty_title: "You haven't created any books yet.",
+        empty_desc: "Create a book to collect your favorite places!",
+        create_title: "Create New Book",
+        name_label: "Book Name",
+        name_placeholder: "e.g. Weekend Brunch, Best Coffee",
+        privacy_label: "Privacy",
+        privacy_private: "Private",
+        privacy_public: "Public",
+        desc_label: "Description (Optional)",
+        desc_placeholder: "What is this book about?",
+        create_btn: "Create Book",
+        creating: "Creating...",
+        login_title: "Login to use Books",
+        login_desc: "Create collections of your favorite places, share them with friends, and more!",
+        login_prompt: "Go to the Profile to sign in.",
+        remove_place_title: "Remove Place",
+        remove_place_msg: "Are you sure you want to remove this place from the book?",
+        remove_btn: "Remove",
+        add_place_title: "Add Place",
+        add_place_url_label: "Google Maps Link",
+        add_place_help: "Paste a Google Maps link. We'll analyze it and add it to your book.",
+        analyzing: "Analyzing...",
+        add_btn: "Add Place",
+        edit_title: "Edit Book",
+        delete_book: "Delete Book",
+        delete_book_confirm: "Are you sure you want to delete this book? This action cannot be undone.",
+        no_places: "No places in this book yet.",
+        add_from_maps: "Add from Google Maps",
+        suggestions: "suggestions"
+    },
+    // Profile
+    profile: {
+        login_title: "Login to Spotary",
+        login_desc: "Login to save your profile, create collections, and chat with Marin!",
+        personal_info: "Personal Info",
+        vibes_title: "Favorite Vibes",
+        vibes_desc: "Choose vibes that suit you best",
+        personality_title: "Personality",
+        personality_desc: "What kind of person are you?",
+        public_lists: "Public Lists",
+        edit_profile: "Edit Profile",
+        username_label: "Username (Unique ID)",
+        display_name_label: "Display Name",
+        bio_label: "About You",
+        bio_placeholder: "Share something about yourself...",
+        save_changes: "Save Changes",
+        saving: "Saving...",
+        choose_avatar_style: "Choose Avatar Style",
+        add_tag: "Add Tag",
+        user_not_found: "User not found",
+        no_vibes: "No vibes selected.",
+        no_personality: "No personality selected.",
+        no_bio: "No bio yet."
+    }
+};

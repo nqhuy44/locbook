@@ -50,7 +50,7 @@ const CategoryRow = ({ title, icon, places, onPlaceClick, PlaceCardComponent }) 
                     onScroll={handleScroll}
                 >
                     {places.map(place => (
-                        <PlaceCardComponent key={place._id} place={place} onClick={() => onPlaceClick(place)} />
+                        <PlaceCardComponent key={place.id || place._id} place={place} onClick={() => onPlaceClick(place)} />
                     ))}
                 </div>
 

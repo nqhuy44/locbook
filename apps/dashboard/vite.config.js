@@ -10,10 +10,10 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'LocBook',
-        short_name: 'LocBook',
-        description: 'Your personal location bookmarking app',
-        theme_color: '#ffffff',
+        name: 'Spotary',
+        short_name: 'Spotary',
+        description: 'Collect and organize places by vibe.',
+        theme_color: '#FFF0F5',
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -41,7 +41,7 @@ export default defineConfig({
       }
     },
     host: true,
-    allowedHosts: ['dev.firstdraft.sh', 'localhost', '127.0.0.1', '100.69.194.28']
+    allowedHosts: ['dev.spotary.place', 'localhost', '127.0.0.1', '100.69.194.28']
   },
   define: {
     // eslint-disable-next-line no-undef
