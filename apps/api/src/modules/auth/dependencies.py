@@ -44,13 +44,17 @@ async def get_current_user(
         
     return user
 
+from fastapi import Request
+
 async def get_optional_current_user(
-    token: str = Depends(OAuth2PasswordBearer(tokenUrl="auth/token", auto_error=False)),
+    request: Request,
     db: AsyncSession = Depends(get_db_session)
 ) -> Optional[User]:
-    if not token:
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
         return None
     
+    token = auth_header.split(" ")[1]
     try:
         payload = verify_token(token)
         if payload is None:
@@ -67,3 +71,23 @@ async def get_optional_current_user(
         return user
     except Exception:
         return None
+
+# Admin Auth
+from fastapi import Security
+from fastapi.security import APIKeyHeader
+import logging
+
+logger = logging.getLogger(__name__)
+
+API_KEY_HEADER = APIKeyHeader(name="x-admin-token", auto_error=False)
+
+async def verify_admin(token: str = Security(API_KEY_HEADER)):
+    settings = get_settings()
+    secret = settings.ADMIN_SECRET
+    if not secret:
+        logger.warning("ADMIN_SECRET not set in env. Denying admin access.")
+        raise HTTPException(status_code=403, detail="Admin access not configured")
+    
+    if not token or token != secret:
+        raise HTTPException(status_code=403, detail="Invalid Admin Token")
+    return True

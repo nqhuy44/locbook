@@ -58,6 +58,9 @@ export const en = {
     login_required: "Login to use Map",
     map_login_msg: "Explore vibes around you!",
     go_to_profile: "Go to Profile to Login",
+    disabled_title: "Marin is Drawing",
+    disabled_msg:
+      "The Map view is currently unavaible. Marin is drawing the map",
   },
   // Ask Marin
   ask_marin: {
@@ -70,11 +73,17 @@ export const en = {
     chat_login_msg:
       "Don't know where to go? Marin will help you find the perfect spot!",
     go_to_profile: "Go to Profile to Login",
+    disabled_title: "Marin is on vacation",
+    disabled_msg: "The trip is wonderful. Marin will meet you soon!",
   },
   // Books
   books: {
     title: "My Books",
     new_book: "New Book",
+    my_books: "My Books",
+    followed_books: "Followed Books",
+    followed_tag: "Followed",
+    following_tag: "Author",
     empty_title: "You haven't created any books yet.",
     empty_desc: "Create a book to collect your favorite places!",
     create_title: "Create New Book",

@@ -15,6 +15,91 @@ import { LogIn } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
+const BookItem = ({ list, t, isOwned = false }) => (
+  <a
+    href={`/books/${list.id}`}
+    onClick={(e) => {
+      e.preventDefault();
+      window.history.pushState(null, "", `/books/${list.id}`);
+      window.dispatchEvent(
+        new CustomEvent("navigate", {
+          detail: { path: `/books/${list.id}` },
+        }),
+      );
+    }}
+    className="book-card"
+  >
+    <div>
+      <h3
+        style={{
+          margin: "0 0 0.3rem 0",
+          fontSize: "1.1rem",
+          display: "flex",
+          alignItems: "center",
+          gap: "0.5rem",
+        }}
+      >
+        {list.name}
+        {list.privacy === "private" && (
+          <Lock size={14} color="var(--text-tertiary)" />
+        )}
+        {list.privacy === "public" && (
+          <Globe size={14} color="var(--text-tertiary)" />
+        )}
+      </h3>
+      {list.description && (
+        <p
+          style={{
+            margin: 0,
+            color: "var(--text-secondary)",
+            fontSize: "0.9rem",
+          }}
+        >
+          {list.description}
+        </p>
+      )}
+      <div style={{ display: "flex", gap: "1rem", marginTop: "0.5rem" }}>
+        <span
+          style={{
+            fontSize: "0.8rem",
+            color: "var(--text-tertiary)",
+            display: "inline-block",
+          }}
+        >
+          {list.item_count} places
+        </span>
+        <span
+          style={{
+            fontSize: "0.8rem",
+            color: "var(--text-tertiary)",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "4px",
+          }}
+        >
+          <Users size={12} /> {list.followers_count || 0}
+        </span>
+      </div>
+      {!isOwned && list.owner_username && (
+        <div
+          style={{
+            marginTop: "0.8rem",
+            fontSize: "0.8rem",
+            color: "var(--accent-color)",
+            fontWeight: "600",
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+          }}
+        >
+          {t("books.following_tag") || "Đang follow"} @{list.owner_username}
+        </div>
+      )}
+    </div>
+    <ChevronRight size={20} color="var(--text-tertiary)" />
+  </a>
+);
+
 function BooksPage() {
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -175,78 +260,64 @@ function BooksPage() {
             <p style={{ fontSize: "0.9rem" }}>{t("books.empty_desc")}</p>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            {lists.map((list) => (
-              <a
-                key={list.id}
-                href={`/books/${list.id}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  window.history.pushState(null, "", `/books/${list.id}`);
-                  window.dispatchEvent(
-                    new CustomEvent("navigate", {
-                      detail: { path: `/books/${list.id}` },
-                    }),
-                  );
-                }}
-                className="book-card"
-              >
-                <div>
-                  <h3
-                    style={{
-                      margin: "0 0 0.3rem 0",
-                      fontSize: "1.1rem",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.5rem",
-                    }}
-                  >
-                    {list.name}
-                    {list.privacy === "private" && (
-                      <Lock size={14} color="var(--text-tertiary)" />
-                    )}
-                    {list.privacy === "public" && (
-                      <Globe size={14} color="var(--text-tertiary)" />
-                    )}
-                  </h3>
-                  {list.description && (
-                    <p
-                      style={{
-                        margin: 0,
-                        color: "var(--text-secondary)",
-                        fontSize: "0.9rem",
-                      }}
-                    >
-                      {list.description}
-                    </p>
-                  )}
-                  <span
-                    style={{
-                      fontSize: "0.8rem",
-                      color: "var(--text-tertiary)",
-                      marginTop: "0.5rem",
-                      display: "inline-block",
-                    }}
-                  >
-                    {list.item_count} places
-                  </span>
-                  <span
-                    style={{
-                      fontSize: "0.8rem",
-                      color: "var(--text-tertiary)",
-                      marginTop: "0.5rem",
-                      display: "inline-block",
-                      alignItems: "center",
-                      gap: "4px",
-                      marginLeft: "1.5rem",
-                    }}
-                  >
-                    <Users size={12} /> {list.followers_count || 0}
-                  </span>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}
+          >
+            {/* My Books Section */}
+            {lists.some((l) => l.is_owner) && (
+              <div>
+                <h2
+                  style={{
+                    fontSize: "1rem",
+                    color: "var(--text-secondary)",
+                    marginBottom: "0.75rem",
+                    fontWeight: "600",
+                  }}
+                >
+                  {t("books.my_books") || "My Books"}
+                </h2>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  {lists
+                    .filter((l) => l.is_owner)
+                    .map((list) => (
+                      <BookItem
+                        key={list.id}
+                        list={list}
+                        t={t}
+                        isOwned={true}
+                      />
+                    ))}
                 </div>
-                <ChevronRight size={20} color="var(--text-tertiary)" />
-              </a>
-            ))}
+              </div>
+            )}
+
+            {/* Followed Books Section */}
+            {lists.some((l) => !l.is_owner) && (
+              <div>
+                <h2
+                  style={{
+                    fontSize: "1rem",
+                    color: "var(--text-secondary)",
+                    marginBottom: "0.75rem",
+                    fontWeight: "600",
+                  }}
+                >
+                  {t("books.followed_books") || "Followed Books"}
+                </h2>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  {lists
+                    .filter((l) => !l.is_owner)
+                    .map((list) => (
+                      <BookItem
+                        key={list.id}
+                        list={list}
+                        t={t}
+                        isOwned={false}
+                      />
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -308,35 +379,7 @@ function BooksPage() {
                     {t("books.privacy_label")}
                   </label>
                   <div style={{ display: "flex", gap: "1rem" }}>
-                    <button
-                      type="button"
-                      onClick={() => setNewListPrivacy("private")}
-                      style={{
-                        flex: 1,
-                        padding: "0.75rem",
-                        borderRadius: "8px",
-                        border:
-                          newListPrivacy === "private"
-                            ? "2px solid var(--primary-color)"
-                            : "1px solid var(--border-color)",
-                        background:
-                          newListPrivacy === "private"
-                            ? "rgba(217, 70, 239, 0.1)"
-                            : "var(--bg-secondary)",
-                        color:
-                          newListPrivacy === "private"
-                            ? "var(--primary-color)"
-                            : "var(--text-primary)",
-                        cursor: "pointer",
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                      }}
-                    >
-                      <Lock size={20} />
-                      <span>{t("books.privacy_private")}</span>
-                    </button>
+                    {/* Private option hidden as per requirement */}
                     <button
                       type="button"
                       onClick={() => setNewListPrivacy("public")}
