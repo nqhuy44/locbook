@@ -14,7 +14,7 @@ The **Memo System** replaces traditional reviews with a personal journal concept
 
 ## Concept
 
-| Traditional Review | LocBook Memo |
+| Traditional Review | Spotary Memo |
 | :--- | :--- |
 | Public, anonymous | Personal, authored |
 | Star rating focused | Vibe + memory focused |

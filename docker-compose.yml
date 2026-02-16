@@ -12,12 +12,12 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=locbook
+      - POSTGRES_DB=spotary
     deploy:
       resources:
         limits:
           cpus: '1.0'
-          memory: 2G
+          memory: 512M
     logging:
       driver: "json-file"
       options:

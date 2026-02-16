@@ -1,20 +1,20 @@
 {
-    "name": "locbook-monorepo",
-    "version": "0.0.0",
-    "license": "MIT",
-    "scripts": {
-        "start:api": "nx serve api",
-        "start:dashboard": "nx serve dashboard",
-        "start:admin": "nx serve admin",
-        "build:all": "nx run-many --target=build --all",
-        "docker:build": "nx run-many --target=build-image --all",
-        "release": "./tools/scripts/release.sh"
-    },
-    "private": true,
-    "devDependencies": {
-        "nx": "^22.4.5"
-    },
-    "workspaces": [
-        "apps/*"
-    ]
+  "name": "spotary-monorepo",
+  "version": "0.0.0",
+  "license": "MIT",
+  "scripts": {
+    "start:api": "nx serve api",
+    "start:dashboard": "nx serve dashboard",
+    "start:admin": "nx serve admin",
+    "build:all": "nx run-many --target=build --all",
+    "docker:build": "nx run-many --target=build-image --all",
+    "release": "./tools/scripts/release.sh"
+  },
+  "private": true,
+  "devDependencies": {
+    "nx": "^22.4.5"
+  },
+  "workspaces": [
+    "apps/*"
+  ]
 }

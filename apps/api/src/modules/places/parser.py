@@ -1,7 +1,7 @@
 import re
 import httpx
 from bs4 import BeautifulSoup
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import logging
 from src.core.config import get_settings
 from src.core.utils import to_toon
@@ -23,6 +23,31 @@ class LinkParser:
     def is_google_maps_url(self, url: str) -> bool:
         return any(host in url for host in ("google.com/maps", "goo.gl/maps", "maps.app.goo.gl"))
 
+    def _parse_address_components(self, components: List[Dict[str, Any]]) -> Dict[str, str]:
+        """Extract city, district, country from Google Places address components."""
+        result = {"city": None, "district": None, "country": "Vietnam"}
+        
+        for comp in components:
+            types = comp.get("types", [])
+            long_name = comp.get("longName", "")
+            
+            if "country" in types:
+                result["country"] = long_name
+            
+            # City / Province
+            if "administrative_area_level_1" in types:
+                result["city"] = long_name
+                
+            # District (Priority: locality > administrative_area_level_2)
+            if "administrative_area_level_2" in types:
+                # Often district level in Vietnam
+                result["district"] = long_name
+            if "locality" in types:
+                 # Override if locality is present (more precise usually)
+                result["district"] = long_name
+                
+        return result
+
     async def _call_places_api(self, text_query: str) -> Optional[Dict[str, Any]]:
         """Call Google Places API (New) Text Search."""
         settings = get_settings()
@@ -40,6 +65,7 @@ class LinkParser:
                 "places.currentOpeningHours", "places.location",
                 "places.editorialSummary", "places.googleMapsUri",
                 "places.photos",  # Always fetch for thumbnail
+                "places.addressComponents",
             ]
 
             if settings.MAX_REVIEWS_FOR_AI > 0:
@@ -171,6 +197,11 @@ class LinkParser:
                             img_data = await self._fetch_photo_bytes(p["name"])
                             if img_data:
                                 photos_bytes.append(img_data)
+            
+            # Extract Address Components if available
+            address_components = {}
+            if places_api_data and "addressComponents" in places_api_data:
+                address_components = self._parse_address_components(places_api_data["addressComponents"])
 
             # Build context text in TOON format for token efficiency
             final_place_name = place_name_from_url
@@ -236,6 +267,7 @@ class LinkParser:
                 "raw_api": places_api_data,
                 "url": url,
                 "inferred_name": final_place_name,
+                "address_components": address_components,
                 "thumbnail_photo_name": thumbnail_photo_name,
             }
 

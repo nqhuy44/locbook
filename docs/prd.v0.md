@@ -1,7 +1,7 @@
-# Product Requirements Document (PRD) - LocBook
+# Product Requirements Document (PRD) - Spotary
 
 ## 1. Introduction
-LocBook is a local guide application for Ho Chi Minh City, utilizing AI to match users with places (cafes, bars, restaurants) that fit their vibe and needs. It offers a web dashboard for users, an admin dashboard for management, and a Telegram bot for convenient access.
+Spotary is a local guide application for Ho Chi Minh City, utilizing AI to match users with places (cafes, bars, restaurants) that fit their vibe and needs. It offers a web dashboard for users, an admin dashboard for management, and a Telegram bot for convenient access.
 
 ## 2. Goals
 - **Personalized Recommendations**: Use AI to understand natural language queries (e.g., "cozy cafe for working", "lively pub for group").

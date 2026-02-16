@@ -8,7 +8,7 @@
 
 ## Overview
 
-LocBook uses **pgvector** for semantic (vector similarity) search, enabling users to find places by "vibe" and "mood" rather than exact keywords. When a user types "cozy cafe for working late at night," the system understands the intent and returns the most atmospherically relevant places.
+Spotary uses **pgvector** for semantic (vector similarity) search, enabling users to find places by "vibe" and "mood" rather than exact keywords. When a user types "cozy cafe for working late at night," the system understands the intent and returns the most atmospherically relevant places.
 
 ---
 
@@ -106,7 +106,7 @@ def get_text_embedding(text: str) -> list[float]:
 | `<->` | L2 (Euclidean) | Alternative |
 | `<#>` | Inner Product | For normalized vectors |
 
-LocBook uses **cosine distance** (`<=>`) as the default.
+Spotary uses **cosine distance** (`<=>`) as the default.
 
 ---
 

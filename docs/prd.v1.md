@@ -1,8 +1,8 @@
-# LocBook Product Requirements Document (PRD)
+# Spotary Product Requirements Document (PRD)
 
 | Field | Value |
 | :--- | :--- |
-| **Project Name** | LocBook — The Social Vibe Archive |
+| **Project Name** | Spotary — The Social Vibe Archive |
 | **Version** | 1.2 |
 | **Status** | In Development |
 | **Last Updated** | 2026-02-12 |
@@ -11,9 +11,9 @@
 
 ## 1. Executive Summary
 
-**LocBook** is an AI-powered personal location assistant and social discovery platform for Ho Chi Minh City. Unlike Google Maps (logistics) or TripAdvisor (reviews), LocBook focuses on **"Vibes"** and **"Memories."**
+**Spotary** is an AI-powered personal location assistant and social discovery platform for Ho Chi Minh City. Unlike Google Maps (logistics) or TripAdvisor (reviews), Spotary focuses on **"Vibes"** and **"Memories."**
 
-An AI Agent ("**Marin**") via Telegram captures places from Google Maps links. A web dashboard lets users explore, filter, and discover places using **Semantic Search** (pgvector). In version 2.0, LocBook evolves into a **Social Vibe Archive** — users create personal journals (**Memos**), curate **Collections**, and discover places through trusted social connections.
+An AI Agent ("**Marin**") via Telegram captures places from Google Maps links. A web dashboard lets users explore, filter, and discover places using **Semantic Search** (pgvector). In version 2.0, Spotary evolves into a **Social Vibe Archive** — users create personal journals (**Memos**), curate **Collections**, and discover places through trusted social connections.
 
 ---
 
@@ -396,7 +396,7 @@ flowchart LR
 #### FR-PWA1: Installable App
 - Web App Manifest with app name, icons (192px + 512px), `display: standalone`.
 - "Add to Home Screen" prompt on mobile browsers.
-- Splash screen with LocBook branding.
+- Splash screen with Spotary branding.
 
 #### FR-PWA2: Offline Support
 - **App Shell**: Cache HTML, CSS, JS, fonts — app loads instantly even offline.

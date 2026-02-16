@@ -35,7 +35,7 @@ async def show_stats():
         print(f"🤝 Total Interactions: {total_interactions}")
 
 async def main():
-    parser = argparse.ArgumentParser(description="LocBook Database Manager")
+    parser = argparse.ArgumentParser(description="Spotary Database Manager")
     parser.add_argument("--stats", action="store_true", help="Show database stats")
     parser.add_argument("--init", action="store_true", help="Initialize/create all tables")
     

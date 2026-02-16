@@ -15,24 +15,27 @@
 ## Data Model
 
 ### Collection
-| Column | Type | Description |
-| :--- | :--- | :--- |
-| `id` | UUID | Primary key |
-| `user_id` | UUID FK → users | Owner (CASCADE delete) |
-| `name` | String | List name (required) |
-| `description` | String | Optional description |
-| `is_public` | Boolean | Default `true` |
-| `created_at` | DateTime | Auto |
+
+| Column        | Type            | Description            |
+| :------------ | :-------------- | :--------------------- |
+| `id`          | UUID            | Primary key            |
+| `user_id`     | UUID FK → users | Owner (CASCADE delete) |
+| `name`        | String          | List name (required)   |
+| `description` | String          | Optional description   |
+| `is_public`   | Boolean         | Default `true`         |
+| `created_at`  | DateTime        | Auto                   |
 
 ### CollectionItem (Link Table)
-| Column | Type | Description |
-| :--- | :--- | :--- |
-| `collection_id` | UUID PK, FK → collections | CASCADE delete |
-| `place_id` | UUID PK, FK → places | Part of composite PK |
-| `added_at` | DateTime | Auto |
-| `note` | String | Personal note ("Try the matcha latte here") |
+
+| Column          | Type                      | Description                                 |
+| :-------------- | :------------------------ | :------------------------------------------ |
+| `collection_id` | UUID PK, FK → collections | CASCADE delete                              |
+| `place_id`      | UUID PK, FK → places      | Part of composite PK                        |
+| `added_at`      | DateTime                  | Auto                                        |
+| `note`          | String                    | Personal note ("Try the matcha latte here") |
 
 **Relationships**:
+
 - `Collection` → has many `CollectionItem` (cascade delete-orphan).
 - `CollectionItem` ↔ `Place` (many-to-many through link table).
 
@@ -40,15 +43,15 @@
 
 ## Planned API Endpoints
 
-| Method | Endpoint | Auth | Description |
-| :--- | :--- | :--- | :--- |
-| POST | `/api/collections` | JWT | Create collection |
-| GET | `/api/collections` | JWT | List user's collections |
-| GET | `/api/collections/{id}` | Mixed | View collection (public or owner) |
-| PUT | `/api/collections/{id}` | JWT (owner) | Update name/description |
-| DELETE | `/api/collections/{id}` | JWT (owner) | Delete collection |
-| POST | `/api/collections/{id}/items` | JWT (owner) | Add place to collection |
-| DELETE | `/api/collections/{id}/items/{place_id}` | JWT (owner) | Remove place |
+| Method | Endpoint                                 | Auth        | Description                       |
+| :----- | :--------------------------------------- | :---------- | :-------------------------------- |
+| POST   | `/api/collections`                       | JWT         | Create collection                 |
+| GET    | `/api/collections`                       | JWT         | List user's collections           |
+| GET    | `/api/collections/{id}`                  | Mixed       | View collection (public or owner) |
+| PUT    | `/api/collections/{id}`                  | JWT (owner) | Update name/description           |
+| DELETE | `/api/collections/{id}`                  | JWT (owner) | Delete collection                 |
+| POST   | `/api/collections/{id}/items`            | JWT (owner) | Add place to collection           |
+| DELETE | `/api/collections/{id}/items/{place_id}` | JWT (owner) | Remove place                      |
 
 ### `POST /api/collections`
 
@@ -72,6 +75,7 @@
 ### `GET /api/collections/{id}`
 
 **Access Rules**:
+
 - If `is_public = true` → anyone can view.
 - If `is_public = false` → only owner can view.
 - Returns collection metadata + list of places with notes.
@@ -96,8 +100,9 @@
 ## Sharing
 
 Public collections get a shareable URL:
+
 ```
-https://locbook.app/collections/{collection_id}
+https://spotary.app/collections/{collection_id}
 ```
 
 Frontend renders the collection as a styled list with place cards.

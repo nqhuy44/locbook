@@ -8,7 +8,7 @@
 
 ## Overview
 
-LocBook uses **passwordless authentication** via Google OAuth 2.0. Users sign in with their Google account — no email/password registration. Sessions are managed with JWT tokens. The system supports user roles (`user`, `admin`) and automatically creates a Profile on first login.
+Spotary uses **passwordless authentication** via Google OAuth 2.0. Users sign in with their Google account — no email/password registration. Sessions are managed with JWT tokens. The system supports user roles (`user`, `admin`) and automatically creates a Profile on first login.
 
 ---
 
