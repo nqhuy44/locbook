@@ -108,6 +108,9 @@ export const en = {
     no_places: "No places in this book yet.",
     add_from_maps: "Add from Google Maps",
     suggestions: "suggestions",
+    add_to_book: "Add to Book",
+    select_book: "Select Book",
+    no_books: "No books found. Create one in Books section!",
   },
   // Profile
   profile: {

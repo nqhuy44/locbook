@@ -31,6 +31,7 @@ class UserListRead(BaseModel):
     privacy: ListPrivacy
     item_count: int
     followers_count: int = 0
+    items: List[Dict] = []
     # We might want thumbnail images from the first few places
 
 class ListPlaceItem(BaseModel):
@@ -88,7 +89,8 @@ async def get_my_lists(
             description=l.description,
             privacy=l.privacy,
             item_count=len(l.items),
-            followers_count=followers_counts.get(l.id, 0)
+            followers_count=followers_counts.get(l.id, 0),
+            items=l.items
         ) for l in lists
     ]
 

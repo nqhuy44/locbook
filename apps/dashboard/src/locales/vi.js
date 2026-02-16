@@ -107,6 +107,9 @@ export const vi = {
     no_places: "Chưa có địa điểm nào trong danh sách.",
     add_from_maps: "Thêm từ Google Maps",
     suggestions: "gợi ý món ăn",
+    add_to_book: "Thêm vào Tủ",
+    select_book: "Chọn Tủ",
+    no_books: "Không thấy danh sách nào. Hãy tạo mới ở phần Tủ nhé!",
   },
   // Profile
   profile: {
