@@ -13,6 +13,7 @@ import {
   PartyPopper,
   Heart,
   ThumbsUp,
+  PenLine,
   BookOpen,
   Palette,
   TrendingUp,
@@ -28,6 +29,7 @@ import {
   Check,
   User as UserIcon,
   Menu,
+  Compass,
 } from "lucide-react";
 import { CONFIG as DEFAULT_CONFIG } from "./config";
 import MapView from "./components/MapView";
@@ -44,6 +46,7 @@ import BooksPage from "./pages/BooksPage";
 import BookDetailPage from "./pages/BookDetailPage";
 import { LanguageProvider, useLanguage } from "./context/LanguageContext";
 import SettingsModal from "./components/common/SettingsModal";
+import FilterBar from "./components/FilterBar";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -84,6 +87,13 @@ class ErrorBoundary extends React.Component {
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
+const PRICE_LEVEL_MAP = {
+  PRICE_LEVEL_INEXPENSIVE: "Inexpensive",
+  PRICE_LEVEL_MODERATE: "Moderate",
+  PRICE_LEVEL_EXPENSIVE: "Expensive",
+  PRICE_LEVEL_VERY_EXPENSIVE: "Very Expensive",
+};
+
 function AppContent() {
   const { user, loading: authLoading, loginResponse } = useAuth();
   const { showToast } = useToast();
@@ -97,6 +107,91 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState("info");
   const [menuItems, setMenuItems] = useState([]);
   const [bookId, setBookId] = useState(null);
+  const [userLists, setUserLists] = useState([]);
+  const [showBookSelector, setShowBookSelector] = useState(false);
+  const [userInteractions, setUserInteractions] = useState({
+    upvoted: false,
+    bookmarked: false,
+    viewed: false,
+  });
+  const [placeMemos, setPlaceMemos] = useState([]);
+  const [showMemoEditor, setShowMemoEditor] = useState(false);
+  const [memoContent, setMemoContent] = useState("");
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isPullRefreshing, setIsPullRefreshing] = useState(false);
+  const touchStartRef = React.useRef(0);
+  const refreshingRef = React.useRef(false);
+  const mainContentRef = React.useRef(null);
+
+  const handleToggleList = async (listId, isAdded) => {
+    if (!user || !selectedPlace) return;
+    const placeId = selectedPlace._id || selectedPlace.id;
+    const token = localStorage.getItem("auth_token");
+
+    try {
+      if (isAdded) {
+        // Remove
+        const res = await fetch(
+          `${API_URL}/api/lists/${listId}/items/${placeId}`,
+          {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+        if (res.ok) {
+          showToast("Removed from book!", "success");
+          fetchUserLists();
+        }
+      } else {
+        // Add
+        const res = await fetch(`${API_URL}/api/lists/${listId}/add`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            url: selectedPlace.google_maps_url,
+            name: selectedPlace.name,
+            address: selectedPlace.address,
+            suggested_dishes: [],
+          }),
+        });
+        if (res.ok) {
+          showToast("Added to book!", "success");
+          fetchUserLists();
+        } else {
+          const err = await res.json();
+          showToast(err.detail || "Failed to add", "error");
+        }
+      }
+    } catch (err) {
+      console.error("Failed to toggle list", err);
+      showToast("An error occurred", "error");
+    }
+  };
+
+  const fetchUserLists = async () => {
+    if (!user) return;
+    try {
+      const token = localStorage.getItem("auth_token");
+      const res = await fetch(`${API_URL}/api/lists`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUserLists(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch user lists", err);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchUserLists();
+    }
+  }, [user]);
 
   // Custom navigation handler for deep links / internal navigation
   useEffect(() => {
@@ -226,9 +321,18 @@ function AppContent() {
     }
   }, [places]);
 
-  const fetchData = async () => {
+  const fetchData = async (isPull = false) => {
+    if (refreshingRef.current && isPull) return;
     try {
-      setLoading(true);
+      if (isPull) {
+        refreshingRef.current = true;
+        setIsPullRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      // Add a small artificial delay for refresh so it's visible
+      const startTime = Date.now();
 
       const [placesRes, configRes] = await Promise.all([
         fetch(`${API_URL}/api/places?limit=150`),
@@ -247,12 +351,105 @@ function AppContent() {
           }
         }
       }
+
+      // Ensure at least 600ms delay for refresh animation
+      if (isPull) {
+        const elapsed = Date.now() - startTime;
+        if (elapsed < 600) {
+          await new Promise((resolve) => setTimeout(resolve, 600 - elapsed));
+        }
+      }
     } catch (err) {
       console.error("Failed to fetch data", err);
     } finally {
       setLoading(false);
+      setIsPullRefreshing(false);
+      setPullDistance(0);
+      refreshingRef.current = false;
     }
   };
+
+  const handleTouchStart = (e) => {
+    // If already refreshing or not on scroll top, don't start a new gesture
+    if (refreshingRef.current) return;
+
+    if (
+      mainContentRef.current &&
+      mainContentRef.current.scrollTop === 0 &&
+      currentView === "list"
+    ) {
+      touchStartRef.current = e.touches[0].clientY;
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (touchStartRef.current === 0 || refreshingRef.current) return;
+
+    const currentY = e.touches[0].clientY;
+    const diff = currentY - touchStartRef.current;
+
+    // Reset if user scrolls away from top during gesture
+    if (mainContentRef.current && mainContentRef.current.scrollTop > 0) {
+      setPullDistance(0);
+      touchStartRef.current = 0;
+      return;
+    }
+
+    if (diff > 0) {
+      // User is pulling down
+      const resistance = 0.4;
+      const distance = Math.min(diff * resistance, 100);
+      setPullDistance(distance);
+
+      // Prevent default scroll behavior if pulling down
+      if (e.cancelable) e.preventDefault();
+    } else if (diff < 0) {
+      // User is pushing back up
+      setPullDistance(0);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    // Use a functional update or ref logic if needed, but here we can check pullDistance
+    // because it's updated via state. However, to be extra safe with closures:
+    setPullDistance((currentDistance) => {
+      if (currentDistance > 60 && !refreshingRef.current) {
+        refreshingRef.current = true;
+        fetchData(true);
+      }
+      return 0; // Always reset visual pull on end
+    });
+    touchStartRef.current = 0;
+  };
+
+  // Reset pull states when switching views to prevent "stuck" UI
+  useEffect(() => {
+    if (currentView !== "list") {
+      setPullDistance(0);
+      setIsPullRefreshing(false);
+      refreshingRef.current = false;
+      touchStartRef.current = 0;
+    }
+  }, [currentView]);
+
+  useEffect(() => {
+    const container = document.querySelector(".app-container");
+    if (!container) return;
+
+    container.addEventListener("touchstart", handleTouchStart, {
+      passive: true,
+    });
+    container.addEventListener("touchmove", handleTouchMove, {
+      passive: false,
+    });
+    container.addEventListener("touchend", handleTouchEnd, { passive: true });
+
+    return () => {
+      container.removeEventListener("touchstart", handleTouchStart);
+      container.removeEventListener("touchmove", handleTouchMove);
+      container.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [currentView]); // Removed pullDistance to keep handlers stable
 
   const categorizedPlaces = useMemo(() => {
     const groups = {};
@@ -376,12 +573,17 @@ function AppContent() {
     setSelectedPlace(place);
     setActiveTab("info");
     setMenuItems([]);
+    setUserInteractions({ upvoted: false, bookmarked: false, viewed: false });
+    setPlaceMemos([]);
+    setShowMemoEditor(false);
+    setMemoContent("");
     document.body.style.overflow = "hidden";
 
     const placeId = place._id || place.id;
     const newUrl = `${window.location.pathname}?place=${placeId}`;
     window.history.pushState({ path: newUrl }, "", newUrl);
 
+    // Fetch full place if needed
     if (!place.raw_ai_response) {
       try {
         const res = await fetch(`${API_URL}/api/places/${placeId}`);
@@ -392,6 +594,37 @@ function AppContent() {
       }
     }
 
+    // Fetch interaction status
+    if (user) {
+      try {
+        const token = localStorage.getItem("auth_token");
+        const res = await fetch(
+          `${API_URL}/api/interactions/status/${placeId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setUserInteractions(data);
+        }
+      } catch (e) {
+        console.error("Failed to fetch interactions", e);
+      }
+    }
+
+    // Fetch memos
+    try {
+      const res = await fetch(`${API_URL}/api/memos/place/${placeId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setPlaceMemos(data);
+      }
+    } catch (e) {
+      console.error("Failed to fetch memos", e);
+    }
+
+    // Fetch menu
     try {
       const menuRes = await fetch(`${API_URL}/api/places/${placeId}/menu`);
       if (menuRes.ok) {
@@ -402,8 +635,73 @@ function AppContent() {
       console.error("Failed to fetch menu", e);
     }
   };
+
+  const handleToggleUpvote = async () => {
+    if (!user || !selectedPlace) return;
+    const placeId = selectedPlace._id || selectedPlace.id;
+    const token = localStorage.getItem("auth_token");
+
+    try {
+      const res = await fetch(`${API_URL}/api/interactions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ place_id: placeId, type: "upvote" }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUserInteractions((prev) => ({
+          ...prev,
+          upvoted: data.status === "created",
+        }));
+        setSelectedPlace((prev) => ({
+          ...prev,
+          upvote_count: data.upvote_count,
+        }));
+        showToast(
+          data.status === "created" ? "Upvoted!" : "Removed upvote",
+          "success",
+        );
+      }
+    } catch (e) {
+      console.error("Failed to toggle upvote", e);
+    }
+  };
+
+  const handleSaveMemo = async () => {
+    if (!user || !selectedPlace || !memoContent.trim()) return;
+    const placeId = selectedPlace._id || selectedPlace.id;
+    const token = localStorage.getItem("auth_token");
+
+    try {
+      const res = await fetch(`${API_URL}/api/memos`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ place_id: placeId, content: memoContent }),
+      });
+      if (res.ok) {
+        const newMemo = await res.json();
+        setPlaceMemos((prev) => [newMemo, ...prev]);
+        setMemoContent("");
+        setShowMemoEditor(false);
+        setSelectedPlace((prev) => ({
+          ...prev,
+          memo_count: (prev.memo_count || 0) + 1,
+        }));
+        showToast("Memo saved!", "success");
+      }
+    } catch (e) {
+      console.error("Failed to save memo", e);
+    }
+  };
   const closeModal = () => {
     setSelectedPlace(null);
+    setShowBookSelector(false);
     document.body.style.overflow = "auto";
     const baseUrl = window.location.pathname;
     window.history.pushState({ path: baseUrl }, "", baseUrl);
@@ -443,6 +741,24 @@ function AppContent() {
 
   return (
     <div className="app-container">
+      {/* Pull-to-refresh Indicator */}
+      <div
+        className={`pull-to-refresh-indicator ${isPullRefreshing ? "refreshing" : ""}`}
+        style={{
+          transform: `translateY(${pullDistance}px)`,
+          opacity: pullDistance > 0 || isPullRefreshing ? 1 : 0,
+        }}
+      >
+        <Sparkles
+          size={24}
+          className={isPullRefreshing ? "spinning" : ""}
+          style={{
+            transform: `rotate(${pullDistance * 2}deg)`,
+            color: "var(--accent-color)",
+          }}
+        />
+      </div>
+
       {/* Navbar */}
       <nav className="navbar">
         <div className="nav-left">
@@ -472,6 +788,8 @@ function AppContent() {
                   setActiveVibes([]);
                   setActiveCats([]);
                   setCurrentView("list");
+                  // Always trigger refresh when clicking Discover
+                  fetchData(true);
                 }}
               >
                 {t("nav.discover")}
@@ -558,81 +876,18 @@ function AppContent() {
         currentView !== "books" &&
         currentView !== "book-detail" &&
         !(currentView === "map" && !user) && (
-          <div className="filter-bar">
-            <div
-              style={{
-                display: "flex",
-                gap: "1rem",
-                alignItems: "center",
-                flexWrap: "wrap",
-                width: "100%",
-              }}
-            >
-              <div
-                className="search-wrapper"
-                style={currentView === "map" ? { maxWidth: "100%" } : {}}
-              >
-                <Search size={18} color="#d8b4fe" />
-                <input
-                  className="search-input"
-                  type="text"
-                  placeholder={t("home.search_placeholder")}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-
-              {/* Sort Mode Selector */}
-              {currentView !== "map" && (
-                <div className="sort-selector">
-                  {[
-                    {
-                      key: "popular",
-                      icon: <ThumbsUp size={14} />,
-                      label: t("home.popular"),
-                    },
-                    {
-                      key: "trending",
-                      icon: <TrendingUp size={14} />,
-                      label: t("home.trending"),
-                    },
-                    {
-                      key: "newest",
-                      icon: <Clock size={14} />,
-                      label: t("home.newest"),
-                    },
-                  ].map((mode) => (
-                    <button
-                      key={mode.key}
-                      className={`sort-btn ${sortMode === mode.key ? "active" : ""}`}
-                      onClick={() => setSortMode(mode.key)}
-                    >
-                      {mode.icon} {mode.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <FilterBar
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            sortMode={sortMode}
+            setSortMode={setSortMode}
+            currentView={currentView}
+            t={t}
+          />
         )}
 
       {/* Main Content */}
-      <main
-        className="main-content"
-        // style={
-        //   currentView === "map"
-        //     ? { padding: "0 2rem 2rem 2rem", overflow: "hidden" }
-        //     : currentView === "chat"
-        //       ? { padding: 0, overflow: "hidden", height: "calc(100vh - 74px)" }
-        //       : currentView === "profile"
-        //         ? {
-        //             padding: 0,
-        //             height: "calc(100vh - 74px)",
-        //             overflow: "hidden",
-        //           }
-        //         : {}
-        // }
-      >
+      <main className="main-content" ref={mainContentRef}>
         {currentView === "chat" ? (
           <div style={{ height: "100%", width: "100%" }}>
             <ChatView onPlaceClick={openModal} config={config} />
@@ -717,13 +972,14 @@ function AppContent() {
       <BottomNav
         currentView={currentView}
         onViewChange={(view) => {
-          if (view !== "profile") {
-            setSearchTerm("");
-            setActiveVibes([]);
-            setActiveCats([]);
-          }
-          if (view === "list") setCurrentView("list");
-          else if (view === "map") setCurrentView("map");
+          setSearchTerm("");
+          setActiveVibes([]);
+          setActiveCats([]);
+
+          if (view === "list") {
+            setCurrentView("list");
+            fetchData(true);
+          } else if (view === "map") setCurrentView("map");
           else if (view === "chat") setCurrentView("chat");
           else if (view === "books") setCurrentView("books");
         }}
@@ -731,6 +987,61 @@ function AppContent() {
       />
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+
+      {/* Book Selector Popup Modal */}
+      {showBookSelector && (
+        <div
+          className="book-popup-overlay"
+          onClick={() => setShowBookSelector(false)}
+        >
+          <div
+            className="book-popup-content"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="book-popup-header">
+              <h3>{t("books.select_book") || "Select Book"}</h3>
+              <button
+                className="close-btn-popup"
+                onClick={() => setShowBookSelector(false)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="book-popup-list">
+              {userLists.length > 0 ? (
+                userLists.map((list) => {
+                  const isAdded = list.items?.some(
+                    (item) =>
+                      item.place_id === (selectedPlace._id || selectedPlace.id),
+                  );
+                  return (
+                    <div
+                      key={list.id}
+                      onClick={() => handleToggleList(list.id, isAdded)}
+                      className={`book-list-item ${isAdded ? "item-added" : ""}`}
+                    >
+                      <div className="item-info-row">
+                        <BookOpen
+                          size={18}
+                          color={isAdded ? "var(--accent-color)" : "#94a3b8"}
+                        />
+                        <span className="list-name">{list.name}</span>
+                      </div>
+                      {isAdded && (
+                        <Check size={18} color="var(--accent-color)" />
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="empty-state-popup">
+                  <p>No books found. Create one in your profile!</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer - Desktop Only */}
       {config.FEATURES.ENABLE_FOOTER &&
@@ -822,67 +1133,56 @@ function AppContent() {
                 <div className="hero-overlay"></div>
                 <div className="hero-info">
                   <h1 className="hero-title">{selectedPlace.name}</h1>
-                  <div className="card-tags" style={{ fontSize: "1rem" }}>
-                    {selectedPlace.price_level && (
-                      <span className="tag-soft">
-                        {selectedPlace.price_level}
-                      </span>
-                    )}
-                    {selectedPlace.rating && (
-                      <span
-                        className="tag-soft"
-                        style={{
-                          background: "rgba(255,215,0,0.2)",
-                          color: "#ffd700",
-                        }}
-                      >
-                        ⭐ {selectedPlace.rating}
-                      </span>
-                    )}
-                    {selectedPlace.aesthetic_score && (
-                      <span
-                        className="tag-soft"
-                        style={{
-                          background: "rgba(168,85,247,0.2)",
-                          color: "#c084fc",
-                        }}
-                      >
-                        <Palette size={12} style={{ marginRight: 4 }} />{" "}
-                        {selectedPlace.aesthetic_score}/10
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Stats Row */}
                   <div
                     style={{
                       display: "flex",
-                      gap: "1.2rem",
-                      marginTop: "0.8rem",
-                      fontSize: "0.9rem",
-                      color: "rgba(255,255,255,0.8)",
+                      alignItems: "center",
+                      gap: "10px",
+                      marginBottom: "1rem",
                     }}
                   >
-                    <span
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px",
-                      }}
-                    >
-                      <ThumbsUp size={14} /> {selectedPlace.upvote_count || 0}{" "}
-                      upvotes
-                    </span>
-                    <span
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px",
-                      }}
-                    >
-                      <BookOpen size={14} /> {selectedPlace.memo_count || 0}{" "}
-                      memos
-                    </span>
+                    {selectedPlace.price_level && (
+                      <div
+                        className="badge"
+                        style={{
+                          background: "rgba(255,255,255,0.15)",
+                          color: "white",
+                          fontSize: "0.75rem",
+                          padding: "2px 8px",
+                        }}
+                      >
+                        {PRICE_LEVEL_MAP[selectedPlace.price_level] ||
+                          selectedPlace.price_level}
+                      </div>
+                    )}
+                    {selectedPlace.rating && (
+                      <div
+                        className="badge"
+                        style={{
+                          background: "rgba(245, 158, 11, 0.2)",
+                          fontSize: "0.75rem",
+                          padding: "2px 8px",
+                        }}
+                      >
+                        <span style={{ color: "#f59e0b" }}>
+                          ⭐ {selectedPlace.rating}
+                        </span>
+                      </div>
+                    )}
+                    {selectedPlace.aesthetic_score && (
+                      <div
+                        className="badge"
+                        style={{
+                          background: "rgba(168, 85, 247, 0.2)",
+                          fontSize: "0.75rem",
+                          padding: "2px 8px",
+                        }}
+                      >
+                        <span style={{ color: "#a855f7" }}>
+                          🎨 {selectedPlace.aesthetic_score}/10
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="hero-actions">
@@ -893,11 +1193,64 @@ function AppContent() {
                         target="_blank"
                         rel="noreferrer"
                         className="btn-primary"
+                        style={{
+                          flex: "2",
+                          justifyContent: "center",
+                          background: "var(--accent-gradient)",
+                          color: "white",
+                        }}
                       >
-                        <Navigation size={20} /> Get Directions
+                        <Navigation size={20} />
+                        <span>Get Directions</span>
                       </a>
                     ) : null}
                   </div>
+
+                  {/* Social Actions Tier - Only visible if logged in */}
+                  {user && (
+                    <div className="hero-social-actions">
+                      {/* Add to Book */}
+                      <button
+                        className="social-action-btn"
+                        onClick={() => setShowBookSelector(true)}
+                        title="Add to Book"
+                      >
+                        <PlusCircle size={18} />
+                        <span className="social-action-count">Book</span>
+                      </button>
+
+                      {/* Memo (Placeholder as requested) */}
+                      <button
+                        className="social-action-btn"
+                        onClick={() =>
+                          showToast("Memo feature coming soon!", "info")
+                        }
+                        title="Memo"
+                      >
+                        <PenLine size={18} />
+                        <span className="social-action-count">
+                          {selectedPlace.memo_count || 0}
+                        </span>
+                      </button>
+
+                      {/* Upvote */}
+                      <button
+                        className={`social-action-btn ${userInteractions.upvoted ? "active" : ""}`}
+                        onClick={handleToggleUpvote}
+                        title="Upvote"
+                      >
+                        <ThumbsUp
+                          size={18}
+                          fill={
+                            userInteractions.upvoted ? "currentColor" : "none"
+                          }
+                        />
+                        <span className="social-action-count">
+                          {selectedPlace.upvote_count || 0}
+                        </span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -948,6 +1301,80 @@ function AppContent() {
                           </div>
                         </div>
                       )}
+
+                      {/* Memos Section */}
+                      <div className="detail-row" style={{ marginTop: "2rem" }}>
+                        <div
+                          className="detail-label"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                          }}
+                        >
+                          <BookOpen size={16} /> Memos{" "}
+                          <span style={{ opacity: 0.5, fontSize: "0.8rem" }}>
+                            ({placeMemos.length})
+                          </span>
+                        </div>
+                        <div
+                          className="memos-list"
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "12px",
+                            marginTop: "1rem",
+                          }}
+                        >
+                          {placeMemos.map((memo) => (
+                            <div
+                              key={memo.id}
+                              style={{
+                                background: "rgba(0,0,0,0.03)",
+                                padding: "1rem",
+                                borderRadius: "12px",
+                                border: "1px solid var(--border-color)",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  fontSize: "0.9rem",
+                                  color: "var(--text-primary)",
+                                  lineHeight: "1.5",
+                                }}
+                              >
+                                {memo.content}
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: "0.75rem",
+                                  color: "var(--text-tertiary)",
+                                  marginTop: "0.5rem",
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                }}
+                              >
+                                <span>
+                                  {new Date(
+                                    memo.created_at,
+                                  ).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                          {placeMemos.length === 0 && (
+                            <div
+                              style={{
+                                fontSize: "0.85rem",
+                                color: "var(--text-tertiary)",
+                                fontStyle: "italic",
+                              }}
+                            >
+                              No memos yet. Be the first to write one!
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
 
                     <div className="col-side" style={{ flex: 1 }}>

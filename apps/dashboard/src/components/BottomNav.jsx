@@ -1,7 +1,7 @@
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useToast } from "../context/ToastContext";
-import { Home, Map, Sparkles, User, List } from "lucide-react";
+import { Home, Map, Sparkles, User, List, Compass } from "lucide-react";
 
 const BottomNav = ({ currentView, onViewChange, onProfileClick }) => {
   const { user } = useAuth();
@@ -26,8 +26,8 @@ const BottomNav = ({ currentView, onViewChange, onProfileClick }) => {
         className={`nav-item ${currentView === "list" ? "active" : ""}`}
         onClick={() => onViewChange("list")}
       >
-        <Home size={24} />
-        <span>{t("nav.home")}</span>
+        <Compass size={24} />
+        <span>{t("nav.discover")}</span>
       </div>
 
       <div

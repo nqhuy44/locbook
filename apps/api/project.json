@@ -1,85 +1,79 @@
 {
-    "name": "api",
-    "$schema": "../../node_modules/nx/schemas/project-schema.json",
-    "sourceRoot": "apps/api/src",
-    "projectType": "application",
-    "targets": {
-        "install": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "python3 -m venv ../../venv && ../../venv/bin/pip install -r requirements.txt",
-                "cwd": "apps/api"
-            }
-        },
-        "core": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "../../venv/bin/uvicorn src.services.api:app --reload --host 0.0.0.0 --port 8000",
-                "cwd": "apps/api"
-            }
-        },
-        "bot": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "../../venv/bin/python -m src.services.bot_runner",
-                "cwd": "apps/api"
-            }
-        },
-        "worker": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "../../venv/bin/python -m src.services.worker_runner",
-                "cwd": "apps/api"
-            }
-        },
-        "all": {
-            "executor": "nx:run-commands",
-            "options": {
-                "commands": [
-                    "nx run api:core",
-                    "nx run api:worker"
-                ],
-                "parallel": true
-            }
-        },
-        "build-image": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "docker build -t nqh44/locbook:${ver:-latest} .",
-                "cwd": "apps/api"
-            }
-        },
-        "test": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "../../venv/bin/pytest",
-                "cwd": "apps/api"
-            }
-        },
-        "reindex": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "../../venv/bin/python src/scripts/reindex_vectors.py",
-                "cwd": "apps/api"
-            }
-        },
-        "migrate": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "../../venv/bin/python -m src.scripts.run_migrations",
-                "cwd": "apps/api"
-            }
-        },
-        "db-init": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "../../venv/bin/python src/scripts/manage_db.py --init",
-                "cwd": "apps/api"
-            }
-        }
+  "name": "api",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/api/src",
+  "projectType": "application",
+  "targets": {
+    "install": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "python3 -m venv ../../venv && ../../venv/bin/pip install -r requirements.txt",
+        "cwd": "apps/api"
+      }
     },
-    "tags": [
-        "type:backend",
-        "scope:api"
-    ]
+    "core": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "../../venv/bin/uvicorn src.services.api:app --reload --host 0.0.0.0 --port 8000",
+        "cwd": "apps/api"
+      }
+    },
+    "bot": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "../../venv/bin/python -m src.services.bot_runner",
+        "cwd": "apps/api"
+      }
+    },
+    "worker": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "../../venv/bin/python -m src.services.worker_runner",
+        "cwd": "apps/api"
+      }
+    },
+    "all": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": ["nx run api:core", "nx run api:worker", "nx run api:bot"],
+        "parallel": true
+      }
+    },
+    "build-image": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "docker build -t nqh44/locbook:${ver:-latest} .",
+        "cwd": "apps/api"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "../../venv/bin/pytest",
+        "cwd": "apps/api"
+      }
+    },
+    "reindex": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "../../venv/bin/python src/scripts/reindex_vectors.py",
+        "cwd": "apps/api"
+      }
+    },
+    "migrate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "../../venv/bin/python -m src.scripts.run_migrations",
+        "cwd": "apps/api"
+      }
+    },
+    "db-init": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "../../venv/bin/python src/scripts/manage_db.py --init",
+        "cwd": "apps/api"
+      }
+    }
+  },
+  "tags": ["type:backend", "scope:api"]
 }
