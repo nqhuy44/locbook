@@ -9,11 +9,12 @@ from sqlmodel import select, func, col, desc
 from sqlalchemy.orm import selectinload
 
 from src.core.config import get_settings
-from src.core.database.sql_models import Place, Interaction, PlaceRead, PlaceUpdate, AppConfig, ChatSession
+from src.core.database.sql_models import Place, Interaction, PlaceRead, PlaceUpdate, AppConfig, ChatSession, User
 from src.core.database.postgres import get_db_session
 from src.services.main import init_db
 from src.modules.auth.router import router as auth_router
 from src.modules.auth.users_router import router as users_router
+from src.modules.auth.dependencies import get_current_user
 from src.modules.places.interactions_router import router as interactions_router
 from src.modules.places.discovery_router import router as discovery_router
 from src.modules.auth.onboarding_router import router as onboarding_router
@@ -40,7 +41,7 @@ import os
 import shutil
 import uuid
 
-app = FastAPI(title="LocBook API", lifespan=lifespan)
+app = FastAPI(title="Spotary API", lifespan=lifespan)
 
 # Mount Routers
 app.include_router(auth_router)
@@ -264,8 +265,8 @@ DEFAULT_APP_CONFIG = {
   "HOME_CATEGORIES": ["Casual", "Cafe & Coffee", "Special Occasion", "Bar"],
   "LINKS": {
     "BUY_ME_COFFEE": "https://buymeacoffee.com/nqhuy",
-    "GITHUB": "https://locbook.firstdraft.sh",
-    "AUTHOR_WEBSITE": "https://locbook.firstdraft.sh",
+    "GITHUB": "https://spotary.firstdraft.sh",
+    "AUTHOR_WEBSITE": "https://spotary.firstdraft.sh",
     "LOC_REQUEST": "https://forms.gle/2w4efcfECzXwpnvo7",
     "FEEDBACK": "https://forms.gle/2ntCQmgKNrEbN3DX9",
     "DASHBOARD_URL": "http://localhost:5173",
@@ -357,7 +358,7 @@ class ChatMessage(BaseModel):
     message: str
 
 @app.post("/api/chat/message")
-async def chat_message(payload: ChatMessage):
+async def chat_message(payload: ChatMessage, current_user: User = Depends(get_current_user)):
     if not DEFAULT_APP_CONFIG["FEATURES"]["FEAT_AI_MATCHMAKE"]:
         return {"error": "Feature disabled"}
     

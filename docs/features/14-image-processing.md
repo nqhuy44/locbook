@@ -8,7 +8,7 @@
 
 ## Overview
 
-LocBook stores place images **locally** on the server filesystem. Images are downloaded from Google Places API or uploaded via the admin dashboard, then served as static files via FastAPI. Each place can have multiple image URLs and a primary `local_image_path`.
+Spotary stores place images **locally** on the server filesystem. Images are downloaded from Google Places API or uploaded via the admin dashboard, then served as static files via FastAPI. Each place can have multiple image URLs and a primary `local_image_path`.
 
 ---
 

@@ -8,7 +8,7 @@
 
 ## Overview
 
-The **Admin Dashboard** is a separate React+Vite application for managing LocBook's data and configuration. Admins authenticate via a shared secret (`ADMIN_SECRET`) and can manage places, update the dynamic config, and upload assets.
+The **Admin Dashboard** is a separate React+Vite application for managing Spotary's data and configuration. Admins authenticate via a shared secret (`ADMIN_SECRET`) and can manage places, update the dynamic config, and upload assets.
 
 ---
 

@@ -1,4 +1,4 @@
-# LocBook Monorepo
+# Spotary Monorepo
 
 This repository is managed as an Nx monorepo.
 
@@ -13,6 +13,7 @@ This repository is managed as an Nx monorepo.
 Requires `nx` (install via `npm install -g nx` or use `npx nx`).
 
 ### Development
+
 - **Install dependencies**: `npm install`
 - **Setup API**: `nx run api:install`
 - **Start API**: `nx serve api`

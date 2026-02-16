@@ -46,6 +46,10 @@ class PlaceRead(SQLModel):
     id: uuid.UUID
     name: str
     address: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    district: Optional[str] = None
+    country: Optional[str] = None
     categories: Optional[List[str]] = None
     vibes: Optional[List[str]] = None
     mood: Optional[List[str]] = None
@@ -69,6 +73,10 @@ class PlaceUpdate(SQLModel):
     """Partial update schema for Place."""
     name: Optional[str] = None
     address: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    district: Optional[str] = None
+    country: Optional[str] = None
     categories: Optional[List[str]] = None
     vibes: Optional[List[str]] = None
     mood: Optional[List[str]] = None
@@ -84,6 +92,11 @@ class PlaceUpdate(SQLModel):
 class PlaceBase(SQLModel):
     name: str
     address: Optional[str] = Field(default=None, sa_column=Column(Text))
+    
+    # --- Address Components ---
+    city: Optional[str] = Field(default=None, sa_column=Column(String, index=True))
+    district: Optional[str] = Field(default=None, sa_column=Column(String, index=True))
+    country: Optional[str] = Field(default="Vietnam", sa_column=Column(String, index=True))
     
     # --- Metadata ---
     categories: Optional[List[str]] = Field(default=None, sa_column=Column(ARRAY(String)))
@@ -398,3 +411,12 @@ class UserList(SQLModel, table=True):
     updated_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now()))
 
     user: User = Relationship(back_populates="lists")
+    
+    # Relationship to follows
+    # followers: List["UserListFollow"] = Relationship(back_populates="user_list")
+
+class UserListFollow(SQLModel, table=True):
+    __tablename__ = "user_list_follows"
+    user_id: uuid.UUID = Field(foreign_key="users.id", primary_key=True)
+    list_id: uuid.UUID = Field(foreign_key="user_lists.id", primary_key=True)
+    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))

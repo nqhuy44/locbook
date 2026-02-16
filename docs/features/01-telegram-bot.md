@@ -8,7 +8,7 @@
 
 ## Overview
 
-The Telegram Bot is the **primary data acquisition channel** for LocBook. Users interact with Marin (the AI agent) to capture, search, and explore places without leaving Telegram. The bot handles three core workflows: Screenshot Analysis, Link Parsing, and Geo-Search.
+The Telegram Bot is the **primary data acquisition channel** for Spotary. Users interact with Marin (the AI agent) to capture, search, and explore places without leaving Telegram. The bot handles three core workflows: Screenshot Analysis, Link Parsing, and Geo-Search.
 
 ---
 
@@ -128,4 +128,4 @@ LIMIT 5;
 
 - [ ] **Menu Screenshot Detection**: Differentiate menu photos from place photos → extract `MenuItem` list.
 - [ ] **Richer Google Maps Data**: Extract popular times, price level from API.
-- [ ] **User-linked Saves**: Associate captured places with the Telegram user's LocBook account.
+- [ ] **User-linked Saves**: Associate captured places with the Telegram user's Spotary account.

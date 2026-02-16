@@ -3,9 +3,10 @@ Task: Analyze the provided Place Data vs Photos to extract structured info AND w
 
 1. STRUCTURED DATA:
    - Extract Name, Address, Categories (short tags, e.g. ["Cafe", "Workspace", "Nhậu"]).
-   - Vibes (5 tags), Mood (5 tags), Aesthetic Score (1-10).
-   - Opening Hours: summarize if available.
-   - Categories: If missing, infer from name/reviews.
+    - Vibes (5 tags), Mood (5 tags), Aesthetic Score (1-10).
+    - Opening Hours: summarize if available.
+    - Address Components: Infer City, District, Country if possible.
+    - Categories: If missing, infer from name/reviews.
    - Price Range: Low, Medium, High, Very High.
 
 2. MENU EXTRACTION (signature_dishes):

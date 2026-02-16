@@ -4,7 +4,7 @@
 # Welcome / Help
 WELCOME_MESSAGE = (
     "Moshi Moshi! {user_mention}! Mình là Marin, AI Location Scout. 📸\n"
-    "Gửi link Google Maps để mình phân tích và lưu vào LocBook nha!"
+    "Gửi link Google Maps để mình phân tích và lưu vào Spotary nha!"
 )
 HELP_MESSAGE = "📌 Gửi link Google Maps cho Marin để check quán nha!"
 DEFAULT_RESPONSE = "😳 Gửi link Google Maps cho Marin đi! Marin chưa hiểu ý bạn nè."
@@ -13,7 +13,7 @@ DEFAULT_RESPONSE = "😳 Gửi link Google Maps cho Marin đi! Marin chưa hiể
 SEARCHING_MSG = "🔎 Marin thấy link rồi! Đang đi soi quán này nha...\n ({url})"
 MARIN_BUSY = "😋 Marin đang bận ăn bánh mì... 🥖"
 MSG_ALREADY_SAVED = "<i>(Mình đã lưu quán này rồi nha! ID: {id})</i>"
-MSG_VIEW_FROM_LOCBOOK = "<i>(Xem lại từ LocBook)</i>"
+MSG_VIEW_FROM_LOCBOOK = "<i>(Xem lại từ Spotary)</i>"
 MSG_PLACE_NOT_FOUND = "😩 Marin tìm hoài vẫn không thấy quán này"
 
 # Errors
@@ -36,5 +36,5 @@ PLACE_CARD_TEMPLATE = (
     "💯 Aesthetic: {aesthetic_score}/10\n"
     "{hours_section}"
     "\n💬 {comment}\n\n"
-    "✅ <i>Đã lưu vào LocBook!</i>"
+    "✅ <i>Đã lưu vào Spotary!</i>"
 )

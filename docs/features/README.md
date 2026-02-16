@@ -1,6 +1,6 @@
-# LocBook Feature Documentation
+# Spotary Feature Documentation
 
-> Detailed documentation for every feature in the LocBook platform.
+> Detailed documentation for every feature in the Spotary platform.
 > Each file below covers: architecture, data models, API endpoints, current status, and planned enhancements from [PRD 2.0](../prd-2.0.md).
 
 ---

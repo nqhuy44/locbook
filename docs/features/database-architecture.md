@@ -8,7 +8,7 @@
 
 ## Overview
 
-LocBook uses a hybrid approach to database management:
+Spotary uses a hybrid approach to database management:
 1.  **SQLModel** defines the current schema (Python-first).
 2.  **`create_all()`** is used for initial setup (Development/Testing).
 3.  **Custom Migrations** (`src/scripts/run_migrations.py`) are used for incremental updates (Production/Staging).

@@ -132,11 +132,11 @@ Output JSON: {{"query": "...", "filters": {{"district": null, "city": null, "cat
                     place_dict = PlaceRead.model_validate(p).model_dump(mode="json", by_alias=True)
                     place_dict["id"] = str(p.id)
                     suggested_places.append(place_dict)
-                rag_text = "LocBook matches:\n" + "\n---\n".join(rag_entries)
+                rag_text = "Spotary matches:\n" + "\n---\n".join(rag_entries)
             else:
-                rag_text = "No matches in LocBook."
+                rag_text = "No matches in Spotary."
 
-            prompt = f"""You are {avatar_name}, LocBook's AI Scout.
+            prompt = f"""You are {avatar_name}, Spotary's AI Scout.
 {system_instruction}
 
 Search: "{message}"
@@ -148,7 +148,7 @@ History:
 {rag_text}
 
 Reply with:
-- 📍 Có sẵn trên LocBook: list matched places
+- 📍 Có sẵn trên Spotary: list matched places
 - ✨ Gợi ý thêm: external suggestions if needed"""
 
             # Call LLM

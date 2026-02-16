@@ -1,5 +1,5 @@
 """
-Centralized Logging Module for LocBook Backend.
+Centralized Logging Module for Spotary Backend.
 
 Usage:
     # In entry points (main.py, bot_runner.py, worker_runner.py):

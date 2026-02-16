@@ -8,7 +8,7 @@ load_dotenv()
 
 async def inspect_places():
     uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")
-    db_name = os.getenv("MONGO_DB_NAME", "locbook")
+    db_name = os.getenv("MONGO_DB_NAME", "spotary")
     
     client = AsyncIOMotorClient(uri)
     db = client[db_name]

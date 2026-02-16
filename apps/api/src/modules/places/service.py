@@ -163,6 +163,10 @@ async def get_or_create_place_from_url(db: AsyncSession, url: str) -> Tuple[Plac
         menu=menu_items,
         latitude=latitude,
         longitude=longitude,
+        # Address Components
+        city=raw_info.get("address_components", {}).get("city"),
+        district=raw_info.get("address_components", {}).get("district"),
+        country=raw_info.get("address_components", {}).get("country", "Vietnam"),
         raw_ai_response=analysis, # Save full AI response including marin_comment
     )
     

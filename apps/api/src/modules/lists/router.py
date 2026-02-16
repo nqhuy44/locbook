@@ -5,7 +5,7 @@ from typing import List, Optional, Dict
 import uuid
 
 from src.core.database.postgres import get_db_session
-from src.core.database.sql_models import User, UserList, Place, PlaceRead, ListPrivacy
+from src.core.database.sql_models import User, UserList, Place, PlaceRead, ListPrivacy, UserListFollow
 from src.modules.auth.dependencies import get_current_user, get_optional_current_user
 from src.modules.places.service import get_or_create_place_from_url
 
@@ -30,6 +30,7 @@ class UserListRead(BaseModel):
     description: Optional[str]
     privacy: ListPrivacy
     item_count: int
+    followers_count: int = 0
     # We might want thumbnail images from the first few places
 
 class ListPlaceItem(BaseModel):
@@ -61,13 +62,33 @@ async def get_my_lists(
     result = await db.execute(stmt)
     lists = result.scalars().all()
     
+    # Determine which lists are visible:
+    # 1. Own lists
+    # 2. Public lists (if we want to show them here, but typically "My Lists" is just own)
+    
+    # Let's count followers for each list
+    list_ids = [l.id for l in lists]
+    followers_counts = {}
+    if list_ids:
+        # aggregate count
+        from sqlalchemy import func
+        stmt_count = (
+            select(UserListFollow.list_id, func.count(UserListFollow.user_id))
+            .where(UserListFollow.list_id.in_(list_ids))
+            .group_by(UserListFollow.list_id)
+        )
+        result_count = await db.execute(stmt_count)
+        for lid, count in result_count.all():
+            followers_counts[lid] = count
+
     return [
         UserListRead(
             id=l.id,
             name=l.name,
             description=l.description,
             privacy=l.privacy,
-            item_count=len(l.items)
+            item_count=len(l.items),
+            followers_count=followers_counts.get(l.id, 0)
         ) for l in lists
     ]
 
@@ -93,7 +114,8 @@ async def create_list(
         name=new_list.name,
         description=new_list.description,
         privacy=new_list.privacy,
-        item_count=0
+        item_count=0,
+        followers_count=0
     )
 
 @router.patch("/{list_id}", response_model=UserListRead)
@@ -125,7 +147,9 @@ async def update_list(
         name=user_list.name,
         description=user_list.description,
         privacy=user_list.privacy,
-        item_count=len(user_list.items)
+        item_count=len(user_list.items),
+        # simplified for update return
+        followers_count=0 
     )
 
 @router.get("/{list_id}", response_model=UserListDetail)
@@ -314,3 +338,54 @@ async def remove_item_from_list(
     
     await db.commit()
     return {"status": "removed"}
+    
+@router.post("/{list_id}/follow")
+async def follow_list(
+    list_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    # Check if list exists
+    stmt = select(UserList).where(UserList.id == list_id)
+    result = await db.execute(stmt)
+    user_list = result.scalar_one_or_none()
+    
+    if not user_list:
+        raise HTTPException(status_code=404, detail="List not found")
+        
+    if user_list.user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot follow your own list")
+        
+    # Check if already following
+    stmt_check = select(UserListFollow).where(
+        UserListFollow.user_id == current_user.id,
+        UserListFollow.list_id == list_id
+    )
+    result_check = await db.execute(stmt_check)
+    if result_check.scalar_one_or_none():
+         raise HTTPException(status_code=400, detail="Already following")
+         
+    follow = UserListFollow(user_id=current_user.id, list_id=list_id)
+    db.add(follow)
+    await db.commit()
+    return {"status": "followed"}
+
+@router.delete("/{list_id}/follow")
+async def unfollow_list(
+    list_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    stmt = select(UserListFollow).where(
+        UserListFollow.user_id == current_user.id,
+        UserListFollow.list_id == list_id
+    )
+    result = await db.execute(stmt)
+    follow = result.scalar_one_or_none()
+    
+    if not follow:
+        raise HTTPException(status_code=404, detail="Not following")
+        
+    await db.delete(follow)
+    await db.commit()
+    return {"status": "unfollowed"}

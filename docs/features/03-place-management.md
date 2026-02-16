@@ -8,7 +8,7 @@
 
 ## Overview
 
-Places are the **core entity** of LocBook. Each Place represents a physical location (cafe, bar, restaurant) with rich metadata: vibes, mood, categories, images, geographic coordinates, and an AI-generated vector embedding for semantic search.
+Places are the **core entity** of Spotary. Each Place represents a physical location (cafe, bar, restaurant) with rich metadata: vibes, mood, categories, images, geographic coordinates, and an AI-generated vector embedding for semantic search.
 
 ---
 

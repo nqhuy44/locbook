@@ -1,3 +1,9 @@
+# IDE
+.idea/
+.vscode/
+.agent
+.DS_Store
+
 # Nx
 .nx/
 node_modules/
@@ -72,3 +78,7 @@ redisdata/
 
 # Temporary
 graph.json
+
+# Docker
+.Dockerfile
+

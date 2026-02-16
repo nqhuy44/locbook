@@ -8,7 +8,7 @@
 
 ## Overview
 
-**Marin** is LocBook's AI conversational agent — a friendly, knowledgeable local guide for Ho Chi Minh City. Users chat naturally in Vietnamese, and Marin responds with place recommendations drawn from the LocBook database (RAG — Retrieval Augmented Generation).
+**Marin** is Spotary's AI conversational agent — a friendly, knowledgeable local guide for Ho Chi Minh City. Users chat naturally in Vietnamese, and Marin responds with place recommendations drawn from the Spotary database (RAG — Retrieval Augmented Generation).
 
 ---
 
@@ -47,7 +47,7 @@ Response: { reply, session_id, suggested_places[] }
 ```json
 {
   "session_id": "abc-123",
-  "reply": "Marin biết mấy quán view chill lắm nè! 🌃\n\n📍 **Có sẵn trên LocBook**:\n1. **Chill Skybar** — Rooftop view...",
+  "reply": "Marin biết mấy quán view chill lắm nè! 🌃\n\n📍 **Có sẵn trên Spotary**:\n1. **Chill Skybar** — Rooftop view...",
   "suggested_places": [
     { "id": "uuid", "name": "Chill Skybar", "address": "...", ... }
   ]
@@ -95,7 +95,7 @@ Marin uses LLM to understand user intent from chat history + new message:
 
 LLM prompt structure:
 ```
-You are {avatar_name}, LocBook's AI Scout.
+You are {avatar_name}, Spotary's AI Scout.
 {system_instruction}
 Language: Vietnamese.
 
@@ -103,10 +103,10 @@ Search Intent: "{user_message}"
 Target Category: "{extracted_category}"
 
 Context from History: ...
-LocBook Database Matches: ...
+Spotary Database Matches: ...
 
 Instructions:
-- SECTION 1: 📍 Có sẵn trên LocBook (matched places)
+- SECTION 1: 📍 Có sẵn trên Spotary (matched places)
 - SECTION 2: ✨ Gợi ý thêm từ Marin (external suggestions)
 - Tone: Friendly, local expert.
 ```
