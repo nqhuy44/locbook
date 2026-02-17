@@ -23,6 +23,10 @@ export const en = {
     coffee_desc: "Support the creator ☕",
     about: "About Spotary",
     version: "Version",
+    pwa_title: "Install App (PWA)",
+    pwa_desc: "Install Spotary to your home screen for faster access!",
+    pwa_ios: "Safari: Tap 'Share' -> 'Add to Home Screen'",
+    pwa_android: "Chrome: Tap '3 dots' menu -> 'Add to Home Screen'",
   },
   // Common
   common: {

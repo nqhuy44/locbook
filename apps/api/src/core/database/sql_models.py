@@ -180,6 +180,7 @@ class User(SQLModel, table=True):
     collections: List["Collection"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     lists: List["UserList"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     chat_sessions: List["ChatSession"] = Relationship(back_populates="user")
+    refresh_tokens: List["RefreshToken"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     
     # Note: Relationship Followers/Following cần config phức tạp hơn trong SQLModel nếu muốn access trực tiếp,
     # tạm thời query thông qua bảng UserFollow.
@@ -196,6 +197,17 @@ class OAuthAccount(SQLModel, table=True):
     expires_at: Optional[datetime] = Field(sa_column=Column(DateTime(timezone=True)))
     
     user: User = Relationship(back_populates="oauth_accounts")
+
+class RefreshToken(SQLModel, table=True):
+    __tablename__ = "refresh_tokens"
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    user_id: uuid.UUID = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
+    token: str = Field(sa_column=Column(String, unique=True, index=True))
+    expires_at: datetime = Field(sa_column=Column(DateTime(timezone=True)))
+    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    is_revoked: bool = Field(default=False)
+
+    user: User = Relationship(back_populates="refresh_tokens")
 
 class Profile(SQLModel, table=True):
     __tablename__ = "profiles"

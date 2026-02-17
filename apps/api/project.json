@@ -42,8 +42,17 @@
     "build-image": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "docker build -t nqh44/spotary:${ver:-latest} .",
-        "cwd": "apps/api"
+        "command": "docker build --platform linux/amd64 -t nqh44/spotary:{args.ver} .",
+        "cwd": "apps/api",
+        "forwardAllArgs": false
+      }
+    },
+    "push-image": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "docker push nqh44/spotary:{args.ver}",
+        "cwd": "apps/api",
+        "forwardAllArgs": false
       }
     },
     "test": {

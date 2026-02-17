@@ -23,6 +23,10 @@ export const vi = {
     coffee_desc: "Mời mình một ly cà phê nhé ☕",
     about: "Về Spotary",
     version: "Phiên bản",
+    pwa_title: "Cài đặt ứng dụng (PWA)",
+    pwa_desc: "Cài đặt Spotary về màn hình chính để truy cập nhanh hơn!",
+    pwa_ios: "Safari: Nhấn 'Chia sẻ' -> 'Thêm vào Màn hình chính'",
+    pwa_android: "Chrome: Nhấn '3 chấm' -> 'Thêm vào Màn hình chính'",
   },
   // Common
   common: {

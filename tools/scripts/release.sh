@@ -17,36 +17,61 @@ fi
 
 echo "🚀 Preparing Release: $VERSION for target: $TARGET"
 
+# Load .env variables for build-time injection (VITE_...)
+if [ -f ".env" ]; then
+  echo "📄 Loading .env file..."
+  # Use a safer way to export variables from .env
+  set -a
+  source .env
+  set +a
+fi
+
+# Portable sed -i function for macOS and Linux
+portable_sed() {
+  local pattern=$1
+  local file=$2
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    sed -i '' "$pattern" "$file"
+  else
+    sed -i "$pattern" "$file"
+  fi
+}
+
 update_api() {
   echo "📦 Updating API..."
   # Path fixed to src/core/config.py
   CONFIG_FILE="apps/api/src/core/config.py"
   if [ -f "$CONFIG_FILE" ]; then
-    # GNU sed style
-    sed -i "s/APP_VERSION: str = \".*\"/APP_VERSION: str = \"$VERSION\"/" "$CONFIG_FILE"
+    portable_sed "s/APP_VERSION: str = \".*\"/APP_VERSION: str = \"$VERSION\"/" "$CONFIG_FILE"
   fi
   echo "🐳 Building nqh44/spotary API..."
   nx run api:build-image --ver=$VERSION
+  echo "🐳 Pushing nqh44/spotary API..."
+  nx run api:push-image --ver=$VERSION
 }
 
 update_dashboard() {
   echo "📦 Updating Dashboard..."
   PKG_FILE="apps/dashboard/package.json"
   if [ -f "$PKG_FILE" ]; then
-    sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION#v}\"/" "$PKG_FILE"
+    portable_sed "s/\"version\": \".*\"/\"version\": \"${VERSION#v}\"/" "$PKG_FILE"
   fi
   echo "🐳 Building nqh44/spotary-dashboard..."
   nx run dashboard:build-image --ver=$VERSION
+  echo "🐳 Pushing nqh44/spotary-dashboard..."
+  nx run dashboard:push-image --ver=$VERSION
 }
 
 update_admin() {
   echo "📦 Updating Admin..."
   PKG_FILE="apps/admin/package.json"
   if [ -f "$PKG_FILE" ]; then
-    sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION#v}\"/" "$PKG_FILE"
+    portable_sed "s/\"version\": \".*\"/\"version\": \"${VERSION#v}\"/" "$PKG_FILE"
   fi
   echo "🐳 Building nqh44/spotary-admin..."
   nx run admin:build-image --ver=$VERSION
+  echo "🐳 Pushing nqh44/spotary-admin..."
+  nx run admin:push-image --ver=$VERSION
 }
 
 help() {

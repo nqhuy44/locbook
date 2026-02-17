@@ -52,7 +52,13 @@ restore_postgres() {
     docker exec -i "$container_id" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB_NAME" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
     
     echo "Importing data..."
-    zcat "$BACKUP_FILE" | docker exec -i "$container_id" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB_NAME"
+    # Portable zcat/gzcat
+    if command -v gzcat >/dev/null 2>&1; then
+        ZCAT="gzcat"
+    else
+        ZCAT="zcat"
+    fi
+    $ZCAT "$BACKUP_FILE" | docker exec -i "$container_id" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB_NAME"
     
     if [ $? -eq 0 ]; then
         echo "PostgreSQL restore completed successfully!"
