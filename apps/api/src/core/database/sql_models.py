@@ -46,9 +46,10 @@ class PlaceRead(SQLModel):
     id: uuid.UUID
     name: str
     address: Optional[str] = None
-    address: Optional[str] = None
     city: Optional[str] = None
     district: Optional[str] = None
+    ward: Optional[str] = None
+    street: Optional[str] = None
     country: Optional[str] = None
     categories: Optional[List[str]] = None
     vibes: Optional[List[str]] = None
@@ -73,9 +74,10 @@ class PlaceUpdate(SQLModel):
     """Partial update schema for Place."""
     name: Optional[str] = None
     address: Optional[str] = None
-    address: Optional[str] = None
     city: Optional[str] = None
     district: Optional[str] = None
+    ward: Optional[str] = None
+    street: Optional[str] = None
     country: Optional[str] = None
     categories: Optional[List[str]] = None
     vibes: Optional[List[str]] = None
@@ -96,6 +98,8 @@ class PlaceBase(SQLModel):
     # --- Address Components ---
     city: Optional[str] = Field(default=None, sa_column=Column(String, index=True))
     district: Optional[str] = Field(default=None, sa_column=Column(String, index=True))
+    ward: Optional[str] = Field(default=None, sa_column=Column(String, index=True))
+    street: Optional[str] = Field(default=None, sa_column=Column(String, index=True))
     country: Optional[str] = Field(default="Vietnam", sa_column=Column(String, index=True))
     
     # --- Metadata ---
@@ -318,6 +322,22 @@ class AnalyticsEvent(SQLModel, table=True):
     user_id: Optional[uuid.UUID] = Field(default=None, foreign_key="users.id", ondelete="SET NULL", index=True)
     entity_id: Optional[str] = None      # place_id, memo_id, etc. (string for flexibility)
     payload: Dict[str, Any] = Field(default={}, sa_column=Column(JSONB))  # Extra context (search_query, etc.)
+    
+    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now(), index=True))
+
+
+class LLMUsageLog(SQLModel, table=True):
+    """Log individual AI requests and token usage."""
+    __tablename__ = "llm_usage_logs"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    user_id: Optional[uuid.UUID] = Field(default=None, foreign_key="users.id", ondelete="SET NULL", index=True)
+    request_type: str = Field(index=True)  # "chat", "analysis", "ocr", "aesthetic"
+    model_name: str
+    
+    prompt_tokens: int = Field(default=0)
+    output_tokens: int = Field(default=0)
+    total_tokens: int = Field(default=0)
     
     created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now(), index=True))
 

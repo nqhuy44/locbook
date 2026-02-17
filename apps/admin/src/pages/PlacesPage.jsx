@@ -49,6 +49,10 @@ const PlacesPage = ({ API_URL, token }) => {
     setEditForm({
       name: place.name,
       address: place.address || "",
+      city: place.city || "",
+      district: place.district || "",
+      ward: place.ward || "",
+      street: place.street || "",
       categories: place.categories?.join(", ") || "",
       vibes: place.vibes?.join(", ") || "",
       price_level: place.price_level || "",
@@ -104,6 +108,11 @@ const PlacesPage = ({ API_URL, token }) => {
   const filteredPlaces = places.filter(
     (p) =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.district?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.ward?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.street?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.categories?.some((c) =>
         c.toLowerCase().includes(searchTerm.toLowerCase()),
       ),
@@ -436,7 +445,9 @@ const PlacesPage = ({ API_URL, token }) => {
                 />
               </div>
               <div>
-                <label className="detail-label">Address</label>
+                <label className="detail-label">
+                  Full Address (Legacy/Display)
+                </label>
                 <input
                   className="search-input"
                   style={{ background: "var(--bg-primary)" }}
@@ -445,6 +456,66 @@ const PlacesPage = ({ API_URL, token }) => {
                     setEditForm({ ...editForm, address: e.target.value })
                   }
                 />
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "1rem",
+                }}
+              >
+                <div>
+                  <label className="detail-label">City/Province</label>
+                  <input
+                    className="search-input"
+                    style={{ background: "var(--bg-primary)" }}
+                    value={editForm.city || ""}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, city: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="detail-label">District</label>
+                  <input
+                    className="search-input"
+                    style={{ background: "var(--bg-primary)" }}
+                    value={editForm.district || ""}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, district: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "1rem",
+                }}
+              >
+                <div>
+                  <label className="detail-label">Ward</label>
+                  <input
+                    className="search-input"
+                    style={{ background: "var(--bg-primary)" }}
+                    value={editForm.ward || ""}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, ward: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="detail-label">Street/House No.</label>
+                  <input
+                    className="search-input"
+                    style={{ background: "var(--bg-primary)" }}
+                    value={editForm.street || ""}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, street: e.target.value })
+                    }
+                  />
+                </div>
               </div>
               <div>
                 <label className="detail-label">Categories</label>

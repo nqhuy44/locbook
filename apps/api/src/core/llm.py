@@ -6,7 +6,10 @@ import os
 from google import genai
 from google.genai import types
 from src.core.config import get_settings
+from src.core.database.sql_models import LLMUsageLog
+from src.core.database.postgres import get_db_session
 import src.modules.bot.strings as strings
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +42,30 @@ class GeminiService:
             self.client = genai.Client(api_key=api_key)
             self.model_name = model_name
 
-    async def analyze_place(self, text_data: str, images: List[tuple[bytes, str]]) -> Dict[str, Any]:
+    async def _log_usage(self, request_type: str, usage: Any, user_id: Any = None):
+        """Helper to log usage metadata to DB."""
+        if not usage:
+            return
+
+        try:
+            # We need an async session but this is called from within AI methods
+            # We'll use a local session for logging to keep it simple and isolated
+            async for db in get_db_session():
+                log = LLMUsageLog(
+                    user_id=uuid.UUID(str(user_id)) if user_id else None,
+                    request_type=request_type,
+                    model_name=self.model_name,
+                    prompt_tokens=usage.prompt_token_count or 0,
+                    output_tokens=usage.candidates_token_count or 0,
+                    total_tokens=usage.total_token_count or 0,
+                )
+                db.add(log)
+                await db.commit()
+                break # Only need one session
+        except Exception as e:
+            logger.error(f"Failed to log LLM usage: {e}")
+
+    async def analyze_place(self, text_data: str, images: List[tuple[bytes, str]], user_id: str = None) -> Dict[str, Any]:
         """Analyze place from text + images. Returns structured data + marin_comment."""
         if not self.client:
             return {"error": "AI not available"}
@@ -62,18 +88,14 @@ class GeminiService:
             )
 
             if response.usage_metadata:
-                logger.info(
-                    f"Gemini Tokens: prompt={response.usage_metadata.prompt_token_count}, "
-                    f"output={response.usage_metadata.candidates_token_count}, "
-                    f"total={response.usage_metadata.total_token_count}"
-                )
+                await self._log_usage("analysis", response.usage_metadata, user_id)
 
             return json.loads(response.text)
 
         except Exception as e:
             return {"error": self._handle_error(e)}
 
-    async def generate_text(self, prompt: str) -> str:
+    async def generate_text(self, prompt: str, user_id: str = None) -> str:
         """Generic text generation — used by chat_service."""
         if not self.client:
             return "AI Service not ready."
@@ -84,10 +106,7 @@ class GeminiService:
                 contents=prompt,
             )
             if response.usage_metadata:
-                logger.info(
-                    f"Gemini Tokens: prompt={response.usage_metadata.prompt_token_count}, "
-                    f"output={response.usage_metadata.candidates_token_count}"
-                )
+                await self._log_usage("chat", response.usage_metadata, user_id)
             return response.text
         except Exception as e:
             logger.error(f"Text generation failed: {e}")
@@ -140,10 +159,7 @@ class GeminiService:
             )
 
             if response.usage_metadata:
-                logger.info(
-                    f"Menu OCR Tokens: prompt={response.usage_metadata.prompt_token_count}, "
-                    f"output={response.usage_metadata.candidates_token_count}"
-                )
+                await self._log_usage("ocr", response.usage_metadata)
 
             return json.loads(response.text)
 
@@ -175,10 +191,7 @@ class GeminiService:
             )
 
             if response.usage_metadata:
-                logger.info(
-                    f"Aesthetic Tokens: prompt={response.usage_metadata.prompt_token_count}, "
-                    f"output={response.usage_metadata.candidates_token_count}"
-                )
+                await self._log_usage("aesthetic", response.usage_metadata)
 
             result = json.loads(response.text)
             # Clamp score to 1-10

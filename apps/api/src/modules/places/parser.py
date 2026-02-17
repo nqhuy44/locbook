@@ -24,9 +24,12 @@ class LinkParser:
         return any(host in url for host in ("google.com/maps", "goo.gl/maps", "maps.app.goo.gl"))
 
     def _parse_address_components(self, components: List[Dict[str, Any]]) -> Dict[str, str]:
-        """Extract city, district, country from Google Places address components."""
-        result = {"city": None, "district": None, "country": "Vietnam"}
+        """Extract city, district, ward, street, country from Google Places address components."""
+        result = {"city": None, "district": None, "ward": None, "street": None, "country": "Vietnam"}
         
+        street_number = ""
+        route = ""
+
         for comp in components:
             types = comp.get("types", [])
             long_name = comp.get("longName", "")
@@ -45,7 +48,21 @@ class LinkParser:
             if "locality" in types:
                  # Override if locality is present (more precise usually)
                 result["district"] = long_name
+
+            # Ward / Commune
+            # Level 3 or sublocality is often Ward in Vietnam
+            if any(t in types for t in ("administrative_area_level_3", "sublocality_level_1", "neighborhood")):
+                result["ward"] = long_name
+            
+            # Street / House number
+            if "street_number" in types:
+                street_number = long_name
+            if "route" in types:
+                route = long_name
                 
+        if street_number or route:
+            result["street"] = f"{street_number} {route}".strip()
+
         return result
 
     async def _call_places_api(self, text_query: str) -> Optional[Dict[str, Any]]:

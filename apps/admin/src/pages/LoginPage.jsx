@@ -122,7 +122,7 @@ const LoginPage = ({ onLogin }) => {
           opacity: 0.7,
         }}
       >
-        &copy; {new Date().getFullYear()} LocBook Admin
+        &copy; {new Date().getFullYear()} Spotary Admin
       </div>
     </div>
   );

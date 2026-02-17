@@ -47,7 +47,9 @@ function App() {
       {view === "system" && <SystemPage API_URL={API_URL} />}
       {view === "marin" && <MarinPage API_URL={API_URL} token={token} />}
       {view === "users" && <UsersPage API_URL={API_URL} token={token} />}
-      {view === "analytics" && <AnalyticsPage />}
+      {view === "analytics" && (
+        <AnalyticsPage API_URL={API_URL} token={token} />
+      )}
       {view === "memos" && <MemosPage />}
     </AdminLayout>
   );

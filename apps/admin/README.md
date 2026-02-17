@@ -1,8 +1,9 @@
-# LocBook Dashboard (Frontend)
+# Spotary Dashboard (Frontend)
 
-This is the React + Vite frontend for LocBook, focused on displaying location data with a "Marin" (My Dress-Up Darling) inspired theme.
+This is the React + Vite frontend for Spotary, focused on displaying location data with a "Marin" (My Dress-Up Darling) inspired theme.
 
 ## Tech Stack
+
 - **Framework**: React 18 + Vite
 - **Styling**: Vanilla CSS (CSS Variables, Flexbox/Grid)
 - **Icons**: Lucide React
@@ -11,6 +12,7 @@ This is the React + Vite frontend for LocBook, focused on displaying location da
 ## Setup & Run Locally
 
 1.  **Install Dependencies**:
+
     ```bash
     npm install
     ```
@@ -34,10 +36,11 @@ This is the React + Vite frontend for LocBook, focused on displaying location da
 To build the production image (NGINX serving static files):
 
 ```bash
-docker build -t nqh44/locbook-fe:latest .
+docker build -t nqh44/Spotary-fe:latest .
 ```
 
 ## Features
+
 - **Configurable**: Check `src/config.js` to toggle features (Footer, Buy Me Coffee, Discover Tab) and reorder Home Categories.
 - **Responsive**: Mobile-friendly layout.
 - **Dark Mode**: Default dark theme with purple/pink gradients.

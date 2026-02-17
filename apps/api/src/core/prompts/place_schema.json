@@ -1,76 +1,89 @@
 {
-    "type": "OBJECT",
-    "properties": {
-        "details": {
-            "type": "OBJECT",
-            "properties": {
-                "name": {
-                    "type": "STRING"
-                },
-                "address": {
-                    "type": "STRING"
-                },
-                "categories": {
-                    "type": "ARRAY",
-                    "items": {
-                        "type": "STRING"
-                    }
-                },
-                "vibes": {
-                    "type": "ARRAY",
-                    "items": {
-                        "type": "STRING"
-                    }
-                },
-                "mood": {
-                    "type": "ARRAY",
-                    "items": {
-                        "type": "STRING"
-                    }
-                },
-                "aesthetic_score": {
-                    "type": "INTEGER"
-                },
-                "rating": {
-                    "type": "NUMBER"
-                },
-                "price_level": {
-                    "type": "STRING"
-                },
-                "opening_hours": {
-                    "type": "STRING"
-                }
-            },
-            "required": [
-                "name"
-            ]
+  "type": "OBJECT",
+  "properties": {
+    "details": {
+      "type": "OBJECT",
+      "properties": {
+        "name": {
+          "type": "STRING"
         },
-        "signature_dishes": {
-            "type": "ARRAY",
-            "description": "Menu items extracted from photos or reviews. Empty if none found.",
-            "items": {
-                "type": "OBJECT",
-                "properties": {
-                    "name": {
-                        "type": "STRING",
-                        "description": "Dish/drink name"
-                    },
-                    "price": {
-                        "type": "STRING",
-                        "description": "Price as shown (e.g. '65,000đ'). Empty if unknown."
-                    }
-                },
-                "required": [
-                    "name"
-                ]
-            }
+        "address": {
+          "type": "STRING"
         },
-        "marin_comment": {
+        "categories": {
+          "type": "ARRAY",
+          "items": {
             "type": "STRING"
+          }
+        },
+        "vibes": {
+          "type": "ARRAY",
+          "items": {
+            "type": "STRING"
+          }
+        },
+        "mood": {
+          "type": "ARRAY",
+          "items": {
+            "type": "STRING"
+          }
+        },
+        "aesthetic_score": {
+          "type": "INTEGER"
+        },
+        "rating": {
+          "type": "NUMBER"
+        },
+        "price_level": {
+          "type": "STRING"
+        },
+        "opening_hours": {
+          "type": "STRING"
+        },
+        "city": {
+          "type": "STRING",
+          "description": "Province or City (e.g. Thành phố Hồ Chí Minh, Hà Nội)"
+        },
+        "district": {
+          "type": "STRING",
+          "description": "District or Town (e.g. Quận 1, Quận 2, Hội An)"
+        },
+        "ward": {
+          "type": "STRING",
+          "description": "Ward or Commune (e.g. Phường Bến Nghé, Xã...)"
+        },
+        "street": {
+          "type": "STRING",
+          "description": "Street name and number (e.g. 123 Lê Lợi, Số 10 Đường...)"
+        },
+        "country": {
+          "type": "STRING",
+          "description": "Country name"
         }
+      },
+      "required": ["name"]
     },
-    "required": [
-        "details",
-        "marin_comment"
-    ]
+    "signature_dishes": {
+      "type": "ARRAY",
+      "description": "Menu items extracted from photos or reviews. Empty if none found.",
+      "items": {
+        "type": "OBJECT",
+        "properties": {
+          "name": {
+            "type": "STRING",
+            "description": "Dish/drink name"
+          },
+          "price": {
+            "type": "STRING",
+            "description": "Price as shown (e.g. '65,000đ'). Empty if unknown."
+          }
+        },
+        "required": ["name"]
+      }
+    },
+    "marin_comment": {
+      "type": "STRING"
+    }
+  },
+  "required": ["details", "marin_comment"]
 }

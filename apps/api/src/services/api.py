@@ -81,14 +81,16 @@ app.mount("/uploads", StaticFiles(directory="data/uploads"), name="uploads")
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
+from src.core.security import verify_token
 from src.modules.analytics.service import log_event
 import asyncio
-
 
 class AnalyticsMiddleware(BaseHTTPMiddleware):
     """Auto-log VIEW_DETAIL and SEARCH events."""
     TRACKED_PATTERNS = {
         "/api/places/": "VIEW_DETAIL",
+        "/api/discovery/places/": "VIEW_DETAIL",
+        "/api/discovery/places": "SEARCH",
         "/api/chat/message": "SEARCH",
     }
 
@@ -100,10 +102,20 @@ class AnalyticsMiddleware(BaseHTTPMiddleware):
             path = request.url.path
             for pattern, event_type in self.TRACKED_PATTERNS.items():
                 if path.startswith(pattern):
+                    # Try to get user_id from token for logged-in users
+                    user_id = None
+                    auth_header = request.headers.get("Authorization")
+                    if auth_header and auth_header.startswith("Bearer "):
+                        token = auth_header.split(" ")[1]
+                        payload = verify_token(token)
+                        if payload:
+                            user_id = payload.get("sub")
+
                     # Fire-and-forget: don't block the response
                     asyncio.create_task(
                         log_event(
                             event_type=event_type,
+                            user_id=user_id,
                             payload={"path": path, "method": request.method},
                         )
                     )
@@ -374,7 +386,7 @@ async def chat_message(payload: ChatMessage, current_user: User = Depends(get_cu
         return {"error": "Feature disabled"}
     
     from src.modules.places.chat_service import chat_service
-    response = await chat_service.handle_message(payload.session_id, payload.message)
+    response = await chat_service.handle_message(payload.session_id, payload.message, user_id=current_user.id)
     return response
 
 

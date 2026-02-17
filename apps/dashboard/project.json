@@ -1,39 +1,37 @@
 {
-    "name": "dashboard",
-    "$schema": "../../node_modules/nx/schemas/project-schema.json",
-    "sourceRoot": "apps/dashboard/src",
-    "projectType": "application",
-    "targets": {
-        "serve": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "npm run dev",
-                "cwd": "apps/dashboard"
-            }
-        },
-        "build": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "npm run build",
-                "cwd": "apps/dashboard"
-            }
-        },
-        "build-image": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "docker build -t nqh44/locbook-dashboard:${ver:-latest} .",
-                "cwd": "apps/dashboard"
-            }
-        },
-        "lint": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "npm run lint",
-                "cwd": "apps/dashboard"
-            }
-        }
+  "name": "dashboard",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/dashboard/src",
+  "projectType": "application",
+  "targets": {
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npm run dev",
+        "cwd": "apps/dashboard"
+      }
     },
-    "tags": [
-        "type:frontend"
-    ]
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npm run build",
+        "cwd": "apps/dashboard"
+      }
+    },
+    "build-image": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "docker build -t nqh44/spotary-dashboard:${ver:-latest} .",
+        "cwd": "apps/dashboard"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npm run lint",
+        "cwd": "apps/dashboard"
+      }
+    }
+  },
+  "tags": ["type:frontend"]
 }

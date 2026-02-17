@@ -45,7 +45,7 @@ class ChatService:
             return "Mình không xem được link, bạn gửi text thôi nhé!"
         return None
 
-    async def _extract_search_intent(self, history: List[Dict], new_message: str) -> Dict[str, Any]:
+    async def _extract_search_intent(self, history: List[Dict], new_message: str, user_id: Any = None) -> Dict[str, Any]:
         default_intent = {"query": new_message, "filters": {}}
 
         prompt = f"""Analyze chat history and extract place search intent.
@@ -60,13 +60,13 @@ Extract:
 Output JSON: {{"query": "...", "filters": {{"district": null, "city": null, "category": "..."}}}}"""
 
         try:
-            result = await ai_service.generate_json(prompt)
+            result = await ai_service.generate_json(prompt, user_id=user_id)
             return result if "error" not in result else default_intent
         except Exception as e:
             logger.error(f"Intent extraction failed: {e}")
             return default_intent
 
-    async def handle_message(self, session_id: str, message: str) -> Dict[str, Any]:
+    async def handle_message(self, session_id: str, message: str, user_id: Any = None) -> Dict[str, Any]:
         async for db in get_db_session():
             # Load dynamic config
             stmt = select(AppConfig).where(AppConfig.key == "global")
@@ -92,12 +92,12 @@ Output JSON: {{"query": "...", "filters": {{"district": null, "city": null, "cat
                 return {"reply": block_reason, "session_id": session_id, "suggested_places": []}
 
             # Extract intent
-            intent = await self._extract_search_intent(session.messages, message)
+            intent = await self._extract_search_intent(session.messages, message, user_id=user_id)
             search_query = intent.get("query", message)
             filters = intent.get("filters", {})
 
             # Vector search
-            query_embedding = get_text_embedding(search_query)
+            query_embedding = await get_text_embedding(search_query)
             db_places = []
 
             try:
@@ -153,7 +153,7 @@ Reply with:
 
             # Call LLM
             try:
-                reply_text = await ai_service.generate_text(prompt)
+                reply_text = await ai_service.generate_text(prompt, user_id=user_id)
             except Exception as e:
                 logger.error(f"LLM failed: {e}")
                 reply_text = "Marin đang bị loạn não chút, bạn hỏi lại sau nhé 🤯"

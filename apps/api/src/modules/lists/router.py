@@ -285,7 +285,7 @@ async def add_place_to_list(
         
     # Get or create place
     try:
-        place, _, _ = await get_or_create_place_from_url(db, payload.url)
+        place, _, _ = await get_or_create_place_from_url(db, payload.url, user_id=current_user.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
         

@@ -11,7 +11,7 @@ from src.core.storage import get_storage
 
 logger = logging.getLogger(__name__)
 
-async def get_or_create_place_from_url(db: AsyncSession, url: str) -> Tuple[Place, bool, Optional[str]]:
+async def get_or_create_place_from_url(db: AsyncSession, url: str, user_id: Optional[Any] = None) -> Tuple[Place, bool, Optional[str]]:
     """
     Get existing place or create new one from Google Maps URL.
     Returns: (place, created, marin_comment)
@@ -111,6 +111,7 @@ async def get_or_create_place_from_url(db: AsyncSession, url: str) -> Tuple[Plac
     analysis = await ai_service.analyze_place(
         text_data=raw_info.get("text_data", ""),
         images=raw_info.get("images", []),
+        user_id=user_id,
     )
     if "error" in analysis:
         raise ValueError(f"AI analysis failed: {analysis['error']}")
@@ -164,9 +165,11 @@ async def get_or_create_place_from_url(db: AsyncSession, url: str) -> Tuple[Plac
         latitude=latitude,
         longitude=longitude,
         # Address Components
-        city=raw_info.get("address_components", {}).get("city"),
-        district=raw_info.get("address_components", {}).get("district"),
-        country=raw_info.get("address_components", {}).get("country", "Vietnam"),
+        city=raw_info.get("address_components", {}).get("city") or details.get("city"),
+        district=raw_info.get("address_components", {}).get("district") or details.get("district"),
+        ward=raw_info.get("address_components", {}).get("ward") or details.get("ward"),
+        street=raw_info.get("address_components", {}).get("street") or details.get("street"),
+        country=raw_info.get("address_components", {}).get("country", "Vietnam") or details.get("country"),
         raw_ai_response=analysis, # Save full AI response including marin_comment
     )
     
