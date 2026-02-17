@@ -24,6 +24,8 @@ if [ -f ".env" ]; then
   set -a
   source .env
   set +a
+  echo "VITE_API_URL: $VITE_API_URL"
+  echo "VITE_GOOGLE_CLIENT_ID: $VITE_GOOGLE_CLIENT_ID"
 fi
 
 # Portable sed -i function for macOS and Linux

@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -10,6 +11,7 @@ from src.core.database.sql_models import User, Profile, UserList, ListPrivacy
 from src.modules.auth.dependencies import get_current_user, get_optional_current_user
 
 router = APIRouter(prefix="/api/users", tags=["Users"])
+logger = logging.getLogger(__name__)
 
 class ProfileUpdate(BaseModel):
     display_name: Optional[str] = None
@@ -46,7 +48,7 @@ async def update_my_profile(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
-    print(f"Update Profile Request: {update_data}")
+    logger.info(f"Update Profile Request for user {current_user.id}: {update_data.model_dump(exclude_unset=True)}")
     # Update User fields (username)
     if update_data.username is not None:
         # Check uniqueness if changed

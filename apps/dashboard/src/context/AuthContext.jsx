@@ -15,6 +15,8 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [loginResponse, setLoginResponse] = useState(null);
 
+  const codeExchanged = React.useRef(false);
+
   useEffect(() => {
     // 1. Initial Profile Fetch
     if (token) {
@@ -24,18 +26,28 @@ export function AuthProvider({ children }) {
     } else {
       setLoading(false);
     }
+  }, [token]);
 
+  useEffect(() => {
     // 2. Handle Google Redirect Callback (Auth Code Flow)
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get("code");
-    if (code) {
+    if (code && !codeExchanged.current) {
+      codeExchanged.current = true;
       handleGoogleCallback(code);
     }
-  }, [token]);
+  }, []);
 
   const handleGoogleCallback = async (code) => {
     setLoading(true);
     try {
+      // Clean up URL parameters immediately to prevent re-triggers
+      const url = new URL(window.location.href);
+      ["code", "scope", "authuser", "prompt"].forEach((p) =>
+        url.searchParams.delete(p),
+      );
+      window.history.replaceState({}, "", url.pathname + url.search);
+
       const res = await fetch(`${API_URL}/api/auth/google`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -53,16 +65,9 @@ export function AuthProvider({ children }) {
         localStorage.setItem("refresh_token", data.refresh_token);
         setLoginResponse(data);
         await fetchUserProfile(data.access_token);
-
-        // Clean up URL
-        const url = new URL(window.location.href);
-        url.searchParams.delete("code");
-        url.searchParams.delete("scope");
-        url.searchParams.delete("authuser");
-        url.searchParams.delete("prompt");
-        window.history.replaceState({}, "", url.pathname + url.search);
       } else {
-        console.error("Backend redirect login failed");
+        const errData = await res.json().catch(() => ({}));
+        console.error("Backend redirect login failed", errData);
       }
     } catch (error) {
       console.error("Redirect Login Error", error);
@@ -155,7 +160,10 @@ export function AuthProvider({ children }) {
         setUser((prev) => ({ ...prev, ...updatedProfile }));
         return updatedProfile;
       } else {
-        throw new Error("Update failed");
+        const errBody = await res
+          .json()
+          .catch(() => ({ detail: "Update failed" }));
+        throw new Error(errBody.detail || "Update failed");
       }
     } catch (error) {
       console.error("Update profile error", error);

@@ -452,7 +452,7 @@ function BookDetailPage({ bookId, onBack, onPlaceClick, user }) {
       </div>
 
       {/* Content */}
-      <div className="books-content">
+      <div className="books-detail-content">
         {items.length === 0 ? (
           <div className="empty-state">
             <MapPin size={48} className="empty-state-icon" />

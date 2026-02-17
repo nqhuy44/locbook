@@ -733,6 +733,11 @@ body {
   padding: 0.8rem;
   max-height: 400px;
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.book-popup-list::-webkit-scrollbar {
+  display: none;
 }
 
 .book-list-item {
@@ -843,6 +848,11 @@ body {
   gap: 2.5rem;
   flex: 1;
   background: white;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.modal-body::-webkit-scrollbar {
+  display: none;
 }
 
 .col-main {
@@ -1556,6 +1566,12 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE / Edge */
+}
+
+.main-content::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Webkit */
 }
 
 /* Onboarding Page */
@@ -1616,6 +1632,13 @@ body {
 
 .books-content {
   padding: 1rem 0 0 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.books-detail-content {
+  padding: 1rem 0 5rem 0;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -1832,6 +1855,11 @@ body {
   flex-direction: column;
   gap: 15px;
   padding-right: 5px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.chat-messages::-webkit-scrollbar {
+  display: none;
 }
 
 .message-row {
@@ -1985,13 +2013,19 @@ body {
    PROFILE PAGE STYLES
    ========================================= */
 .profile-wrapper {
-  height: 100%;
-  overflow-y: auto;
+  height: auto;
+  min-height: 100%;
   background: var(--bg-primary);
   color: var(--text-primary);
   font-family: "Nunito", sans-serif;
   padding-bottom: 80px;
   /* Space for BottomNav */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.profile-wrapper::-webkit-scrollbar {
+  display: none;
 }
 
 /* ... keep existing styles ... */
