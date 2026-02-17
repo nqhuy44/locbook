@@ -42,7 +42,7 @@ const Footer = ({ config }) => {
         <div className="footer-text">Made by nqhuy</div>
         <div className="footer-copyright">
           © {new Date().getFullYear()} Spotary. All rights reserved. v
-          {window.__APP_VERSION__ || "1.0.0"}
+          {window.__APP_VERSION__}
         </div>
       </div>
     </footer>

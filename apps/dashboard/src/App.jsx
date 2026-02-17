@@ -49,43 +49,7 @@ import BookDetailPage from "./pages/BookDetailPage";
 import { LanguageProvider, useLanguage } from "./context/LanguageContext";
 import SettingsModal from "./components/common/SettingsModal";
 import FilterBar from "./components/FilterBar";
-
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error("ErrorBoundary caught an error", error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div
-          style={{
-            padding: "20px",
-            color: "white",
-            background: "rgba(255,0,0,0.1)",
-            borderRadius: "8px",
-          }}
-        >
-          <h2>Something went wrong.</h2>
-          <details style={{ whiteSpace: "pre-wrap" }}>
-            {this.state.error && this.state.error.toString()}
-          </details>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
+import ErrorBoundary from "./components/common/ErrorBoundary";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -236,143 +200,137 @@ function AppContent() {
   // State for Profile View
   const [viewingProfile, setViewingProfile] = useState(null); // { username: string } or null for self
 
-  useEffect(() => {
-    fetchData();
-
-    const handleUrlChange = () => {
-      const path = window.location.pathname;
-      const params = new URLSearchParams(window.location.search);
-
-      // 1. Places (via /place/:id or ?place=:id)
-      if (path.startsWith("/place/")) {
-        const placeId = path.split("/")[2];
-        if (placeId) {
-          // Fetch place details if not in memory?
-          // For now, let's assume we fetch all places or handle it in fetchData
-          // Ideally we should fetch specific place if not found
-          fetch(`${API_URL}/api/discovery/places/${placeId}`, {
-            headers: user
-              ? { Authorization: `Bearer ${localStorage.getItem("token")}` }
-              : {},
-          })
-            .then((res) => res.json())
-            .then((place) => {
-              if (place && !place.detail) setSelectedPlace(place);
-            })
-            .catch((err) =>
-              console.error("Failed to load deep-linked place:", err),
-            );
+  // fetchData helper
+  const fetchData = React.useCallback(
+    async (isPull = false) => {
+      if (refreshingRef.current && isPull) return;
+      try {
+        if (isPull) {
+          refreshingRef.current = true;
+          setIsPullRefreshing(true);
+        } else {
+          setLoading(true);
         }
-      } else if (params.get("place")) {
-        const placeId = params.get("place");
-        // Existing logic...
-      } else {
-        setSelectedPlace(null);
+
+        const startTime = Date.now();
+
+        const [placesRes, configRes] = await Promise.all([
+          fetch(`${API_URL}/api/places?limit=150`),
+          fetch(`${API_URL}/api/config`),
+        ]);
+
+        const placesData = await placesRes.json();
+        setPlaces(placesData.data);
+        setShuffleSeed(Math.random());
+
+        if (configRes.ok) {
+          const contentType = configRes.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            const configData = await configRes.json();
+            if (configData && configData.HOME_CATEGORIES) {
+              setConfig((prev) => ({ ...prev, ...configData }));
+            }
+          }
+        }
+
+        if (isPull) {
+          const elapsed = Date.now() - startTime;
+          if (elapsed < 600) {
+            await new Promise((resolve) => setTimeout(resolve, 600 - elapsed));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch data", err);
+        setShuffleSeed(Math.random());
+      } finally {
+        setLoading(false);
+        setIsPullRefreshing(false);
+        setPullDistance(0);
+        refreshingRef.current = false;
       }
+    },
+    [places.length],
+  );
 
-      // 2. Books / Lists
-      if (path.startsWith("/book/") || path.startsWith("/books/")) {
-        const parts = path.split("/");
-        const bId = parts[2];
-        if (bId) {
-          setBookId(bId);
-          setCurrentView("book-detail");
-        }
-      } else if (path === "/books") {
-        setCurrentView("books");
-        setBookId(null);
-      }
+  const handleUrlChange = React.useCallback(() => {
+    const path = window.location.pathname;
+    const params = new URLSearchParams(window.location.search);
 
-      // 3. Profiles
-      if (path.startsWith("/profile/")) {
-        const username = path.split("/")[2];
-        if (username) {
-          setViewingProfile({ username }); // Switch to public profile view
-          setCurrentView("profile");
-        }
-      } else if (path === "/profile") {
-        setViewingProfile(null); // Self
-        setCurrentView("profile");
-      } else if (path === "/" || path === "") {
-        // Default
-        if (!path.startsWith("/place/")) {
-          setCurrentView("list"); // or 'map' based on preference?
-        }
-      }
-    };
-
-    window.addEventListener("popstate", handleUrlChange);
-    // Initial check
-    handleUrlChange();
-
-    return () => window.removeEventListener("popstate", handleUrlChange);
-  }, [user]);
-
-  // Helper to update URL without reload
-  const updateUrl = (path) => {
-    window.history.pushState({}, "", path);
-  };
-
-  useEffect(() => {
-    if (places.length > 0 && !selectedPlace) {
-      const params = new URLSearchParams(window.location.search);
-      const placeId = params.get("place");
+    // 1. Places
+    if (path.startsWith("/place/")) {
+      const placeId = path.split("/")[2];
       if (placeId) {
-        const found = places.find((p) => p._id === placeId);
-        if (found) openModal(found);
+        fetch(`${API_URL}/api/discovery/places/${placeId}`)
+          .then((res) => res.json())
+          .then((place) => {
+            if (place && !place.detail) setSelectedPlace(place);
+          });
+      }
+    } else if (params.get("place")) {
+      const placeId = params.get("place");
+      const found = places.find((p) => p._id === placeId);
+      if (found) setSelectedPlace(found);
+    } else {
+      setSelectedPlace(null);
+    }
+
+    // 2. Books / Lists
+    if (path.startsWith("/book/")) {
+      const parts = path.split("/");
+      const bId = parts[2];
+      if (bId) {
+        setBookId(bId);
+        setCurrentView("book-detail");
+      }
+    } else if (path === "/books" || path === "/books/") {
+      setCurrentView("books");
+      setBookId(null);
+    }
+
+    // 3. Simple views: Map, Chat
+    else if (path === "/map" || path === "/map/") {
+      setCurrentView("map");
+    } else if (path === "/chat" || path === "/chat/") {
+      setCurrentView("chat");
+    }
+
+    // 4. Profiles
+    else if (path.startsWith("/profile/")) {
+      const username = path.split("/")[2];
+      if (username) {
+        setViewingProfile({ username });
+        setCurrentView("profile");
+      }
+    } else if (path === "/profile" || path === "/profile/") {
+      setViewingProfile(null);
+      setCurrentView("profile");
+    } else if (path === "/" || path === "") {
+      if (!path.startsWith("/place/")) {
+        setCurrentView("list");
       }
     }
   }, [places]);
 
-  const fetchData = async (isPull = false) => {
-    if (refreshingRef.current && isPull) return;
-    try {
-      if (isPull) {
-        refreshingRef.current = true;
-        setIsPullRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-
-      // Add a small artificial delay for refresh so it's visible
-      const startTime = Date.now();
-
-      const [placesRes, configRes] = await Promise.all([
-        fetch(`${API_URL}/api/places?limit=150`),
-        fetch(`${API_URL}/api/config`),
-      ]);
-
-      const placesData = await placesRes.json();
-      setPlaces(placesData.data);
-      setShuffleSeed(Math.random()); // Reshuffle sorting on every successful fetch
-
-      if (configRes.ok) {
-        const contentType = configRes.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          const configData = await configRes.json();
-          if (configData && configData.HOME_CATEGORIES) {
-            setConfig((prev) => ({ ...prev, ...configData }));
-          }
-        }
-      }
-
-      // Ensure at least 600ms delay for refresh animation
-      if (isPull) {
-        const elapsed = Date.now() - startTime;
-        if (elapsed < 600) {
-          await new Promise((resolve) => setTimeout(resolve, 600 - elapsed));
-        }
-      }
-    } catch (err) {
-      console.error("Failed to fetch data", err);
-      setShuffleSeed(Math.random());
-    } finally {
-      setLoading(false);
-      setIsPullRefreshing(false);
-      setPullDistance(0);
-      refreshingRef.current = false;
-    }
+  const navigate = (path) => {
+    window.history.pushState({}, "", path);
+    handleUrlChange();
   };
+
+  // 1. Initial Data Fetch (Only once on mount)
+  useEffect(() => {
+    fetchData();
+  }, []); // Run only once
+
+  // 2. URL Sync on mount or when places data arrives
+  useEffect(() => {
+    handleUrlChange();
+  }, [handleUrlChange]);
+
+  // 3. Setup popstate listener
+  useEffect(() => {
+    window.addEventListener("popstate", handleUrlChange);
+    return () => window.removeEventListener("popstate", handleUrlChange);
+  }, [handleUrlChange]);
 
   const handleTouchStart = (e) => {
     // If already refreshing or not on scroll top, don't start a new gesture
@@ -837,7 +795,7 @@ function AppContent() {
               setSearchTerm("");
               setActiveVibes([]);
               setActiveCats([]);
-              setCurrentView("list");
+              navigate("/");
             }}
             style={{ display: "flex", alignItems: "center", gap: "8px" }}
           >
@@ -855,7 +813,7 @@ function AppContent() {
                 setSearchTerm("");
                 setActiveVibes([]);
                 setActiveCats([]);
-                setCurrentView("list");
+                navigate("/");
                 // Always trigger refresh when clicking Discover
                 fetchData(true);
               }}
@@ -866,7 +824,7 @@ function AppContent() {
             <span
               className={`nav-link ${currentView === "map" ? "active" : ""}`}
               onClick={() => {
-                setCurrentView("map");
+                navigate("/map");
               }}
             >
               {t("nav.map")}
@@ -878,7 +836,7 @@ function AppContent() {
                 setSearchTerm("");
                 setActiveVibes([]);
                 setActiveCats([]);
-                setCurrentView("chat");
+                navigate("/chat");
               }}
               style={{ display: "flex", alignItems: "center", gap: "5px" }}
             >
@@ -909,10 +867,10 @@ function AppContent() {
           {/* Auth UI - Hide on mobile, move to Profile page */}
           <div className="desktop-only">
             {user ? (
-              <UserMenu onProfileClick={() => setCurrentView("profile")} />
+              <UserMenu onProfileClick={() => navigate("/profile")} />
             ) : (
               <div
-                onClick={() => setCurrentView("profile")}
+                onClick={() => navigate("/profile")}
                 style={{
                   width: "32px",
                   height: "32px",
@@ -999,11 +957,7 @@ function AppContent() {
             bookId={bookId}
             onBack={() => {
               setBookId(null);
-              // Update URL back to /books without reload
-              window.history.pushState(null, "", "/books");
-              window.dispatchEvent(
-                new CustomEvent("navigate", { detail: { path: "/books" } }),
-              );
+              navigate("/books");
             }}
             onPlaceClick={openModal}
             user={user}
@@ -1071,13 +1025,13 @@ function AppContent() {
           setActiveCats([]);
 
           if (view === "list") {
-            setCurrentView("list");
+            navigate("/");
             fetchData(true);
-          } else if (view === "map") setCurrentView("map");
-          else if (view === "chat") setCurrentView("chat");
-          else if (view === "books") setCurrentView("books");
+          } else if (view === "map") navigate("/map");
+          else if (view === "chat") navigate("/chat");
+          else if (view === "books") navigate("/books");
         }}
-        onProfileClick={() => setCurrentView("profile")}
+        onProfileClick={() => navigate("/profile")}
       />
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
@@ -1507,13 +1461,15 @@ function AppContent() {
 
 function App() {
   return (
-    <LanguageProvider>
-      <AuthProvider>
-        <ToastProvider>
-          <AppContent />
-        </ToastProvider>
-      </AuthProvider>
-    </LanguageProvider>
+    <ErrorBoundary>
+      <LanguageProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <AppContent />
+          </ToastProvider>
+        </AuthProvider>
+      </LanguageProvider>
+    </ErrorBoundary>
   );
 }
 

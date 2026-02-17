@@ -8,6 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      injectRegister: "inline",
       includeAssets: [
         "favicon.png",
         "apple-touch-icon.png",
@@ -31,6 +32,11 @@ export default defineConfig({
             type: "image/png",
           },
         ],
+      },
+      workbox: {
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
       },
     }),
   ],

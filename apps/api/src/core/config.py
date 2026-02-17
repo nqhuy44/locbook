@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     
     # App Version
-    APP_VERSION: str = "0.4.4"
+    APP_VERSION: str = "v1.0.0"
 
     # Feature Flags
     FEAT_IMAGE_ANALYSIS: bool = False  # Fetch Google Places photos for AI analysis
@@ -46,7 +46,8 @@ class Settings(BaseSettings):
     # Auth
     SECRET_KEY: str = "your-secret-key-change-me-in-production"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 # 1 hour
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30   # 30 days
     
     # OAuth
     GOOGLE_CLIENT_ID: str | None = None
