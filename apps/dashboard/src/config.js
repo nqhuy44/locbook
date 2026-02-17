@@ -1,12 +1,10 @@
 export const CONFIG = {
   // Feature Flags
+  // Feature Flags
   FEATURES: {
     ENABLE_BUY_ME_COFFEE: true,
-    ENABLE_FOOTER: true,
-    ENABLE_AUTHOR_CREDITS: true,
-    ENABLE_DISCOVER: true,
     ENABLE_MAP: false, // Feature flag for Map view
-    FEAT_AI_MATCHMAKE: true,
+    ASK_MARIN: true, // Previously FEAT_AI_MATCHMAKE
   },
 
   // Home Page Categories Order & Display
@@ -16,18 +14,13 @@ export const CONFIG = {
   // External Links
   LINKS: {
     BUY_ME_COFFEE: "https://buymeacoffee.com/nqhuy",
-    GITHUB: "https://locbook.firstdraft.sh",
-    AUTHOR_WEBSITE: "https://locbook.firstdraft.sh",
     LOC_REQUEST: "https://forms.gle/2w4efcfECzXwpnvo7", // Replace with actual Google Form URL
-    FEEDBACK: "https://forms.gle/2ntCQmgKNrEbN3DX9",   // Replace with actual Google Form URL
+    FEEDBACK: "https://forms.gle/2ntCQmgKNrEbN3DX9", // Replace with actual Google Form URL
   },
 
   // Uncategorized Logic Configuration (Keywords mapped to Categories)
   CATEGORY_KEYWORDS: {
-    Nhậu: [
-      "nhậu",
-      "beer",
-    ],
+    Nhậu: ["nhậu", "beer"],
     "Special Occasion": [
       "romantic",
       "fine dining",

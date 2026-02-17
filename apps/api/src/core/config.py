@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = "postgres"
     POSTGRES_DB: str = "spotary"
 
-    # POSTGRES_URL: str | None = "postgresql+asyncpg://postgres:postgres@localhost:5432/locbook"
+    # POSTGRES_URL: str | None = "postgresql+asyncpg://postgres:postgres@localhost:5432/spotary"
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
     ADMIN_SECRET: str | None = None

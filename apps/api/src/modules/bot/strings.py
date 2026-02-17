@@ -13,7 +13,7 @@ DEFAULT_RESPONSE = "😳 Gửi link Google Maps cho Marin đi! Marin chưa hiể
 SEARCHING_MSG = "🔎 Marin thấy link rồi! Đang đi soi quán này nha...\n ({url})"
 MARIN_BUSY = "😋 Marin đang bận ăn bánh mì... 🥖"
 MSG_ALREADY_SAVED = "<i>(Mình đã lưu quán này rồi nha! ID: {id})</i>"
-MSG_VIEW_FROM_LOCBOOK = "<i>(Xem lại từ Spotary)</i>"
+MSG_VIEW_FROM_SPOTARY = "<i>(Xem lại từ Spotary)</i>"
 MSG_PLACE_NOT_FOUND = "😩 Marin tìm hoài vẫn không thấy quán này"
 
 # Errors

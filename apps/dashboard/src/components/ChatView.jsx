@@ -73,7 +73,7 @@ const ChatView = ({ onPlaceClick, config }) => {
     setSessionId(sid);
 
     // Optional: Clear any old session from storage if we previously set it
-    localStorage.removeItem("locbook_chat_session");
+    localStorage.removeItem("spotary_chat_session");
 
     // Welcome message
     if (messages.length === 0) {

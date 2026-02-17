@@ -41,6 +41,8 @@ import LoginButton from "./components/auth/LoginButton";
 import UserMenu from "./components/auth/UserMenu";
 import BottomNav from "./components/BottomNav";
 import OnboardingPage from "./pages/OnboardingPage";
+import FeatureDisabledOverlay from "./components/common/FeatureDisabledOverlay";
+import Footer from "./components/common/Footer";
 import ProfilePage from "./pages/ProfilePage";
 import BooksPage from "./pages/BooksPage";
 import BookDetailPage from "./pages/BookDetailPage";
@@ -269,8 +271,9 @@ function AppContent() {
       }
 
       // 2. Books / Lists
-      if (path.startsWith("/book/")) {
-        const bId = path.split("/")[2];
+      if (path.startsWith("/book/") || path.startsWith("/books/")) {
+        const parts = path.split("/");
+        const bId = parts[2];
         if (bId) {
           setBookId(bId);
           setCurrentView("book-detail");
@@ -341,6 +344,7 @@ function AppContent() {
 
       const placesData = await placesRes.json();
       setPlaces(placesData.data);
+      setShuffleSeed(Math.random()); // Reshuffle sorting on every successful fetch
 
       if (configRes.ok) {
         const contentType = configRes.headers.get("content-type");
@@ -361,6 +365,7 @@ function AppContent() {
       }
     } catch (err) {
       console.error("Failed to fetch data", err);
+      setShuffleSeed(Math.random());
     } finally {
       setLoading(false);
       setIsPullRefreshing(false);
@@ -531,31 +536,95 @@ function AppContent() {
   const isFiltering =
     searchTerm !== "" || activeVibes.length > 0 || activeCats.length > 0;
 
+  // Shuffle seed for "Popular" randomness
+  const [shuffleSeed, setShuffleSeed] = useState(Math.random());
+
   const filteredPlaces = useMemo(() => {
-    if (!isFiltering) return [];
-    return places.filter((place) => {
-      const matchesSearch =
-        searchTerm === "" ||
-        place.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        place.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        place.vibes?.some((v) =>
-          v.toLowerCase().includes(searchTerm.toLowerCase()),
-        ) ||
-        place.categories?.some((c) =>
-          c.toLowerCase().includes(searchTerm.toLowerCase()),
-        );
+    let result = places;
 
-      const matchesVibe =
-        activeVibes.length === 0 ||
-        place.vibes?.some((v) => activeVibes.includes(v));
+    // 1. Filter
+    if (isFiltering) {
+      result = result.filter((place) => {
+        const matchesSearch =
+          searchTerm === "" ||
+          place.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          place.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          place.vibes?.some((v) =>
+            v.toLowerCase().includes(searchTerm.toLowerCase()),
+          ) ||
+          place.categories?.some((c) =>
+            c.toLowerCase().includes(searchTerm.toLowerCase()),
+          );
 
-      const matchesCat =
-        activeCats.length === 0 ||
-        place.categories?.some((c) => activeCats.includes(c));
+        const matchesVibe =
+          activeVibes.length === 0 ||
+          place.vibes?.some((v) => activeVibes.includes(v));
 
-      return matchesSearch && matchesVibe && matchesCat;
-    });
-  }, [places, searchTerm, activeVibes, activeCats, isFiltering]);
+        const matchesCat =
+          activeCats.length === 0 ||
+          place.categories?.some((c) => activeCats.includes(c));
+
+        return matchesSearch && matchesVibe && matchesCat;
+      });
+    }
+
+    // Shared Shuffle Logic
+    const shuffle = (array, seedVal) => {
+      let m = array.length,
+        t,
+        i;
+      // Convert float 0-1 to integer seed, +1 to avoid 0
+      let currentSeed = Math.floor(seedVal * 233280) + 1;
+
+      const seededRandom = () => {
+        currentSeed = (currentSeed * 9301 + 49297) % 233280;
+        return currentSeed / 233280;
+      };
+
+      while (m) {
+        i = Math.floor(seededRandom() * m--);
+        t = array[m];
+        array[m] = array[i];
+        array[i] = t;
+      }
+      return array;
+    };
+
+    // 2. Sort
+    if (sortMode === "newest") {
+      const sortedByDate = [...result].sort((a, b) => {
+        const da = new Date(a.created_at || 0).getTime();
+        const db = new Date(b.created_at || 0).getTime();
+        return db - da;
+      });
+
+      const topTier = sortedByDate.slice(0, 100);
+      const bottomTier = sortedByDate.slice(100);
+      return [...shuffle(topTier, shuffleSeed), ...bottomTier];
+    } else if (sortMode === "popular") {
+      const scored = result.map((p) => {
+        let score = (p.upvote_count || 0) * 3 + (p.rating || 0) * 2;
+        if (p.review_count) score += Math.log(p.review_count) * 2;
+        return { ...p, _score: score };
+      });
+
+      scored.sort((a, b) => b._score - a._score);
+
+      const topTier = scored.slice(0, 100);
+      const bottomTier = scored.slice(100);
+      return [...shuffle(topTier, shuffleSeed), ...bottomTier];
+    }
+
+    return result;
+  }, [
+    places,
+    searchTerm,
+    activeVibes,
+    activeCats,
+    isFiltering,
+    sortMode,
+    shuffleSeed,
+  ]);
 
   const toggleVibe = (vibe) => {
     if (activeVibes.includes(vibe))
@@ -780,47 +849,41 @@ function AppContent() {
             Spotary
           </div>
           <div className="nav-links">
-            {config.FEATURES.ENABLE_DISCOVER && (
-              <span
-                className={`nav-link ${currentView === "list" && !isFiltering ? "active" : ""}`}
-                onClick={() => {
-                  setSearchTerm("");
-                  setActiveVibes([]);
-                  setActiveCats([]);
-                  setCurrentView("list");
-                  // Always trigger refresh when clicking Discover
-                  fetchData(true);
-                }}
-              >
-                {t("nav.discover")}
-              </span>
-            )}
+            <span
+              className={`nav-link ${currentView === "list" && !isFiltering ? "active" : ""}`}
+              onClick={() => {
+                setSearchTerm("");
+                setActiveVibes([]);
+                setActiveCats([]);
+                setCurrentView("list");
+                // Always trigger refresh when clicking Discover
+                fetchData(true);
+              }}
+            >
+              {t("nav.discover")}
+            </span>
 
-            {config.FEATURES.ENABLE_MAP && (
-              <span
-                className={`nav-link ${currentView === "map" ? "active" : ""}`}
-                onClick={() => {
-                  setCurrentView("map");
-                }}
-              >
-                {t("nav.map")}
-              </span>
-            )}
+            <span
+              className={`nav-link ${currentView === "map" ? "active" : ""}`}
+              onClick={() => {
+                setCurrentView("map");
+              }}
+            >
+              {t("nav.map")}
+            </span>
 
-            {config.FEATURES.FEAT_AI_MATCHMAKE && (
-              <span
-                className={`nav-link ${currentView === "chat" ? "active" : ""}`}
-                onClick={() => {
-                  setSearchTerm("");
-                  setActiveVibes([]);
-                  setActiveCats([]);
-                  setCurrentView("chat");
-                }}
-                style={{ display: "flex", alignItems: "center", gap: "5px" }}
-              >
-                <Sparkles size={16} /> {t("nav.ask_marin")}
-              </span>
-            )}
+            <span
+              className={`nav-link ${currentView === "chat" ? "active" : ""}`}
+              onClick={() => {
+                setSearchTerm("");
+                setActiveVibes([]);
+                setActiveCats([]);
+                setCurrentView("chat");
+              }}
+              style={{ display: "flex", alignItems: "center", gap: "5px" }}
+            >
+              <Sparkles size={16} /> {t("nav.ask_marin")}
+            </span>
           </div>
         </div>
 
@@ -889,14 +952,41 @@ function AppContent() {
       {/* Main Content */}
       <main className="main-content" ref={mainContentRef}>
         {currentView === "chat" ? (
-          <div style={{ height: "100%", width: "100%" }}>
-            <ChatView onPlaceClick={openModal} config={config} />
-          </div>
+          !config.FEATURES.ASK_MARIN ? (
+            <FeatureDisabledOverlay
+              title={t("ask_marin.disabled_title")}
+              message={t("ask_marin.disabled_msg")}
+              mode="travel"
+            />
+          ) : (
+            <div
+              style={{ height: "100%", width: "100%", position: "relative" }}
+            >
+              <ChatView
+                onPlaceClick={openModal}
+                config={config}
+                user={user} // Pass user to ChatView if needed for internal checks
+              />
+            </div>
+          )
         ) : currentView === "map" ? (
-          <MapView
-            places={isFiltering ? filteredPlaces : places}
-            onPlaceClick={openModal}
-          />
+          !config.FEATURES.ENABLE_MAP ? (
+            <FeatureDisabledOverlay
+              title={t("map.disabled_title")}
+              message={t("map.disabled_msg")}
+              mode="drawing"
+            />
+          ) : (
+            <div
+              style={{ width: "100%", height: "100%", position: "relative" }}
+            >
+              <MapView
+                places={isFiltering ? filteredPlaces : places}
+                onPlaceClick={openModal}
+                user={user}
+              />
+            </div>
+          )
         ) : currentView === "profile" ? (
           <ProfilePage
             onBack={() => setCurrentView("list")}
@@ -908,12 +998,15 @@ function AppContent() {
           <BookDetailPage
             bookId={bookId}
             onBack={() => {
+              setBookId(null);
+              // Update URL back to /books without reload
               window.history.pushState(null, "", "/books");
               window.dispatchEvent(
                 new CustomEvent("navigate", { detail: { path: "/books" } }),
               );
             }}
             onPlaceClick={openModal}
+            user={user}
           />
         ) : isFiltering ? (
           <div className="section-wrapper">
@@ -966,6 +1059,7 @@ function AppContent() {
             );
           })
         )}
+        {currentView === "list" && <Footer config={config} />}
       </main>
 
       {/* Bottom Navigation (Mobile) */}
@@ -1042,61 +1136,6 @@ function AppContent() {
           </div>
         </div>
       )}
-
-      {/* Footer - Desktop Only */}
-      {config.FEATURES.ENABLE_FOOTER &&
-        currentView !== "map" &&
-        currentView !== "chat" && (
-          <footer className="footer desktop-only">
-            <div className="footer-content">
-              <div className="footer-brand">Spotary</div>
-              <div className="footer-links">
-                {config.FEATURES.ENABLE_BUY_ME_COFFEE && (
-                  <a
-                    href={config.LINKS.BUY_ME_COFFEE}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="bmc-button-footer"
-                  >
-                    <Coffee size={18} /> {t("settings.coffee")}
-                  </a>
-                )}
-                {config.LINKS.GITHUB && (
-                  <a
-                    href={config.LINKS.GITHUB}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <Github size={18} /> GitHub
-                  </a>
-                )}
-                {config.LINKS.AUTHOR_WEBSITE && (
-                  <a
-                    href={config.LINKS.AUTHOR_WEBSITE}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <Globe size={18} /> Website
-                  </a>
-                )}
-                {config.LINKS.FEEDBACK && (
-                  <a
-                    href={config.LINKS.FEEDBACK}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <MessageSquare size={18} /> {t("settings.feedback")}
-                  </a>
-                )}
-              </div>
-              <div className="footer-text">Made by nqhuy</div>
-              <div className="footer-copyright">
-                © {new Date().getFullYear()} Spotary. All rights reserved. v
-                {__APP_VERSION__}
-              </div>
-            </div>
-          </footer>
-        )}
 
       {/* Modal */}
       {selectedPlace && (

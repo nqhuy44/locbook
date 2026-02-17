@@ -58,6 +58,8 @@ export const vi = {
     login_required: "Đăng nhập để sử dụng Bản đồ",
     map_login_msg: "Khám phá vibes xung quanh bạn!",
     go_to_profile: "Đi đến trang Hồ sơ để đăng nhập",
+    disabled_title: "Marin đang vẽ",
+    disabled_msg: "Bạn chưa xem được đâu! Marin cần thời gian để vẽ bản đồ",
   },
   // Ask Marin
   ask_marin: {
@@ -70,11 +72,18 @@ export const vi = {
     chat_login_msg:
       "Không biết đi đâu? Marin sẽ giúp bạn tìm địa điểm hoàn hảo!",
     go_to_profile: "Đi đến trang Hồ sơ để đăng nhập",
+    disabled_title: "Marin đi chơi rồi!",
+    disabled_msg:
+      "Marin đang trong kì nghỉ rồi! Marin sẽ ko để bạn nhớ thật lâu đâu!",
   },
   // Books
   books: {
     title: "Tủ của tôi",
-    new_book: "Tạo danh sách",
+    new_book: "Sách mới",
+    my_books: "Sách của tôi",
+    followed_books: "Đang theo dõi",
+    followed_tag: "Đã theo dõi",
+    following_tag: "Tác giả",
     empty_title: "Bạn chưa có danh sách nào",
     empty_desc: "Tạo danh sách để lưu lại những địa điểm yêu thích!",
     create_title: "Tạo danh sách mới",

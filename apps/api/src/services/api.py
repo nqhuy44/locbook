@@ -56,6 +56,9 @@ app.include_router(menu_router)
 app.include_router(lists_router)
 app.include_router(memo_router)
 
+from src.modules.auth.admin_router import router as admin_router
+app.include_router(admin_router)
+
 # CORS
 origins = get_settings().CORS_ORIGINS
 print(f"DEBUG: Loaded CORS Origins: {origins}")
@@ -78,14 +81,16 @@ app.mount("/uploads", StaticFiles(directory="data/uploads"), name="uploads")
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
+from src.core.security import verify_token
 from src.modules.analytics.service import log_event
 import asyncio
-
 
 class AnalyticsMiddleware(BaseHTTPMiddleware):
     """Auto-log VIEW_DETAIL and SEARCH events."""
     TRACKED_PATTERNS = {
         "/api/places/": "VIEW_DETAIL",
+        "/api/discovery/places/": "VIEW_DETAIL",
+        "/api/discovery/places": "SEARCH",
         "/api/chat/message": "SEARCH",
     }
 
@@ -97,10 +102,20 @@ class AnalyticsMiddleware(BaseHTTPMiddleware):
             path = request.url.path
             for pattern, event_type in self.TRACKED_PATTERNS.items():
                 if path.startswith(pattern):
+                    # Try to get user_id from token for logged-in users
+                    user_id = None
+                    auth_header = request.headers.get("Authorization")
+                    if auth_header and auth_header.startswith("Bearer "):
+                        token = auth_header.split(" ")[1]
+                        payload = verify_token(token)
+                        if payload:
+                            user_id = payload.get("sub")
+
                     # Fire-and-forget: don't block the response
                     asyncio.create_task(
                         log_event(
                             event_type=event_type,
+                            user_id=user_id,
                             payload={"path": path, "method": request.method},
                         )
                     )
@@ -159,18 +174,8 @@ async def get_places(
     }
 
 # Auth
-API_KEY_HEADER = APIKeyHeader(name="x-admin-token", auto_error=False)
-
-async def verify_admin(token: str = Security(API_KEY_HEADER)):
-    settings = get_settings()
-    secret = settings.ADMIN_SECRET
-    if not secret:
-        logger.warning("ADMIN_SECRET not set in env. Denying admin access.")
-        raise HTTPException(status_code=403, detail="Admin access not configured")
-    
-    if not token or token != secret:
-        raise HTTPException(status_code=403, detail="Invalid Admin Token")
-    return True
+# verify_admin is now in src.modules.auth.dependencies
+from src.modules.auth.dependencies import verify_admin
 
 @app.get("/api/places/{place_id}")
 async def get_place_detail(place_id: str, db: AsyncSession = Depends(get_db_session)):
@@ -215,7 +220,7 @@ async def update_place(
     await db.commit()
     await db.refresh(place)
     
-    return place
+    return PlaceRead.model_validate(place)
 
 @app.delete("/api/places/{place_id}", dependencies=[Depends(verify_admin)])
 async def delete_place(place_id: str, db: AsyncSession = Depends(get_db_session)):
@@ -258,17 +263,12 @@ async def get_stats(db: AsyncSession = Depends(get_db_session)):
 DEFAULT_APP_CONFIG = {
   "FEATURES": {
     "ENABLE_BUY_ME_COFFEE": True,
-    "ENABLE_FOOTER": True,
-    "ENABLE_AUTHOR_CREDITS": True,
-    "ENABLE_DISCOVER": True,
     "ENABLE_MAP": False,
-    "FEAT_AI_MATCHMAKE": get_settings().FEAT_AI_MATCHMAKE,
+    "ASK_MARIN": True, # Previously FEAT_AI_MATCHMAKE
   },
   "HOME_CATEGORIES": ["Casual", "Cafe & Coffee", "Special Occasion", "Bar"],
   "LINKS": {
     "BUY_ME_COFFEE": "https://buymeacoffee.com/nqhuy",
-    "GITHUB": "https://spotary.firstdraft.sh",
-    "AUTHOR_WEBSITE": "https://spotary.firstdraft.sh",
     "LOC_REQUEST": "https://forms.gle/2w4efcfECzXwpnvo7",
     "FEEDBACK": "https://forms.gle/2ntCQmgKNrEbN3DX9",
     "DASHBOARD_URL": "http://localhost:5173",
@@ -281,6 +281,7 @@ DEFAULT_APP_CONFIG = {
     "Bar": ["bar", "cocktail", "lounge", "speakeasy", "wine"],
     "Cafe & Coffee": ["cafe", "coffee", "tea"],
     "Casual": ["casual", "street", "local", "snack", "quick"],
+    "Bakery": ["bakery", "pastry", "cake", "dessert"],
   },
   "MARIN": {
     "AVATAR_NAME": "Marin 🎀",
@@ -320,20 +321,40 @@ async def get_config(db: AsyncSession = Depends(get_db_session)):
     if not config:
         return DEFAULT_APP_CONFIG
     
+    # Merge Logic:
+    # 1. FEATURES & LINKS: Strict Schema (Only allow keys present in DEFAULT_APP_CONFIG)
+    #    This ensures obsolete keys (like old links) are removed even if they exist in DB.
+    # 2. CATEGORY_KEYWORDS: DB Override (Use DB value if exists, else Default)
+    # 3. MARIN: Recursive Merge (Update nested keys)
+    
+    # Start with a deep copy of default to ensure structure
     merged = DEFAULT_APP_CONFIG.copy()
     db_data = config.data
     
-    for key in ["LINKS", "FEATURES", "MARIN"]:
-        if key in db_data and isinstance(db_data[key], dict):
-             for sub_key, sub_val in merged[key].items():
-                 if sub_key not in db_data[key]:
-                     db_data[key][sub_key] = sub_val
-    
-    for key, val in db_data.items():
-        if key in merged and isinstance(merged[key], dict) and isinstance(val, dict):
-             merged[key].update(val)
-        else:
-             merged[key] = val
+    if "FEATURES" in db_data and isinstance(db_data["FEATURES"], dict):
+        for k, v in merged["FEATURES"].items():
+            if k in db_data["FEATURES"]:
+                merged["FEATURES"][k] = db_data["FEATURES"][k]
+
+    if "LINKS" in db_data and isinstance(db_data["LINKS"], dict):
+        for k, v in merged["LINKS"].items():
+            if k in db_data["LINKS"]:
+                merged["LINKS"][k] = db_data["LINKS"][k]
+
+    if "CATEGORY_KEYWORDS" in db_data:
+        merged["CATEGORY_KEYWORDS"] = db_data["CATEGORY_KEYWORDS"]
+
+    if "MARIN" in db_data and isinstance(db_data["MARIN"], dict):
+         for k, v in db_data["MARIN"].items():
+             if k in merged["MARIN"] and isinstance(merged["MARIN"][k], dict) and isinstance(v, dict):
+                 merged["MARIN"][k].update(v)
+             else:
+                 merged["MARIN"][k] = v
+                 
+    # Copy any other top-level keys that might be dynamic, if we want to allow extensibility
+    # or strictly stick to the sections we know. 
+    # For now, let's allow other top-level keys from DB to pass through if they are new features not in default yet?
+    # No, strict cleanup requested. Stick to the above.
              
     return merged
 
@@ -361,11 +382,11 @@ class ChatMessage(BaseModel):
 
 @app.post("/api/chat/message")
 async def chat_message(payload: ChatMessage, current_user: User = Depends(get_current_user)):
-    if not DEFAULT_APP_CONFIG["FEATURES"]["FEAT_AI_MATCHMAKE"]:
+    if not DEFAULT_APP_CONFIG["FEATURES"]["ASK_MARIN"]:
         return {"error": "Feature disabled"}
     
     from src.modules.places.chat_service import chat_service
-    response = await chat_service.handle_message(payload.session_id, payload.message)
+    response = await chat_service.handle_message(payload.session_id, payload.message, user_id=current_user.id)
     return response
 
 

@@ -32,7 +32,9 @@ class UserListRead(BaseModel):
     item_count: int
     followers_count: int = 0
     items: List[Dict] = []
-    # We might want thumbnail images from the first few places
+    is_owner: bool = True
+    is_following: bool = False
+    owner_username: Optional[str] = None
 
 class ListPlaceItem(BaseModel):
     place: PlaceRead
@@ -40,10 +42,15 @@ class ListPlaceItem(BaseModel):
 
 class UserListDetail(BaseModel):
     id: uuid.UUID
+    user_id: uuid.UUID
     name: str
     description: Optional[str]
     privacy: ListPrivacy
     items: List[ListPlaceItem]
+    is_owner: bool = False
+    is_following: bool = False
+    followers_count: int = 0
+    owner_username: Optional[str] = None
 
 class AddPlaceRequest(BaseModel):
     url: str # Google Maps URL
@@ -59,19 +66,28 @@ async def get_my_lists(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
-    stmt = select(UserList).where(UserList.user_id == current_user.id).order_by(UserList.updated_at.desc())
-    result = await db.execute(stmt)
-    lists = result.scalars().all()
+    # 1. Fetch owned lists with owner info (owner is current_user)
+    stmt_owned = select(UserList).where(UserList.user_id == current_user.id).order_by(UserList.updated_at.desc())
+    res_owned = await db.execute(stmt_owned)
+    owned_lists = res_owned.scalars().all()
     
-    # Determine which lists are visible:
-    # 1. Own lists
-    # 2. Public lists (if we want to show them here, but typically "My Lists" is just own)
+    # 2. Fetch followed lists with owner info
+    from sqlalchemy.orm import joinedload
+    stmt_followed = (
+        select(UserList)
+        .options(joinedload(UserList.user))
+        .join(UserListFollow, UserListFollow.list_id == UserList.id)
+        .where(UserListFollow.user_id == current_user.id)
+        .order_by(UserList.updated_at.desc())
+    )
+    res_followed = await db.execute(stmt_followed)
+    followed_lists = res_followed.scalars().all()
     
-    # Let's count followers for each list
-    list_ids = [l.id for l in lists]
+    # 3. Combine list IDs for followers count
+    all_lists = owned_lists + followed_lists
+    list_ids = [l.id for l in all_lists]
     followers_counts = {}
     if list_ids:
-        # aggregate count
         from sqlalchemy import func
         stmt_count = (
             select(UserListFollow.list_id, func.count(UserListFollow.user_id))
@@ -82,17 +98,43 @@ async def get_my_lists(
         for lid, count in result_count.all():
             followers_counts[lid] = count
 
-    return [
-        UserListRead(
+    # 4. Map to response model
+    results = []
+    
+    # Add owned
+    owned_ids = set()
+    for l in owned_lists:
+        owned_ids.add(l.id)
+        results.append(UserListRead(
             id=l.id,
             name=l.name,
             description=l.description,
             privacy=l.privacy,
             item_count=len(l.items),
             followers_count=followers_counts.get(l.id, 0),
-            items=l.items
-        ) for l in lists
-    ]
+            items=l.items,
+            is_owner=True,
+            is_following=False,
+            owner_username=current_user.username
+        ))
+        
+    # Add followed
+    for l in followed_lists:
+        if l.id in owned_ids: continue # Should not happen based on follow logic
+        results.append(UserListRead(
+            id=l.id,
+            name=l.name,
+            description=l.description,
+            privacy=l.privacy,
+            item_count=len(l.items),
+            followers_count=followers_counts.get(l.id, 0),
+            items=l.items,
+            is_owner=False,
+            is_following=True,
+            owner_username=l.user.username if l.user else None
+        ))
+
+    return results
 
 @router.post("", response_model=UserListRead)
 async def create_list(
@@ -160,8 +202,9 @@ async def get_list_detail(
     current_user: Optional[User] = Depends(get_optional_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
-    # Fetch list by ID (ignoring user_id for now)
-    stmt = select(UserList).where(UserList.id == list_id)
+    # Fetch list by ID with joined user
+    from sqlalchemy.orm import joinedload
+    stmt = select(UserList).options(joinedload(UserList.user)).where(UserList.id == list_id)
     result = await db.execute(stmt)
     user_list = result.scalar_one_or_none()
     
@@ -173,41 +216,57 @@ async def get_list_detail(
     if user_list.privacy == ListPrivacy.PRIVATE and not is_owner:
          raise HTTPException(status_code=404, detail="List not found or private")
         
+    # Calculate counts and status
+    is_owner = False
+    if current_user:
+        is_owner = str(user_list.user_id) == str(current_user.id)
+    
+    is_following = False
+    if current_user:
+        stmt_follow = select(UserListFollow).where(
+            UserListFollow.user_id == current_user.id,
+            UserListFollow.list_id == list_id
+        )
+        res_follow = await db.execute(stmt_follow)
+        if res_follow.scalar_one_or_none():
+            is_following = True
+
+    from sqlalchemy import func
+    stmt_count = select(func.count(UserListFollow.user_id)).where(UserListFollow.list_id == list_id)
+    res_count = await db.execute(stmt_count)
+    followers_count = res_count.scalar() or 0
+
     # Hydrate places
-    # items = [{"place_id": str, "suggested_dishes": []}, ...]
+    detail_items = []
     place_ids = [uuid.UUID(item["place_id"]) for item in user_list.items]
     
-    if not place_ids:
-        return UserListDetail(
-            id=user_list.id,
-            name=user_list.name,
-            description=user_list.description,
-            privacy=user_list.privacy,
-            items=[]
-        )
+    if place_ids:
+        stmt_places = select(Place).where(Place.id.in_(place_ids))
+        result_places = await db.execute(stmt_places)
+        places_map = {p.id: p for p in result_places.scalars().all()}
         
-    stmt_places = select(Place).where(Place.id.in_(place_ids))
-    result_places = await db.execute(stmt_places)
-    places_map = {p.id: p for p in result_places.scalars().all()}
-    
-    detail_items = []
-    for item in user_list.items:
-        p_id = uuid.UUID(item["place_id"])
-        if p_id in places_map:
-            place_obj = places_map[p_id]
-            detail_items.append(
-                ListPlaceItem(
-                    place=PlaceRead.model_validate(place_obj),
-                    suggested_dishes=item.get("suggested_dishes", [])
+        for item in user_list.items:
+            p_id = uuid.UUID(item["place_id"])
+            if p_id in places_map:
+                place_obj = places_map[p_id]
+                detail_items.append(
+                    ListPlaceItem(
+                        place=PlaceRead.model_validate(place_obj),
+                        suggested_dishes=item.get("suggested_dishes", [])
+                    )
                 )
-            )
-            
+
     return UserListDetail(
         id=user_list.id,
+        user_id=user_list.user_id,
         name=user_list.name,
         description=user_list.description,
         privacy=user_list.privacy,
-        items=detail_items
+        items=detail_items,
+        is_owner=is_owner,
+        is_following=is_following,
+        followers_count=followers_count,
+        owner_username=user_list.user.username if user_list.user else None
     )
 
 @router.post("/{list_id}/add", response_model=UserListDetail)
@@ -226,7 +285,7 @@ async def add_place_to_list(
         
     # Get or create place
     try:
-        place, _, _ = await get_or_create_place_from_url(db, payload.url)
+        place, _, _ = await get_or_create_place_from_url(db, payload.url, user_id=current_user.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
         

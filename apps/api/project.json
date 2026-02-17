@@ -42,7 +42,7 @@
     "build-image": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "docker build -t nqh44/locbook:${ver:-latest} .",
+        "command": "docker build -t nqh44/spotary:${ver:-latest} .",
         "cwd": "apps/api"
       }
     },
