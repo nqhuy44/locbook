@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     
     # App Version
-    APP_VERSION: str = "v1.0.0"
+    APP_VERSION: str = "v1.0.1"
 
     # Feature Flags
     FEAT_IMAGE_ANALYSIS: bool = False  # Fetch Google Places photos for AI analysis
@@ -65,15 +65,7 @@ class Settings(BaseSettings):
     S3_PUBLIC_URL: str | None = None
 
     # CORS
-    CORS_ORIGINS: list[str] = [
-        "http://localhost:5173",
-        "http://localhost:8000",
-        "https://dev.firstdraft.sh",
-        "http://dev.firstdraft.sh",
-        "http://dev.firstdraft.sh:5173",
-        "http://dev.firstdraft.sh:5174",
-        "http://localhost:5174",
-    ]
+    CORS_ORIGINS: list[str] = []
 
     model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True, env_file_encoding="utf-8", extra='ignore')
 

@@ -35,7 +35,7 @@
     "all": {
       "executor": "nx:run-commands",
       "options": {
-        "commands": ["nx run api:core", "nx run api:worker", "nx run api:bot"],
+        "commands": ["nx run api:core", "nx run api:worker"],
         "parallel": true
       }
     },

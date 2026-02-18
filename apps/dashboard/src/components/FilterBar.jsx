@@ -1,5 +1,5 @@
 import React from "react";
-import { Search, ThumbsUp, TrendingUp, Clock } from "lucide-react";
+import { Search, ThumbsUp, TrendingUp, Clock, Sparkles } from "lucide-react";
 
 /**
  * FilterBar Component

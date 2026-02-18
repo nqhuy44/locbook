@@ -561,7 +561,7 @@ const ConfigPage = ({ API_URL, token }) => {
       <div
         style={{
           position: "fixed",
-          bottom: "2rem",
+          bottom: "6rem",
           right: "2rem",
           zIndex: 100,
         }}

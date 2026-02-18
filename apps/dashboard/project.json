@@ -18,6 +18,20 @@
         "cwd": "apps/dashboard"
       }
     },
+    "prebuild-image": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "mv .env ../../temp/dashboard.env || true",
+        "cwd": "apps/dashboard"
+      }
+    },
+    "postbuild-image": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "mv ../../temp/dashboard.env .env || true",
+        "cwd": "apps/dashboard"
+      }
+    },
     "build-image": {
       "executor": "nx:run-commands",
       "options": {
@@ -26,6 +40,7 @@
         "forwardAllArgs": false
       }
     },
+
     "push-image": {
       "executor": "nx:run-commands",
       "options": {

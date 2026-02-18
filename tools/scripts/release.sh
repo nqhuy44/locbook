@@ -59,7 +59,9 @@ update_dashboard() {
     portable_sed "s/\"version\": \".*\"/\"version\": \"${VERSION#v}\"/" "$PKG_FILE"
   fi
   echo "🐳 Building nqh44/spotary-dashboard..."
+  nx run dashboard:prebuild-image
   nx run dashboard:build-image --ver=$VERSION
+  nx run dashboard:postbuild-image
   echo "🐳 Pushing nqh44/spotary-dashboard..."
   nx run dashboard:push-image --ver=$VERSION
 }
@@ -71,7 +73,9 @@ update_admin() {
     portable_sed "s/\"version\": \".*\"/\"version\": \"${VERSION#v}\"/" "$PKG_FILE"
   fi
   echo "🐳 Building nqh44/spotary-admin..."
+  nx run admin:prebuild-image
   nx run admin:build-image --ver=$VERSION
+  nx run admin:postbuild-image
   echo "🐳 Pushing nqh44/spotary-admin..."
   nx run admin:push-image --ver=$VERSION
 }

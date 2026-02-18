@@ -1,0 +1,154 @@
+services:
+  # Backend Services
+  api:
+    image: nqh44/spotary:v1.0.1
+    restart: always
+    user: "1000:1000"
+    command: uvicorn src.services.api:app --host 0.0.0.0 --port 8000
+    env_file:
+      - .env
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+    volumes:
+      - ./data:/app/data # Persist images
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - 8200:8000
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  bot:
+    image: nqh44/spotary:v1.0.1
+    restart: always
+    user: "1000:1000"
+    command: python -m src.services.bot_runner
+    env_file:
+      - .env
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+    depends_on:
+      - api
+      - postgres
+      - redis
+    deploy:
+      resources:
+        limits:
+          cpus: '0.30'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  worker:
+    image: nqh44/spotary:v1.0.1
+    restart: always
+    user: "1000:1000"
+    command: python -m src.services.worker_runner
+    env_file:
+      - .env
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+    depends_on:
+      - postgres
+      - redis
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Frontend Services
+  dashboard:
+    image: nqh44/spotary-dashboard:v1.0.2
+    restart: always
+    depends_on:
+      - api
+    ports:
+      - 8201:80
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  admin:
+    image: nqh44/spotary-admin:v1.0.1
+    restart: always
+    depends_on:
+      - api
+    ports:
+      - 8202:80
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Infrastructure
+  postgres:
+    build:
+      context: .
+      dockerfile: Dockerfile.db
+    restart: always
+    volumes:
+      - ./pgdata:/var/lib/postgresql
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:8-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redisdata:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

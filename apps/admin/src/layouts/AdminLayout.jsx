@@ -259,6 +259,7 @@ const AdminLayout = ({ children, view, setView, onLogout }) => {
         <MobileNavItem id="users" icon={User} label="Users" />
         <MobileNavItem id="config" icon={SettingsIcon} label="Config" />
         <MobileNavItem id="marin" icon={Sparkles} label="AI" />
+        <MobileNavItem id="system" icon={Monitor} label="System" />
       </nav>
     </div>
   );
