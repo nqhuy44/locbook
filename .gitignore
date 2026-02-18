@@ -78,7 +78,7 @@ redisdata/
 
 # Temporary
 graph.json
-
+temp/
 # Docker
 .Dockerfile
 

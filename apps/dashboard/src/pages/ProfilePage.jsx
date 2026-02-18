@@ -145,6 +145,9 @@ export default function ProfilePage({ onBack, viewingProfile }) {
   const [customTag, setCustomTag] = useState("");
   const [isAddingTag, setIsAddingTag] = useState(false);
 
+  const [customPersonality, setCustomPersonality] = useState("");
+  const [isAddingPersonality, setIsAddingPersonality] = useState(false);
+
   // Sync state when entering edit mode or user updates
   React.useEffect(() => {
     if (!isEditing && user) {
@@ -201,6 +204,15 @@ export default function ProfilePage({ onBack, viewingProfile }) {
     setSelectedPersonality((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
     );
+  };
+
+  const addCustomPersonality = () => {
+    const tag = customPersonality.trim();
+    if (tag && !selectedPersonality.includes(tag)) {
+      setSelectedPersonality((prev) => [...prev, tag]);
+      setCustomPersonality("");
+      setIsAddingPersonality(false);
+    }
   };
 
   const randomizeSeed = () => {
@@ -730,7 +742,61 @@ export default function ProfilePage({ onBack, viewingProfile }) {
                         <span>{tag}</span>
                       </button>
                     ))}
+                  {/* Show selected custom tags that are NOT in PERSONALITY_TAGS */}
+                  {selectedPersonality
+                    .filter((tag) => !PERSONALITY_TAGS.includes(tag))
+                    .map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        className="chip active"
+                        onClick={() => togglePersonality(tag)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          padding: "0.4rem 0.8rem",
+                          borderRadius: "20px",
+                          border: "none",
+                          background: "var(--accent-gradient)",
+                          color: "white",
+                          fontSize: "0.9rem",
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                        }}
+                      >
+                        <Check size={12} />
+                        <span>{tag}</span>
+                      </button>
+                    ))}
                 </div>
+                {isAddingPersonality ? (
+                  <input
+                    autoFocus
+                    className="add-tag-input"
+                    value={customPersonality}
+                    onChange={(e) => setCustomPersonality(e.target.value)}
+                    onKeyPress={(e) =>
+                      e.key === "Enter" &&
+                      (e.preventDefault(), addCustomPersonality())
+                    }
+                    onBlur={() => {
+                      if (!customPersonality) setIsAddingPersonality(false);
+                      else addCustomPersonality();
+                    }}
+                    placeholder="Trait..."
+                    style={{ marginTop: "0.5rem" }}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    className="add-tag-btn"
+                    onClick={() => setIsAddingPersonality(true)}
+                    style={{ marginTop: "0.5rem" }}
+                  >
+                    <Plus size={14} /> <span>{t("profile.add_tag")}</span>
+                  </button>
+                )}
               </div>
 
               {/* Save/Cancel Bar */}

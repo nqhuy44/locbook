@@ -40,6 +40,7 @@ export const en = {
   // Home
   home: {
     search_placeholder: "Find places, vibes...",
+    shuffle: "Shuffle",
     popular: "Popular",
     trending: "Trending",
     newest: "Newest",

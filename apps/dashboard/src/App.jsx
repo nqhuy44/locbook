@@ -321,6 +321,15 @@ function AppContent() {
     fetchData();
   }, []); // Run only once
 
+  // Body overflow management based on modal state
+  useEffect(() => {
+    if (selectedPlace || showBookSelector || showSettings) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
+    }
+  }, [selectedPlace, showBookSelector, showSettings]);
+
   // 2. URL Sync on mount or when places data arrives
   useEffect(() => {
     handleUrlChange();
@@ -413,34 +422,6 @@ function AppContent() {
       container.removeEventListener("touchend", handleTouchEnd);
     };
   }, [currentView]); // Removed pullDistance to keep handlers stable
-
-  const categorizedPlaces = useMemo(() => {
-    const groups = {};
-    config.HOME_CATEGORIES.forEach((cat) => (groups[cat] = []));
-    if (!groups["Casual"]) groups["Casual"] = [];
-
-    places.forEach((place) => {
-      const cats = place.categories?.join(" ").toLowerCase() || "";
-      const vibes = place.vibes?.join(" ").toLowerCase() || "";
-      const combined = cats + " " + vibes;
-      for (const [category, keywords] of Object.entries(
-        config.CATEGORY_KEYWORDS,
-      )) {
-        if (
-          groups[category] &&
-          keywords.some((k) => new RegExp(`\\b${k}\\b`, "i").test(combined))
-        ) {
-          groups[category].push(place);
-        }
-      }
-    });
-
-    for (const key in groups) {
-      groups[key] = [...new Set(groups[key])];
-    }
-
-    return groups;
-  }, [places, config]);
 
   const { displayedVibes, displayedCategories } = useMemo(() => {
     const matchesSearch = (p) =>
@@ -548,7 +529,7 @@ function AppContent() {
       return array;
     };
 
-    // 2. Sort
+    // 2. Sort & Shuffle
     if (sortMode === "newest") {
       const sortedByDate = [...result].sort((a, b) => {
         const da = new Date(a.created_at || 0).getTime();
@@ -556,8 +537,9 @@ function AppContent() {
         return db - da;
       });
 
-      const topTier = sortedByDate.slice(0, 100);
-      const bottomTier = sortedByDate.slice(100);
+      // Shuffle top 50 to keep it fresh
+      const topTier = sortedByDate.slice(0, 50);
+      const bottomTier = sortedByDate.slice(50);
       return [...shuffle(topTier, shuffleSeed), ...bottomTier];
     } else if (sortMode === "popular") {
       const scored = result.map((p) => {
@@ -568,9 +550,13 @@ function AppContent() {
 
       scored.sort((a, b) => b._score - a._score);
 
-      const topTier = scored.slice(0, 100);
-      const bottomTier = scored.slice(100);
+      // Shuffle top 50 to keep it fresh
+      const topTier = scored.slice(0, 50);
+      const bottomTier = scored.slice(50);
       return [...shuffle(topTier, shuffleSeed), ...bottomTier];
+    } else if (sortMode === "shuffle") {
+      const shuffled = [...result];
+      return shuffle(shuffled, shuffleSeed);
     }
 
     return result;
@@ -583,6 +569,34 @@ function AppContent() {
     sortMode,
     shuffleSeed,
   ]);
+
+  const categorizedPlaces = useMemo(() => {
+    const groups = {};
+    config.HOME_CATEGORIES.forEach((cat) => (groups[cat] = []));
+    if (!groups["Casual"]) groups["Casual"] = [];
+
+    filteredPlaces.forEach((place) => {
+      const cats = place.categories?.join(" ").toLowerCase() || "";
+      const vibes = place.vibes?.join(" ").toLowerCase() || "";
+      const combined = cats + " " + vibes;
+      for (const [category, keywords] of Object.entries(
+        config.CATEGORY_KEYWORDS,
+      )) {
+        if (
+          groups[category] &&
+          keywords.some((k) => new RegExp(`\\b${k}\\b`, "i").test(combined))
+        ) {
+          groups[category].push(place);
+        }
+      }
+    });
+
+    for (const key in groups) {
+      groups[key] = [...new Set(groups[key])];
+    }
+
+    return groups;
+  }, [filteredPlaces, config]);
 
   const toggleVibe = (vibe) => {
     if (activeVibes.includes(vibe))
@@ -604,7 +618,6 @@ function AppContent() {
     setPlaceMemos([]);
     setShowMemoEditor(false);
     setMemoContent("");
-    document.body.style.overflow = "hidden";
 
     const placeId = place._id || place.id;
     const newUrl = `${window.location.pathname}?place=${placeId}`;
@@ -729,7 +742,6 @@ function AppContent() {
   const closeModal = () => {
     setSelectedPlace(null);
     setShowBookSelector(false);
-    document.body.style.overflow = "auto";
     const baseUrl = window.location.pathname;
     window.history.pushState({ path: baseUrl }, "", baseUrl);
   };
@@ -813,8 +825,10 @@ function AppContent() {
                 setSearchTerm("");
                 setActiveVibes([]);
                 setActiveCats([]);
+                setSortMode("popular");
+                // Trigger refresh and new shuffle
+                setShuffleSeed(Math.random());
                 navigate("/");
-                // Always trigger refresh when clicking Discover
                 fetchData(true);
               }}
             >

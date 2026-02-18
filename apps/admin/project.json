@@ -18,6 +18,20 @@
         "cwd": "apps/admin"
       }
     },
+    "prebuild-image": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "mv .env ../../temp/admin.env || true",
+        "cwd": "apps/admin"
+      }
+    },
+    "postbuild-image": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "mv ../../temp/admin.env .env || true",
+        "cwd": "apps/admin"
+      }
+    },
     "build-image": {
       "executor": "nx:run-commands",
       "options": {
