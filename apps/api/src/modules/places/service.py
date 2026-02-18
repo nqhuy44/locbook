@@ -202,3 +202,41 @@ async def get_or_create_place_from_url(db: AsyncSession, url: str, user_id: Opti
     await db.refresh(place)
     
     return place, True, marin_comment
+
+async def search_places(db: AsyncSession, query: str, vibe: Optional[str] = None, district: Optional[str] = None, limit: int = 5) -> List[Place]:
+    """
+    Search for places using vector similarity and metadata filters.
+    """
+    from src.core.ai import get_text_embedding
+    
+    # 1. Generate embedding for query
+    query_embedding = await get_text_embedding(query)
+    
+    # 2. Build query
+    stmt = select(Place)
+    
+    # Filter by district if provided
+    if district and district.lower() != "null":
+        # Simple case-insensitive match
+        stmt = stmt.where(Place.district.ilike(f"%{district}%"))
+        
+    # Filter by vibe if provided (using array containment or overlap)
+    if vibe and vibe.lower() != "null":
+        # Assumes vibes is ARRAY(String). 
+        # For strict match: Place.vibes.contains([vibe])
+        # For fuzzy, we might rely solely on vector search, but let's try a text filter if meaningful
+        stmt = stmt.where(Place.vibes.any(vibe))
+        
+    # 3. Vector Search
+    if query_embedding:
+        stmt = stmt.order_by(Place.embedding.cosine_distance(query_embedding))
+        
+    stmt = stmt.limit(limit)
+    
+    try:
+        result = await db.execute(stmt)
+        places = result.scalars().all()
+        return places
+    except Exception as e:
+        logger.error(f"Search places failed: {e}")
+        return []

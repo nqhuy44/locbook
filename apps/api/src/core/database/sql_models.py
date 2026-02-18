@@ -181,6 +181,7 @@ class User(SQLModel, table=True):
     lists: List["UserList"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     chat_sessions: List["ChatSession"] = Relationship(back_populates="user")
     refresh_tokens: List["RefreshToken"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    memories: List["UserMemory"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     
     # Note: Relationship Followers/Following cần config phức tạp hơn trong SQLModel nếu muốn access trực tiếp,
     # tạm thời query thông qua bảng UserFollow.
@@ -452,3 +453,23 @@ class UserListFollow(SQLModel, table=True):
     user_id: uuid.UUID = Field(foreign_key="users.id", primary_key=True)
     list_id: uuid.UUID = Field(foreign_key="user_lists.id", primary_key=True)
     created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+
+
+# ==========================================
+# 6. AGENTIC MEMORY
+# ==========================================
+
+class UserMemory(SQLModel, table=True):
+    __tablename__ = "user_memories"
+    
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    user_id: uuid.UUID = Field(foreign_key="users.id", index=True, ondelete="CASCADE")
+    
+    memory_text: str = Field(sa_column=Column(Text))
+    category: str = Field(index=True) # e.g. 'preference', 'dislike', 'plan'
+    confidence: float = Field(default=1.0)
+    
+    last_accessed_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime(timezone=True)))
+    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    
+    user: User = Relationship(back_populates="memories")

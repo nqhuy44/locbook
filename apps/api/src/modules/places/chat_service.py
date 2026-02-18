@@ -22,6 +22,30 @@ class ChatService:
     def __init__(self):
         self.settings = get_settings()
         self._default_system_instruction = _load_prompt("chat_system.txt")
+        self._tools_schema = [
+            {
+                "name": "search_places",
+                "description": "Tìm kiếm địa điểm (quán cafe, nhà hàng, bar...) dựa trên query, vibe, và khu vực.",
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "query": {
+                            "type": "STRING",
+                            "description": "Từ khóa tìm kiếm chính (VD: 'cafe làm việc', 'pub chill'). Dịch sang tiếng Anh nếu cần thiết."
+                        },
+                        "vibe": {
+                            "type": "STRING",
+                            "description": "Vibe của quán (VD: 'cozy', 'quiet', 'lively', 'romantic')."
+                        },
+                        "district": {
+                            "type": "STRING",
+                            "description": "Quận/Huyện (VD: 'District 1', 'Thảo Điền')."
+                        }
+                    },
+                    "required": ["query"]
+                }
+            }
+        ]
 
     async def _get_or_create_session(self, session_id: str, db) -> ChatSession:
         stmt = select(ChatSession).where(ChatSession.session_id == session_id)
@@ -45,26 +69,23 @@ class ChatService:
             return "Mình không xem được link, bạn gửi text thôi nhé!"
         return None
 
-    async def _extract_search_intent(self, history: List[Dict], new_message: str, user_id: Any = None) -> Dict[str, Any]:
-        default_intent = {"query": new_message, "filters": {}}
-
-        prompt = f"""Analyze chat history and extract place search intent.
-History: {[m['content'] for m in history[-3:]] if history else []}
-Message: {new_message}
-
-Extract:
-1. Core search query (English keywords)
-2. Category filter (Vietnamese -> Standard: "Cafe", "Bar", "Pub", "Restaurant")
-3. District/city if mentioned
-
-Output JSON: {{"query": "...", "filters": {{"district": null, "city": null, "category": "..."}}}}"""
-
-        try:
-            result = await ai_service.generate_json(prompt, user_id=user_id)
-            return result if "error" not in result else default_intent
-        except Exception as e:
-            logger.error(f"Intent extraction failed: {e}")
-            return default_intent
+    async def _fetch_memories(self, db, user_id: Any) -> str:
+        if not user_id:
+            return ""
+        
+        # Fetch up to 10 most recent/relevant memories
+        # For now, simple recent fetch. Later: vector search on memories.
+        stmt = select(UserMemory).where(UserMemory.user_id == user_id).order_by(UserMemory.created_at.desc()).limit(10)
+        result = await db.execute(stmt)
+        memories = result.scalars().all()
+        
+        if not memories:
+            return ""
+            
+        memory_text = "\nUser Context (Memory):\n"
+        for m in memories:
+            memory_text += f"- [{m.category}] {m.memory_text}\n"
+        return memory_text
 
     async def handle_message(self, session_id: str, message: str, user_id: Any = None) -> Dict[str, Any]:
         async for db in get_db_session():
@@ -73,11 +94,7 @@ Output JSON: {{"query": "...", "filters": {{"district": null, "city": null, "cat
             result = await db.execute(stmt)
             app_config = result.scalar_one_or_none()
 
-            if app_config:
-                marin_config = app_config.data.get("MARIN", DEFAULT_APP_CONFIG["MARIN"])
-            else:
-                marin_config = DEFAULT_APP_CONFIG["MARIN"]
-
+            marin_config = app_config.data.get("MARIN", DEFAULT_APP_CONFIG["MARIN"]) if app_config else DEFAULT_APP_CONFIG["MARIN"]
             system_instruction = marin_config.get("SYSTEM_INSTRUCTION", self._default_system_instruction)
             avatar_name = marin_config.get("AVATAR_NAME", "Marin 🎀")
 
@@ -91,79 +108,110 @@ Output JSON: {{"query": "...", "filters": {{"district": null, "city": null, "cat
             if block_reason:
                 return {"reply": block_reason, "session_id": session_id, "suggested_places": []}
 
-            # Extract intent
-            intent = await self._extract_search_intent(session.messages, message, user_id=user_id)
-            search_query = intent.get("query", message)
-            filters = intent.get("filters", {})
-
-            # Vector search
-            query_embedding = await get_text_embedding(search_query)
-            db_places = []
-
-            try:
-                stmt_places = select(Place)
-
-                if query_embedding:
-                    stmt_places = stmt_places.order_by(Place.embedding.cosine_distance(query_embedding))
-
-                stmt_places = stmt_places.limit(5)
-                result_places = await db.execute(stmt_places)
-                db_places = result_places.scalars().all()
-            except Exception as e:
-                logger.error(f"Search failed: {e}")
-
-            # Build prompt with TOON
+            # --- PREPARE CONTEXT ---
             history_text = ""
             msgs = session.messages if isinstance(session.messages, list) else []
             for msg in msgs[-5:]:
                 role = "User" if msg.get("role") == "user" else "Marin"
                 history_text += f"{role}: {msg.get('content')}\n"
 
-            suggested_places = []
-            if db_places:
-                rag_entries = []
-                for p in db_places:
-                    rag_entries.append(to_toon({
-                        "name": p.name,
-                        "address": p.address or "",
-                        "vibes": p.vibes or [],
-                        "rating": f"{p.rating}/5.0" if p.rating else "N/A",
-                    }))
-                    place_dict = PlaceRead.model_validate(p).model_dump(mode="json", by_alias=True)
-                    place_dict["id"] = str(p.id)
-                    suggested_places.append(place_dict)
-                rag_text = "Spotary matches:\n" + "\n---\n".join(rag_entries)
-            else:
-                rag_text = "No matches in Spotary."
-
+            memory_context = await self._fetch_memories(db, user_id)
+            
+            # --- REACT LOOP ---
+            
             prompt = f"""You are {avatar_name}, Spotary's AI Scout.
 {system_instruction}
 
-Search: "{message}"
-Category: "{filters.get('category', 'Any')}"
+User Context:
+{memory_context}
 
-History:
+Chat History:
 {history_text}
 
-{rag_text}
+User: {message}
 
-Reply with:
-- 📍 Có sẵn trên Spotary: list matched places
-- ✨ Gợi ý thêm: external suggestions if needed"""
-
-            # Call LLM
+Instructions:
+1. Analyze the user's request.
+2. If you need to find places, use the `search_places` tool.
+3. If the user asks about something else, just reply normally.
+4. When using tool results, synthesize them into a friendly, helpful response in Vietnamese.
+"""
+            
+            suggested_places = []
+            final_reply = ""
+            
+            # Call 1: Reason & Tool Call
             try:
-                reply_text = await ai_service.generate_text(prompt, user_id=user_id)
+                # We use generate_with_tools to get raw response
+                response = await ai_service.generate_with_tools(
+                    contents=prompt,
+                    tools=self._tools_schema,
+                    user_id=user_id
+                )
+                
+                # Check for function call
+                function_call = None
+                if response.candidates and response.candidates[0].content.parts:
+                    for part in response.candidates[0].content.parts:
+                        if part.function_call:
+                            function_call = part.function_call
+                            break
+                
+                if function_call and function_call.name == "search_places":
+                    # --- TOOL EXECUTION ---
+                    args = function_call.args
+                    logger.info(f"Marin executing tool: search_places({args})")
+                    
+                    from src.modules.places.service import search_places
+                    places = await search_places(
+                        db=db,
+                        query=str(args.get("query")),
+                        vibe=args.get("vibe"),
+                        district=args.get("district")
+                    )
+                    
+                    # Store for frontend
+                    for p in places:
+                        place_dict = PlaceRead.model_validate(p).model_dump(mode="json", by_alias=True)
+                        place_dict["id"] = str(p.id)
+                        suggested_places.append(place_dict)
+                        
+                    # Format observation for AI
+                    if places:
+                        rag_entries = []
+                        for p in places:
+                            rag_entries.append(to_toon({
+                                "name": p.name,
+                                "address": p.address or "",
+                                "vibes": p.vibes or [],
+                                "rating": f"{p.rating}/5.0" if p.rating else "N/A",
+                            }))
+                        observation = "Observation (Search Results):\n" + "\n---\n".join(rag_entries)
+                    else:
+                        observation = "Observation: No places found matching the criteria."
+                        
+                    # --- FINAL RESPONSE GENERATION ---
+                    # Feed observation back to Gemini
+                    # Note: Ideally we append the conversation structure (User -> Model(FC) -> User(FunctionResponse) -> Model)
+                    # But for simplicity in this turn-based api, we can just extend the prompt.
+                    
+                    follow_up_prompt = f"{prompt}\n\nRunning Tool: search_places({args})\n{observation}\n\nMarin (Final Reply):"
+                    final_reply = await ai_service.generate_text(follow_up_prompt, user_id=user_id)
+                    
+                else:
+                    # No tool called, just text
+                    final_reply = response.text
+
             except Exception as e:
-                logger.error(f"LLM failed: {e}")
-                reply_text = "Marin đang bị loạn não chút, bạn hỏi lại sau nhé 🤯"
+                logger.error(f"ReAct loop failed: {e}")
+                final_reply = "Marin đang bị loạn não chút, bạn hỏi lại sau nhé 🤯"
                 suggested_places = []
 
             # Save history
             now = datetime.now().isoformat()
             current_msgs = list(session.messages) if session.messages else []
             current_msgs.append({"role": "user", "content": message, "timestamp": now})
-            current_msgs.append({"role": "assistant", "content": reply_text, "timestamp": now})
+            current_msgs.append({"role": "assistant", "content": final_reply, "timestamp": now})
             session.messages = current_msgs
 
             if suggested_places:
@@ -177,7 +225,7 @@ Reply with:
 
             return {
                 "session_id": session_id,
-                "reply": reply_text,
+                "reply": final_reply,
                 "suggested_places": suggested_places,
             }
 
