@@ -23,15 +23,17 @@ const MarinPage = ({ API_URL, token }) => {
       setConfig(data);
       if (data.MARIN) {
         setMarinConfig(data.MARIN);
-        if (data.MARIN.CATEGORY_SYNONYMS) {
-          const synonyms = Object.entries(data.MARIN.CATEGORY_SYNONYMS).map(
-            ([key, vals]) => ({
-              id: Math.random().toString(36).substr(2, 9),
-              category: key,
-              synonyms: Array.isArray(vals) ? vals.join(", ") : vals,
-            }),
-          );
-          setMarinSynonyms(synonyms);
+        // Load the new CATEGORY_MAPPINGS array
+        if (data.MARIN.CATEGORY_MAPPINGS) {
+          const mappings = data.MARIN.CATEGORY_MAPPINGS.map((item) => ({
+            id: Math.random().toString(36).substr(2, 9),
+            vietnamese: item.vietnamese || "",
+            english: item.english || "",
+            keywords: Array.isArray(item.keywords)
+              ? item.keywords.join(", ")
+              : item.keywords || "",
+          }));
+          setMarinSynonyms(mappings);
         }
       }
     } catch (e) {
@@ -44,19 +46,22 @@ const MarinPage = ({ API_URL, token }) => {
   const handleSave = async () => {
     try {
       let payload = { ...config };
-      const newSynonyms = {};
-      marinSynonyms.forEach((item) => {
-        if (item.category.trim()) {
-          newSynonyms[item.category.trim()] = item.synonyms
+
+      // Re-pack into the CATEGORY_MAPPINGS array format
+      const newMappings = marinSynonyms
+        .filter((item) => item.english.trim() || item.vietnamese.trim())
+        .map((item) => ({
+          vietnamese: item.vietnamese.trim(),
+          english: item.english.trim(),
+          keywords: item.keywords
             .split(",")
             .map((s) => s.trim())
-            .filter(Boolean);
-        }
-      });
+            .filter(Boolean),
+        }));
 
       payload.MARIN = {
         ...marinConfig,
-        CATEGORY_SYNONYMS: newSynonyms,
+        CATEGORY_MAPPINGS: newMappings,
       };
 
       const res = await fetch(`${API_URL}/api/config`, {
@@ -97,7 +102,12 @@ const MarinPage = ({ API_URL, token }) => {
   const addSynonym = () => {
     setMarinSynonyms([
       ...marinSynonyms,
-      { id: Math.random().toString(), category: "New", synonyms: "" },
+      {
+        id: Math.random().toString(),
+        vietnamese: "",
+        english: "",
+        keywords: "",
+      },
     ]);
   };
 
@@ -228,7 +238,7 @@ const MarinPage = ({ API_URL, token }) => {
               <textarea
                 style={{
                   ...commonInputStyle,
-                  minHeight: "150px",
+                  minHeight: "600px",
                   resize: "vertical",
                 }}
                 value={marinConfig.SYSTEM_INSTRUCTION || ""}
@@ -243,7 +253,7 @@ const MarinPage = ({ API_URL, token }) => {
           </div>
         </div>
 
-        <div style={{ flex: "1.5", minWidth: "400px" }}>
+        <div style={{ flex: "1.5" }}>
           <div className="admin-card">
             <div
               style={{
@@ -254,14 +264,14 @@ const MarinPage = ({ API_URL, token }) => {
               }}
             >
               <h3 style={{ margin: 0, color: "var(--accent-color)" }}>
-                Category Synonyms
+                Language & Category Mappings
               </h3>
               <button
                 onClick={addSynonym}
                 className="bmc-button"
                 style={{ fontSize: "0.8rem", padding: "0.5rem 1rem" }}
               >
-                <PlusCircle size={14} /> Add Pattern
+                <PlusCircle size={14} /> Add Row
               </button>
             </div>
             <p
@@ -271,8 +281,8 @@ const MarinPage = ({ API_URL, token }) => {
                 marginBottom: "1.5rem",
               }}
             >
-              Map user inputs (like "quẩy", "chill") to specific database
-              categories.
+              Map conversational keywords to specific database categories to
+              help Marin understand user intent.
             </p>
 
             <div
@@ -282,44 +292,108 @@ const MarinPage = ({ API_URL, token }) => {
                 gap: "0.8rem",
               }}
             >
+              {/* Removed fixed table headers for mobile compatibility */}
               {marinSynonyms.map((item) => (
                 <div
                   key={item.id}
                   style={{
                     display: "flex",
+                    flexWrap: "wrap",
                     gap: "1rem",
-                    alignItems: "flex-start",
+                    alignItems: "flex-end",
+                    background: "rgba(255,255,255,0.02)",
+                    padding: "1rem",
+                    borderRadius: "8px",
+                    border: "1px solid var(--border-color)",
                   }}
                 >
-                  <input
-                    style={{
-                      ...commonInputStyle,
-                      width: "150px",
-                      marginBottom: 0,
-                    }}
-                    value={item.category}
-                    onChange={(e) =>
-                      updateSynonym(item.id, "category", e.target.value)
-                    }
-                    placeholder="Key"
-                  />
-                  <input
-                    style={{ ...commonInputStyle, flex: 1, marginBottom: 0 }}
-                    value={item.synonyms}
-                    onChange={(e) =>
-                      updateSynonym(item.id, "synonyms", e.target.value)
-                    }
-                    placeholder="Synonyms..."
-                  />
+                  <div style={{ flex: "1 1 180px" }}>
+                    <label
+                      style={{
+                        fontSize: "0.75rem",
+                        color: "var(--text-tertiary)",
+                        marginBottom: "0.4rem",
+                        display: "block",
+                      }}
+                    >
+                      Vietnamese Label
+                    </label>
+                    <input
+                      style={{
+                        ...commonInputStyle,
+                        width: "100%",
+                        marginBottom: 0,
+                      }}
+                      value={item.vietnamese}
+                      onChange={(e) =>
+                        updateSynonym(item.id, "vietnamese", e.target.value)
+                      }
+                      placeholder="VD: Quán Nhậu"
+                    />
+                  </div>
+
+                  <div style={{ flex: "1 1 130px" }}>
+                    <label
+                      style={{
+                        fontSize: "0.75rem",
+                        color: "var(--text-tertiary)",
+                        marginBottom: "0.4rem",
+                        display: "block",
+                      }}
+                    >
+                      English Class
+                    </label>
+                    <input
+                      style={{
+                        ...commonInputStyle,
+                        width: "100%",
+                        marginBottom: 0,
+                      }}
+                      value={item.english}
+                      onChange={(e) =>
+                        updateSynonym(item.id, "english", e.target.value)
+                      }
+                      placeholder="VD: bar"
+                    />
+                  </div>
+
+                  <div style={{ flex: "2 1 250px" }}>
+                    <label
+                      style={{
+                        fontSize: "0.75rem",
+                        color: "var(--text-tertiary)",
+                        marginBottom: "0.4rem",
+                        display: "block",
+                      }}
+                    >
+                      Keywords / Slang (comma separated)
+                    </label>
+                    <input
+                      style={{
+                        ...commonInputStyle,
+                        width: "100%",
+                        marginBottom: 0,
+                      }}
+                      value={item.keywords}
+                      onChange={(e) =>
+                        updateSynonym(item.id, "keywords", e.target.value)
+                      }
+                      placeholder="quán nhậu, mồi bén, pub..."
+                    />
+                  </div>
+
                   <button
                     onClick={() => removeSynonym(item.id)}
                     style={{
-                      background: "transparent",
-                      border: "none",
+                      background: "rgba(248, 113, 113, 0.1)",
+                      border: "1px solid rgba(248, 113, 113, 0.2)",
+                      borderRadius: "6px",
                       color: "#f87171",
-                      marginTop: "0.8rem",
+                      padding: "0.7rem",
                       cursor: "pointer",
-                      opacity: 0.8,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
                     }}
                     title="Remove"
                   >
@@ -332,7 +406,7 @@ const MarinPage = ({ API_URL, token }) => {
               <div
                 style={{ textAlign: "center", opacity: 0.5, padding: "2rem" }}
               >
-                No synonyms defined.
+                No mappings defined.
               </div>
             )}
           </div>

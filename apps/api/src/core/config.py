@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     
     # App Version
-    APP_VERSION: str = "v1.0.9"
+    APP_VERSION: str = "v1.0.11"
 
     # Feature Flags
     FEAT_IMAGE_ANALYSIS: bool = False  # Fetch Google Places photos for AI analysis

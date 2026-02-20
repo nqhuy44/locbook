@@ -177,47 +177,43 @@ async def get_system_stats(
     result_daily = await db.execute(stmt_daily)
     daily_stats = result_daily.scalars().all()
 
-    # 9. Top 10 search tags (Vibes + Categories) from CHAT_SEARCH events
-    # We aggregate both fields and merge them to show "Trending Tags"
-    stmt_vibes = text("""
-        SELECT payload->>'vibe' as keyword, COUNT(*) as count
-        FROM analytics_events
-        WHERE created_at >= :cutoff
-          AND event_type = 'CHAT_SEARCH'
-          AND payload->>'vibe' IS NOT NULL
-          AND payload->>'vibe' != ''
-          AND payload->>'vibe' != 'null'
-        GROUP BY payload->>'vibe'
-    """)
-    res_vibes = await db.execute(stmt_vibes, {"cutoff": cutoff})
-    
+    # 9. Top 10 Search Categories and Top 10 Search Vibes from CHAT_SEARCH events
+    # Ensure payload->'categories' and payload->'vibes' are treated as jsonb arrays
     stmt_cats = text("""
-        SELECT payload->>'categories' as keyword, COUNT(*) as count
-        FROM analytics_events
+        SELECT cat as keyword, COUNT(*) as count
+        FROM analytics_events,
+             jsonb_array_elements_text(
+                 CASE jsonb_typeof(payload->'categories')
+                     WHEN 'array' THEN payload->'categories'
+                     ELSE '[]'::jsonb
+                 END
+             ) as cat
         WHERE created_at >= :cutoff
           AND event_type = 'CHAT_SEARCH'
-          AND payload->>'categories' IS NOT NULL
-          AND payload->>'categories' != ''
-          AND payload->>'categories' != 'null'
-        GROUP BY payload->>'categories'
+        GROUP BY cat
+        ORDER BY count DESC
+        LIMIT 10
     """)
     res_cats = await db.execute(stmt_cats, {"cutoff": cutoff})
-    
-    # Merge counts in Python
-    tag_counts = {}
-    for row in res_vibes.all():
-        tag = row[0].strip()
-        if tag:
-            tag_counts[tag] = tag_counts.get(tag, 0) + row[1]
-            
-    for row in res_cats.all():
-        tag = row[0].strip()
-        if tag:
-            tag_counts[tag] = tag_counts.get(tag, 0) + row[1]
-            
-    # Sort by count desc
-    sorted_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)[:10]
-    search_keywords = [{"keyword": k, "count": v} for k, v in sorted_tags]
+    top_categories = [{"keyword": row[0], "count": row[1]} for row in res_cats.all()]
+
+    stmt_vibes = text("""
+        SELECT vibe as keyword, COUNT(*) as count
+        FROM analytics_events,
+             jsonb_array_elements_text(
+                 CASE jsonb_typeof(payload->'vibes')
+                     WHEN 'array' THEN payload->'vibes'
+                     ELSE '[]'::jsonb
+                 END
+             ) as vibe
+        WHERE created_at >= :cutoff
+          AND event_type = 'CHAT_SEARCH'
+        GROUP BY vibe
+        ORDER BY count DESC
+        LIMIT 10
+    """)
+    res_vibes = await db.execute(stmt_vibes, {"cutoff": cutoff})
+    top_vibes = [{"keyword": row[0], "count": row[1]} for row in res_vibes.all()]
 
     # 10. Top 5 chat users by total message count
     stmt_top_chat = text("""
@@ -280,7 +276,8 @@ async def get_system_stats(
         "chat": chat_stats,
         "top_places": top_places,
         "top_chat_users": top_chat_users,
-        "search_keywords": search_keywords,
+        "top_categories": top_categories,
+        "top_vibes": top_vibes,
         "daily_active_graph": daily_active,
         "daily_stats": [
             {
