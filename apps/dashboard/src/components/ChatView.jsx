@@ -97,8 +97,7 @@ const ChatView = ({ onPlaceClick, config }) => {
       setMessages([
         {
           role: "assistant",
-          content:
-            "Hé lô! Marin đây 🎀. Hôm nay bạn muốn đi đâu? (Ví dụ: 'Tìm quán cafe yên tĩnh', 'Chỗ nào nhậu vui vẻ'...) ",
+          content: t("ask_marin.welcome_msg"),
           timestamp: new Date(),
         },
       ]);
@@ -155,7 +154,7 @@ const ChatView = ({ onPlaceClick, config }) => {
         ...prev,
         {
           role: "assistant",
-          content: "Lỗi kết nối rồi huhu 😭",
+          content: t("ask_marin.connection_error"),
           timestamp: new Date(),
         },
       ]);
@@ -176,7 +175,7 @@ const ChatView = ({ onPlaceClick, config }) => {
 
         {activeSuggestions.length === 0 ? (
           <div className="empty-recommendations">
-            Chưa có gợi ý nào. Hãy hỏi Marin nhé! 👇
+            {t("ask_marin.empty_recommendations")}
           </div>
         ) : (
           <div
@@ -366,7 +365,7 @@ const ChatView = ({ onPlaceClick, config }) => {
             <div className="typing-avatar">
               <Bot size={18} color="white" />
             </div>
-            <div className="typing-bubble">Marin đang suy nghĩ...</div>
+            <div className="typing-bubble">{t("ask_marin.thinking")}</div>
           </div>
         )}
         <div ref={messagesEndRef} />
@@ -380,7 +379,7 @@ const ChatView = ({ onPlaceClick, config }) => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === "Enter" && handleSend()}
-            placeholder="Gõ tin nhắn cho Marin..."
+            placeholder={t("ask_marin.placeholder_input")}
             className="chat-input"
           />
           <button

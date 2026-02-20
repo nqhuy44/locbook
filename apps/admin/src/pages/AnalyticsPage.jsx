@@ -1280,7 +1280,7 @@ const ChartContainer = ({ children }) => (
       display: "flex",
       alignItems: "flex-end",
       gap: "6px",
-      padding: "0 0.5rem 1rem",
+      padding: "1rem 0.5rem 1rem",
     }}
   >
     {children}

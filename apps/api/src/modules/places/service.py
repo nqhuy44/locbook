@@ -117,7 +117,17 @@ async def get_or_create_place_from_url(db: AsyncSession, url: str, user_id: Opti
         raise ValueError(f"AI analysis failed: {analysis['error']}")
         
     details = analysis.get("details", {})
-    marin_comment = analysis.get("marin_comment", "").replace("\\n", "\n")
+    marin_comment_data = analysis.get("marin_comment", "")
+    if isinstance(marin_comment_data, dict):
+        marin_comment = {
+            "vi": marin_comment_data.get("vi", "").replace("\\n", "\n"),
+            "en": marin_comment_data.get("en", "").replace("\\n", "\n")
+        }
+        # Overwrite in analysis so raw_ai_response gets the cleaned up dict
+        analysis["marin_comment"] = marin_comment
+    else:
+        marin_comment = str(marin_comment_data).replace("\\n", "\n")
+        analysis["marin_comment"] = {"vi": marin_comment, "en": marin_comment}
     
     # 4. Build Place
     categories = details.get("categories", [])
@@ -210,6 +220,7 @@ async def search_places(
     vibes: Optional[List[str]] = None, 
     city: Optional[str] = None,
     district: Optional[str] = None,
+    ward: Optional[str] = None,
     categories: Optional[List[str]] = None,  # List[str]
     limit: int = 5
 ) -> List[Place]:
@@ -236,6 +247,10 @@ async def search_places(
         if district and district.lower() != "null":
              # Same for district
              filters.append(sa_func.unaccent(Place.district, type_=String).ilike(sa_func.unaccent(f"%{district}%", type_=String)))
+             
+        if ward and ward.lower() != "null":
+             # Same for ward
+             filters.append(sa_func.unaccent(Place.ward, type_=String).ilike(sa_func.unaccent(f"%{ward}%", type_=String)))
         from sqlalchemy import or_
         
         # Vibes: Filter if ANY match (Case-Insensitive) in EITHER vibes OR mood

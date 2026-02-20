@@ -82,7 +82,18 @@
       }
     },
     "marin_comment": {
-      "type": "STRING"
+      "type": "OBJECT",
+      "properties": {
+        "vi": {
+          "type": "STRING",
+          "description": "Bình luận bằng tiếng Việt"
+        },
+        "en": {
+          "type": "STRING",
+          "description": "Comment in English"
+        }
+      },
+      "required": ["vi", "en"]
     }
   },
   "required": ["details", "marin_comment"]

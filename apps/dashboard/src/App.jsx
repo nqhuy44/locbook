@@ -68,7 +68,7 @@ function AppContent() {
     fetchWithAuth,
   } = useAuth();
   const { showToast } = useToast();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [places, setPlaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [config, setConfig] = useState(DEFAULT_CONFIG);
@@ -109,7 +109,7 @@ function AppContent() {
           },
         );
         if (res.ok) {
-          showToast("Removed from book!", "success");
+          showToast(t("home.removed_from_book"), t("common.success"));
           fetchUserLists();
         }
       } else {
@@ -124,16 +124,16 @@ function AppContent() {
           }),
         });
         if (res.ok) {
-          showToast("Added to book!", "success");
+          showToast(t("home.added_to_book"), t("common.success"));
           fetchUserLists();
         } else {
           const err = await res.json();
-          showToast(err.detail || "Failed to add", "error");
+          showToast(err.detail || t("home.add_to_book_failed"), "error");
         }
       }
     } catch (err) {
       console.error("Failed to toggle list", err);
-      showToast("An error occurred", "error");
+      showToast(t("common.failed"), "error");
     }
   };
 
@@ -690,7 +690,9 @@ function AppContent() {
           upvote_count: data.upvote_count,
         }));
         showToast(
-          data.status === "created" ? "Upvoted!" : "Removed upvote",
+          data.status === "created"
+            ? t("home.upvoted")
+            : t("home.removed_upvote"),
           "success",
         );
       }
@@ -718,7 +720,7 @@ function AppContent() {
           ...prev,
           memo_count: (prev.memo_count || 0) + 1,
         }));
-        showToast("Memo saved!", "success");
+        showToast(t("home.memo_saved"), "success");
       }
     } catch (e) {
       console.error("Failed to save memo", e);
@@ -881,7 +883,7 @@ function AppContent() {
                   cursor: "pointer",
                   color: "#6b7280",
                 }}
-                title="Login"
+                title={t("nav.login")}
               >
                 <UserIcon size={20} />
               </div>
@@ -1082,7 +1084,7 @@ function AppContent() {
                 })
               ) : (
                 <div className="empty-state-popup">
-                  <p>No books found. Create one in your profile!</p>
+                  <p>{t("books.no_books")}</p>
                 </div>
               )}
             </div>
@@ -1193,7 +1195,7 @@ function AppContent() {
                         }}
                       >
                         <Navigation size={20} />
-                        <span>Get Directions</span>
+                        <span>{t("home.get_directions")}</span>
                       </a>
                     ) : null}
                   </div>
@@ -1205,19 +1207,21 @@ function AppContent() {
                       <button
                         className="social-action-btn"
                         onClick={() => setShowBookSelector(true)}
-                        title="Add to Book"
+                        title={t("home.add_to_book_title")}
                       >
                         <PlusCircle size={18} />
-                        <span className="social-action-count">Book</span>
+                        <span className="social-action-count">
+                          {t("home.book")}
+                        </span>
                       </button>
 
                       {/* Memo (Placeholder as requested) */}
                       <button
                         className="social-action-btn"
                         onClick={() =>
-                          showToast("Memo feature coming soon!", "info")
+                          showToast(t("home.memos_coming_soon"), "info")
                         }
-                        title="Memo"
+                        title={t("home.memos")}
                       >
                         <PenLine size={18} />
                         <span className="social-action-count">
@@ -1229,7 +1233,7 @@ function AppContent() {
                       <button
                         className={`social-action-btn ${userInteractions.upvoted ? "active" : ""}`}
                         onClick={handleToggleUpvote}
-                        title="Upvote"
+                        title={t("common.upvote")}
                       >
                         <ThumbsUp
                           size={18}
@@ -1271,15 +1275,30 @@ function AppContent() {
                     <div className="col-main" style={{ flex: 2 }}>
                       {selectedPlace.raw_ai_response?.marin_comment && (
                         <div className="marin-box">
-                          <div className="marin-label">Marin's Take</div>
+                          <div className="marin-label">
+                            {t("home.marins_take")}
+                          </div>
                           <div className="marin-text">
-                            "{selectedPlace.raw_ai_response.marin_comment}"
+                            "
+                            {typeof selectedPlace.raw_ai_response
+                              .marin_comment === "object"
+                              ? selectedPlace.raw_ai_response.marin_comment[
+                                  language
+                                ] ||
+                                selectedPlace.raw_ai_response.marin_comment[
+                                  "vi"
+                                ] ||
+                                selectedPlace.raw_ai_response.marin_comment[
+                                  "en"
+                                ]
+                              : selectedPlace.raw_ai_response.marin_comment}
+                            "
                           </div>
                         </div>
                       )}
 
                       <div className="detail-row">
-                        <div className="detail-label">Address</div>
+                        <div className="detail-label">{t("home.address")}</div>
                         <div className="detail-value">
                           {selectedPlace.address}
                         </div>
@@ -1287,7 +1306,7 @@ function AppContent() {
 
                       {selectedPlace.opening_hours && (
                         <div className="detail-row">
-                          <div className="detail-label">Hours</div>
+                          <div className="detail-label">{t("home.hours")}</div>
                           <div className="detail-value">
                             {selectedPlace.opening_hours}
                           </div>
@@ -1304,7 +1323,7 @@ function AppContent() {
                             gap: "8px",
                           }}
                         >
-                          <BookOpen size={16} /> Memos{" "}
+                          <BookOpen size={16} /> {t("home.memos")}{" "}
                           <span style={{ opacity: 0.5, fontSize: "0.8rem" }}>
                             ({placeMemos.length})
                           </span>
@@ -1362,7 +1381,7 @@ function AppContent() {
                                 fontStyle: "italic",
                               }}
                             >
-                              No memos yet. Be the first to write one!
+                              {t("home.no_memos")}
                             </div>
                           )}
                         </div>
@@ -1371,7 +1390,9 @@ function AppContent() {
 
                     <div className="col-side" style={{ flex: 1 }}>
                       <div className="detail-row">
-                        <div className="detail-label">Vibes</div>
+                        <div className="detail-label">
+                          {t("home.vibes_label")}
+                        </div>
                         <div className="pill-list">
                           {selectedPlace.vibes?.map((v) => (
                             <span key={v} className="pill">
@@ -1382,7 +1403,9 @@ function AppContent() {
                       </div>
 
                       <div className="detail-row">
-                        <div className="detail-label">Categories</div>
+                        <div className="detail-label">
+                          {t("home.categories_label")}
+                        </div>
                         <div className="pill-list">
                           {selectedPlace.categories?.map((c) => (
                             <span key={c} className="pill">
@@ -1408,7 +1431,7 @@ function AppContent() {
                           size={40}
                           style={{ marginBottom: "1rem", opacity: 0.3 }}
                         />
-                        <p>No menu available yet</p>
+                        <p>{t("home.no_menu")}</p>
                       </div>
                     ) : (
                       <div className="menu-list">
@@ -1567,6 +1590,7 @@ function PlaceHeroImage({ place }) {
 
 function ShareButton() {
   const [copied, setCopied] = useState(false);
+  const { t } = useLanguage();
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -1609,7 +1633,7 @@ function ShareButton() {
       }}
     >
       {copied ? <Check size={20} color="#4ade80" /> : <Share2 size={20} />}
-      {copied ? "Copied!" : "Share"}
+      {copied ? "Copied!" : t("home.share")}
     </button>
   );
 }
