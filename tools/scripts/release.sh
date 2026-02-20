@@ -58,6 +58,10 @@ update_dashboard() {
   if [ -f "$PKG_FILE" ]; then
     portable_sed "s/\"version\": \".*\"/\"version\": \"${VERSION#v}\"/" "$PKG_FILE"
   fi
+  VERSION_FILE="apps/dashboard/public/version.json"
+  if [ -f "$VERSION_FILE" ]; then
+    echo "{\"version\": \"${VERSION#v}\"}" > "$VERSION_FILE"
+  fi
   echo "🐳 Building nqh44/spotary-dashboard..."
   nx run dashboard:prebuild-image
   nx run dashboard:build-image --ver=$VERSION
@@ -71,6 +75,10 @@ update_admin() {
   PKG_FILE="apps/admin/package.json"
   if [ -f "$PKG_FILE" ]; then
     portable_sed "s/\"version\": \".*\"/\"version\": \"${VERSION#v}\"/" "$PKG_FILE"
+  fi
+  VERSION_FILE="apps/admin/public/version.json"
+  if [ -f "$VERSION_FILE" ]; then
+    echo "{\"version\": \"${VERSION#v}\"}" > "$VERSION_FILE"
   fi
   echo "🐳 Building nqh44/spotary-admin..."
   nx run admin:prebuild-image

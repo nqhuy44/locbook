@@ -1,6 +1,6 @@
 import logging
 import uuid
-from typing import Tuple, Dict, Any, Optional
+from typing import Tuple, Dict, Any, Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -203,40 +203,135 @@ async def get_or_create_place_from_url(db: AsyncSession, url: str, user_id: Opti
     
     return place, True, marin_comment
 
-async def search_places(db: AsyncSession, query: str, vibe: Optional[str] = None, district: Optional[str] = None, limit: int = 5) -> List[Place]:
-    """
-    Search for places using vector similarity and metadata filters.
+async def search_places(
+    db: AsyncSession, 
+    query: str, 
+    query_en: Optional[str] = None,
+    vibes: Optional[List[str]] = None, 
+    city: Optional[str] = None,
+    district: Optional[str] = None,
+    categories: Optional[List[str]] = None,  # List[str]
+    limit: int = 5
+) -> List[Place]:
+    """Search for places using Hybrid Search (Semantic + Keyword) with RRF scoring.
+    
+    Combines pgvector cosine similarity (semantic) with Postgres FTS ts_rank (keyword)
+    using Reciprocal Rank Fusion (RRF) to produce a blended ranking.
     """
     from src.core.ai import get_text_embedding
+    from sqlalchemy import func as sa_func, text as sa_text, String
     
-    # 1. Generate embedding for query
-    query_embedding = await get_text_embedding(query)
-    
-    # 2. Build query
-    stmt = select(Place)
-    
-    # Filter by district if provided
-    if district and district.lower() != "null":
-        # Simple case-insensitive match
-        stmt = stmt.where(Place.district.ilike(f"%{district}%"))
-        
-    # Filter by vibe if provided (using array containment or overlap)
-    if vibe and vibe.lower() != "null":
-        # Assumes vibes is ARRAY(String). 
-        # For strict match: Place.vibes.contains([vibe])
-        # For fuzzy, we might rely solely on vector search, but let's try a text filter if meaningful
-        stmt = stmt.where(Place.vibes.any(vibe))
-        
-    # 3. Vector Search
-    if query_embedding:
-        stmt = stmt.order_by(Place.embedding.cosine_distance(query_embedding))
-        
-    stmt = stmt.limit(limit)
+    RRF_K = 60  # RRF constant — higher values flatten rank differences
+    CANDIDATE_POOL = limit * 4  # Fetch more candidates for better RRF fusion
     
     try:
-        result = await db.execute(stmt)
-        places = result.scalars().all()
-        return places
+        print(f"DEBUG: search_places called with city={city}, vibes={vibes}, mood_check=True")
+        # --- Build shared filter conditions ---
+        filters = []
+        if city and city.lower() != "null":
+            # Flexible Unaccent filtering (Handle aliases via Prompt, handle accents via DB extension)
+            # Must specify type_=String to enable .ilike() method on function result
+            filters.append(sa_func.unaccent(Place.city, type_=String).ilike(sa_func.unaccent(f"%{city}%", type_=String)))
+
+        if district and district.lower() != "null":
+             # Same for district
+             filters.append(sa_func.unaccent(Place.district, type_=String).ilike(sa_func.unaccent(f"%{district}%", type_=String)))
+        from sqlalchemy import or_
+        
+        # Vibes: Filter if ANY match (Case-Insensitive) in EITHER vibes OR mood
+        if vibes and len(vibes) > 0:
+            # OR(vibe ILIKE vibes_col, vibe ILIKE mood_col)
+            vibe_conditions = []
+            for v in vibes:
+                vibe_conditions.append(sa_func.array_to_string(Place.vibes, ",").ilike(f"%{v}%"))
+                vibe_conditions.append(sa_func.array_to_string(Place.mood, ",").ilike(f"%{v}%"))
+            
+            filters.append(or_(*vibe_conditions))
+            
+        if categories and len(categories) > 0:
+            # Categories: Filter if ANY match (Case-Insensitive Regex Word Boundary)
+            # \m = Start of word, \M = End of word (Postgres specific)
+            cat_conditions = [
+                sa_func.array_to_string(Place.categories, ",").op("~*")(f"\\m{c}\\M") for c in categories
+            ]
+            filters.append(or_(*cat_conditions))
+        
+        # --- Leg 1: Semantic Search (pgvector cosine distance) ---
+        # Use English query for embedding when available (better alignment with English DB embeddings)
+        semantic_results = []
+        embedding_query = query_en if query_en else query
+        query_embedding = await get_text_embedding(embedding_query)
+        
+        if query_embedding:
+            stmt_semantic = select(Place)
+            for f in filters:
+                stmt_semantic = stmt_semantic.where(f)
+            stmt_semantic = stmt_semantic.order_by(
+                Place.embedding.cosine_distance(query_embedding)
+            ).limit(CANDIDATE_POOL)
+            
+            result = await db.execute(stmt_semantic)
+            semantic_results = list(result.scalars().all())
+        
+        # --- Leg 2: Keyword Search (Postgres FTS ts_rank) ---
+        # Combine Vietnamese + English queries for bilingual matching
+        keyword_results = []
+        combined_query = query
+        if query_en and query_en.strip():
+            combined_query = f"{query} {query_en}"
+        tsquery = sa_func.plainto_tsquery('simple', combined_query)
+        
+        stmt_keyword = select(Place).where(
+            Place.search_text.isnot(None),
+            Place.search_text.op('@@')(tsquery)
+        )
+        for f in filters:
+            stmt_keyword = stmt_keyword.where(f)
+        stmt_keyword = stmt_keyword.order_by(
+            sa_func.ts_rank(Place.search_text, tsquery).desc()
+        ).limit(CANDIDATE_POOL)
+        
+        result = await db.execute(stmt_keyword)
+        keyword_results = list(result.scalars().all())
+        
+        # --- Reciprocal Rank Fusion ---
+        # Build rank maps (1-indexed rank)
+        semantic_rank = {p.id: rank + 1 for rank, p in enumerate(semantic_results)}
+        keyword_rank = {p.id: rank + 1 for rank, p in enumerate(keyword_results)}
+        
+        # Collect all unique place IDs and their objects
+        all_places = {}
+        for p in semantic_results + keyword_results:
+            all_places[p.id] = p
+        
+        # Calculate RRF score for each place
+        rrf_scores = {}
+        for pid in all_places:
+            score = 0.0
+            if pid in semantic_rank:
+                score += 1.0 / (RRF_K + semantic_rank[pid])
+            if pid in keyword_rank:
+                score += 1.0 / (RRF_K + keyword_rank[pid])
+            rrf_scores[pid] = score
+        
+        # Sort by RRF score descending and return top N
+        sorted_ids = sorted(rrf_scores, key=lambda pid: rrf_scores[pid], reverse=True)[:limit]
+        return [all_places[pid] for pid in sorted_ids]
+        
     except Exception as e:
-        logger.error(f"Search places failed: {e}")
+        logger.error(f"Hybrid search failed: {e}")
+        # Fallback: simple semantic-only search
+        try:
+            query_embedding = await get_text_embedding(query)
+            if query_embedding:
+                stmt = select(Place)
+                for f in filters:
+                    stmt = stmt.where(f)
+                stmt = stmt.order_by(
+                    Place.embedding.cosine_distance(query_embedding)
+                ).limit(limit)
+                result = await db.execute(stmt)
+                return list(result.scalars().all())
+        except Exception:
+            pass
         return []

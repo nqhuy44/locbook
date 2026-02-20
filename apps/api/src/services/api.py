@@ -130,12 +130,34 @@ app.add_middleware(AnalyticsMiddleware)
 async def health_check():
     return {"status": "ok"}
 
+import httpx
+
 @app.get("/api/versions")
-async def get_versions():
+async def get_versions(db: AsyncSession = Depends(get_db_session)):
     settings = get_settings()
-    return {
-        "backend": settings.APP_VERSION,
-    }
+    versions = {"backend": settings.APP_VERSION, "dashboard": "unknown"}
+    
+    try:
+        # Get Dashboard URL
+        stmt = select(AppConfig).where(AppConfig.key == "global")
+        result = await db.execute(stmt)
+        config = result.scalar_one_or_none()
+        
+        dashboard_url = DEFAULT_APP_CONFIG["LINKS"]["DASHBOARD_URL"]
+        if config and config.data and "LINKS" in config.data:
+            dashboard_url = config.data["LINKS"].get("DASHBOARD_URL", dashboard_url)
+            
+        # Proxy fetch
+        if dashboard_url:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                url = f"{dashboard_url.rstrip('/')}/version.json"
+                resp = await client.get(url)
+                if resp.status_code == 200:
+                    versions["dashboard"] = resp.json().get("version", "unknown")
+    except Exception as e:
+        logger.warning(f"Failed to fetch dashboard version: {e}")
+
+    return versions
 
 @app.get("/api/places")
 async def get_places(
@@ -344,6 +366,9 @@ async def get_config(db: AsyncSession = Depends(get_db_session)):
     if "CATEGORY_KEYWORDS" in db_data:
         merged["CATEGORY_KEYWORDS"] = db_data["CATEGORY_KEYWORDS"]
 
+    if "HOME_CATEGORIES" in db_data:
+        merged["HOME_CATEGORIES"] = db_data["HOME_CATEGORIES"]
+
     if "MARIN" in db_data and isinstance(db_data["MARIN"], dict):
          for k, v in db_data["MARIN"].items():
              if k in merged["MARIN"] and isinstance(merged["MARIN"][k], dict) and isinstance(v, dict):
@@ -379,6 +404,30 @@ from pydantic import BaseModel
 class ChatMessage(BaseModel):
     session_id: str | None = None
     message: str
+    location: Optional[Dict[str, float]] = None # {lat: float, lon: float}
+
+@app.get("/api/chat/latest")
+async def get_latest_chat(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Return the most recent chat session for the logged-in user."""
+    stmt = (
+        select(ChatSession)
+        .where(ChatSession.user_id == current_user.id)
+        .order_by(ChatSession.updated_at.desc())
+        .limit(1)
+    )
+    result = await db.execute(stmt)
+    session = result.scalar_one_or_none()
+    
+    if not session:
+        return {"session_id": None, "messages": []}
+    
+    return {
+        "session_id": session.session_id,
+        "messages": session.messages or [],
+    }
 
 @app.post("/api/chat/message")
 async def chat_message(payload: ChatMessage, current_user: User = Depends(get_current_user)):
@@ -386,7 +435,14 @@ async def chat_message(payload: ChatMessage, current_user: User = Depends(get_cu
         return {"error": "Feature disabled"}
     
     from src.modules.places.chat_service import chat_service
-    response = await chat_service.handle_message(payload.session_id, payload.message, user_id=current_user.id)
+    
+    user_location = payload.location
+    response = await chat_service.handle_message(
+        payload.session_id, 
+        payload.message, 
+        user_id=current_user.id,
+        user_location=user_location
+    )
     return response
 
 

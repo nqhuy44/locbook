@@ -7,7 +7,7 @@ from sqlmodel import SQLModel, Field, Relationship
 from sqlalchemy import String, Column, DateTime, text, Numeric, Text, ARRAY, Integer, UniqueConstraint, func, Boolean, Enum as SAEnum
 
 
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from pgvector.sqlalchemy import Vector
 from geoalchemy2 import Geometry
 
@@ -134,6 +134,9 @@ class PlaceBase(SQLModel):
 
     # --- AI Data ---
     raw_ai_response: Dict[str, Any] = Field(default={}, sa_column=Column(JSONB))
+
+    # --- Full-Text Search (populated by quality.sync_search_text) ---
+    search_text: Optional[Any] = Field(default=None, sa_column=Column(TSVECTOR))
 
 # ==========================================
 # 2. DATABASE TABLES
@@ -307,6 +310,9 @@ class ChatSession(SQLModel, table=True):
     title: Optional[str] = None
     messages: List[Dict] = Field(default=[], sa_column=Column(JSONB))
     seen_place_ids: List[str] = Field(default=[], sa_column=Column(ARRAY(String)))
+    
+    # Condensed long-term memory — LLM-generated summary of older messages
+    summary: Optional[str] = Field(default=None, sa_column=Column(Text))
     
     created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
     updated_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now()))

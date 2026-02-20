@@ -114,21 +114,28 @@ class GeminiService:
 
     async def generate_with_tools(
         self, 
-        contents: List[Any], 
+        contents: List[Any],
+        system_instruction: str = None,
         tools: List[Dict[str, Any]] = None,
         user_id: str = None
     ) -> Any:
-        """
-        Generate content with tool support. 
+        """Generate content with tool support and optional system instruction.
+        
+        Uses Gemini's native function calling protocol with proper multi-turn support.
+        System instruction is passed via config to avoid duplicating in prompt.
         Returns the raw response object (including function calls).
         """
         if not self.client:
             raise ValueError("AI Service not ready.")
 
         try:
-            config = types.GenerateContentConfig(
-                tools=tools
-            ) if tools else None
+            config_kwargs = {}
+            if tools:
+                config_kwargs["tools"] = tools
+            if system_instruction:
+                config_kwargs["system_instruction"] = system_instruction
+                
+            config = types.GenerateContentConfig(**config_kwargs) if config_kwargs else None
 
             response = await self.client.aio.models.generate_content(
                 model=self.model_name,

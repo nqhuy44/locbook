@@ -8,7 +8,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { LogIn } from "lucide-react";
 
 const ChatView = ({ onPlaceClick, config }) => {
-  const { user } = useAuth();
+  const { user, token, fetchWithAuth } = useAuth();
   const { t } = useLanguage();
 
   const [messages, setMessages] = useState([]);
@@ -18,6 +18,23 @@ const ChatView = ({ onPlaceClick, config }) => {
   const [activeSuggestions, setActiveSuggestions] = useState([]);
 
   const messagesEndRef = useRef(null);
+  const [location, setLocation] = useState(null);
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLocation({
+            lat: position.coords.latitude,
+            lon: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.log("Geolocation error or denied:", error);
+        },
+      );
+    }
+  }, []);
 
   // Auth Guard
   if (!user) {
@@ -101,12 +118,13 @@ const ChatView = ({ onPlaceClick, config }) => {
     setIsLoading(true);
 
     try {
-      const res = await fetch(`${API_URL}/api/chat/message`, {
+      const res = await fetchWithAuth(`${API_URL}/api/chat/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           session_id: sessionId,
           message: userMsg.content,
+          location: location, // Send location if available
         }),
       });
       const data = await res.json();
@@ -139,14 +157,14 @@ const ChatView = ({ onPlaceClick, config }) => {
     }
   };
 
-  if (!CONFIG.FEATURES.FEAT_AI_MATCHMAKE) return null;
+  if (!CONFIG.FEATURES.ASK_MARIN) return null;
 
   return (
     <div className="chat-view">
       {/* 1. Recommendations Panel (Top) */}
       <div className="recommendations-panel">
         <h3 className="recommendations-title">
-          <Sparkles size={18} /> Marin's Picks
+          <Sparkles size={16} /> Marin's Picks
         </h3>
 
         {activeSuggestions.length === 0 ? (
@@ -154,7 +172,10 @@ const ChatView = ({ onPlaceClick, config }) => {
             Chưa có gợi ý nào. Hãy hỏi Marin nhé! 👇
           </div>
         ) : (
-          <div className="suggestions-list hidden-scrollbar">
+          <div
+            className="suggestions-list hidden-scrollbar"
+            style={{ gap: "8px", paddingBottom: "4px" }}
+          >
             {activeSuggestions.map((place, idx) => {
               let imageUrl = place.images?.[0] || place.local_image_path;
               if (imageUrl) {
@@ -169,20 +190,21 @@ const ChatView = ({ onPlaceClick, config }) => {
                   key={idx}
                   onClick={() => onPlaceClick(place)}
                   style={{
-                    minWidth: "220px",
+                    minWidth: "120px",
+                    maxWidth: "120px",
                     background: "white",
-                    borderRadius: "12px",
+                    borderRadius: "8px",
                     overflow: "hidden",
                     cursor: "pointer",
                     border: "1px solid var(--border-color)",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
                     display: "flex",
                     flexDirection: "column",
                   }}
                 >
                   <div
                     style={{
-                      height: "120px",
+                      height: "90px",
                       background: "#f3f4f6",
                       position: "relative",
                     }}
@@ -206,6 +228,7 @@ const ChatView = ({ onPlaceClick, config }) => {
                           alignItems: "center",
                           justifyContent: "center",
                           color: "#ccc",
+                          fontSize: "1.5rem",
                         }}
                       >
                         🏠
@@ -214,28 +237,31 @@ const ChatView = ({ onPlaceClick, config }) => {
                     <div
                       style={{
                         position: "absolute",
-                        top: 6,
-                        right: 6,
+                        top: 4,
+                        right: 4,
                         background: "rgba(255,255,255,0.9)",
-                        padding: "2px 6px",
-                        borderRadius: "4px",
-                        fontSize: "0.7rem",
+                        padding: "1px 4px",
+                        borderRadius: "3px",
+                        fontSize: "0.65rem",
                         fontWeight: "bold",
                         color: "#b45309",
                       }}
                     >
-                      ⭐ {place.rating}
+                      ★ {place.rating}
                     </div>
                   </div>
-                  <div style={{ padding: "10px" }}>
+                  <div style={{ padding: "6px" }}>
                     <div
                       style={{
-                        fontWeight: "bold",
-                        fontSize: "0.9rem",
-                        marginBottom: "4px",
+                        fontWeight: "600",
+                        fontSize: "0.8rem",
+                        marginBottom: "2px",
                         whiteSpace: "nowrap",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
                         overflow: "hidden",
-                        textOverflow: "ellipsis",
+                        lineHeight: "1.2",
                         color: "var(--text-primary)",
                       }}
                     >
@@ -243,14 +269,14 @@ const ChatView = ({ onPlaceClick, config }) => {
                     </div>
                     <div
                       style={{
-                        fontSize: "0.75rem",
+                        fontSize: "0.7rem",
                         color: "var(--text-tertiary)",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
                       }}
                     >
-                      <MapPin size={12} /> {place.address?.split(",")[0]}
+                      {place.address?.split(",")[0]}
                     </div>
                   </div>
                 </div>

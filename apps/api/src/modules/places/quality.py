@@ -1,9 +1,10 @@
-"""Place data quality utilities — sync, re-embed, re-analyze."""
+"""Place data quality utilities — sync, re-embed, re-analyze, search-text."""
 import logging
 from typing import Optional, List
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import func as sa_func
 from sqlmodel import select
 
 from src.core.database.sql_models import Place
@@ -67,12 +68,49 @@ async def auto_aesthetic_score(place: Place, images: List[tuple[bytes, str]]) ->
     return place
 
 
+def build_search_text(place: Place) -> str:
+    """Build concatenated plain text for tsvector generation.
+    
+    Combines name, address, categories, vibes, mood, district, ward, street
+    into a single searchable string.
+    """
+    parts = [place.name or ""]
+    if place.address:
+        parts.append(place.address)
+    if place.district:
+        parts.append(place.district)
+    if place.ward:
+        parts.append(place.ward)
+    if place.street:
+        parts.append(place.street)
+    if place.categories:
+        parts.append(" ".join(place.categories))
+    if place.vibes:
+        parts.append(" ".join(place.vibes))
+    if place.mood:
+        parts.append(" ".join(place.mood))
+    return " ".join(parts)
+
+
+def sync_search_text(place: Place) -> Place:
+    """Populate the search_text tsvector column from place metadata.
+    
+    Uses 'simple' config for language-agnostic tokenization
+    (works well with mixed Vietnamese + English text).
+    """
+    text = build_search_text(place)
+    place.search_text = sa_func.to_tsvector('simple', text)
+    return place
+
+
 async def on_place_save(db: AsyncSession, place: Place) -> Place:
     """Hook to run on every Place create/update.
     
     1. Sync lat/lon ↔ PostGIS location
     2. Re-generate embedding
+    3. Populate search_text tsvector for FTS
     """
     place = sync_location(place)
     place = await regenerate_embedding(db, place)
+    place = sync_search_text(place)
     return place

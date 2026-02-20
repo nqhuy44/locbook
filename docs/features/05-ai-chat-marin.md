@@ -1,33 +1,39 @@
 # Feature: AI Chat — Marin 🎀
 
-> **PRD Reference**: FR-08 (Search), Section 4.1 (Chat)
-> **Status**: ✅ Working
-> **Source**: `src/core/chat_service.py`, `src/core/llm.py`
+> **PRD Reference**: FR-08 (Search), Section 4.1 (Chat)  
+> **Status**: ✅ Working (v2 — One-Pass Tool Use)  
+> **Source**: `src/modules/places/chat_service.py`, `src/core/llm.py`
 
 ---
 
 ## Overview
 
-**Marin** is Spotary's AI conversational agent — a friendly, knowledgeable local guide for Ho Chi Minh City. Users chat naturally in Vietnamese, and Marin responds with place recommendations drawn from the Spotary database (RAG — Retrieval Augmented Generation).
+**Marin** is Spotary's AI conversational agent — a friendly, knowledgeable local guide for Ho Chi Minh City. Users chat naturally in Vietnamese, and Marin responds with place recommendations using **Gemini Function Calling** + **Hybrid Search** (RAG).
 
 ---
 
-## Architecture
+## Architecture (v2 — One-Pass Tool Use)
 
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant CS as ChatService
+    participant G as Gemini API
+    participant DB as PostgreSQL
+
+    U->>CS: message
+    CS->>CS: Load context (memory + summary + history)
+    CS->>G: Turn 1: User prompt + tools schema
+    G-->>CS: function_call: search_places({query, vibe, ...})
+    CS->>DB: Hybrid Search (Semantic + FTS + RRF)
+    DB-->>CS: Ranked places
+    CS->>G: Turn 2: FunctionResponse(results)
+    G-->>CS: Final synthesized reply
+    CS->>CS: Maybe condense history
+    CS-->>U: reply + suggested_places
 ```
-User Message
-    ↓
-ChatService.handle_message()
-    ├── 1. Guardrail Check (length, links, spam)
-    ├── 2. Load Dynamic Config (AppConfig.MARIN)
-    ├── 3. Extract Search Intent (LLM → JSON)
-    ├── 4. Vector Search (pgvector)
-    ├── 5. Build RAG Prompt (history + results + system instruction)
-    ├── 6. Call LLM (Gemini)
-    └── 7. Save to ChatSession
-    ↓
-Response: { reply, session_id, suggested_places[] }
-```
+
+**Key difference from v1**: Uses Gemini's native `FunctionResponse` protocol instead of string concatenation. System instruction passed via config (not duplicated in prompt). Maximum 2 LLM calls per message.
 
 ---
 
@@ -36,20 +42,22 @@ Response: { reply, session_id, suggested_places[] }
 ### `POST /api/chat`
 
 **Request**:
+
 ```json
 {
-  "session_id": "abc-123",  // null for new session
+  "session_id": "abc-123",
   "message": "Có quán nào view đẹp không?"
 }
 ```
 
 **Response**:
+
 ```json
 {
   "session_id": "abc-123",
-  "reply": "Marin biết mấy quán view chill lắm nè! 🌃\n\n📍 **Có sẵn trên Spotary**:\n1. **Chill Skybar** — Rooftop view...",
+  "reply": "Marin biết mấy quán view chill lắm nè! 🌃\n\n1. **Chill Skybar** — Rooftop view...",
   "suggested_places": [
-    { "id": "uuid", "name": "Chill Skybar", "address": "...", ... }
+    { "id": "uuid", "name": "Chill Skybar", "address": "...", "vibes": [...] }
   ]
 }
 ```
@@ -60,63 +68,53 @@ Response: { reply, session_id, suggested_places[] }
 
 ### 1. Guardrail System
 
-Before processing, messages are checked:
+| Check        | Threshold   | Response                                       |
+| :----------- | :---------- | :--------------------------------------------- |
+| Too long     | > 500 chars | "Tin nhắn dài quá, tóm tắt giúp mình nhé!"     |
+| Too short    | < 2 chars   | "..."                                          |
+| Contains URL | Any URL     | "Mình không xem được link, gửi text thôi nhé!" |
 
-| Check | Threshold | Response |
-| :--- | :--- | :--- |
-| Too long | > 500 chars | "Tin nhắn dài quá, tóm tắt giúp mình nhé!" |
-| Too short | < 2 chars | "..." |
-| Contains URL | Any URL | "Mình không xem được link, gửi text thôi nhé!" |
+### 2. Tool Definition
 
-### 2. Intent Extraction
+Marin has a single tool: `search_places` with parameters:
 
-Marin uses LLM to understand user intent from chat history + new message:
+| Parameter    | Type   | Required | Description                                       |
+| ------------ | ------ | -------- | ------------------------------------------------- |
+| `query`      | STRING | ✅       | Search keywords (translated to English if needed) |
+| `vibe`       | STRING | ❌       | Target vibe: cozy, quiet, lively, romantic        |
+| `district`   | STRING | ❌       | District filter: District 1, Thảo Điền            |
+| `categories` | STRING | ❌       | Category filter: cafe, restaurant, bar            |
 
-**Input**: Last 3 messages + current message.
-**Output** (JSON):
-```json
-{
-  "query": "rooftop bar with city view",
-  "filters": {
-    "district": "District 1",
-    "city": "Ho Chi Minh City",
-    "category": "Bar"
-  }
-}
-```
+Gemini decides autonomously whether to call the tool based on user intent.
 
-### 3. RAG Search
+### 3. Context Layers (Condensed Memory)
 
-1. Query embedding generated from extracted `query`.
-2. pgvector cosine distance search on `Place.embedding`.
-3. Top 5 results returned with: Name, Address, Vibes, Rating.
+Context is assembled from 4 layers (long-term → short-term):
 
-### 4. Response Generation
+1. **User Preferences** — `UserMemory` rows (preferences, dislikes)
+2. **Session Summary** — LLM-condensed older conversation (`ChatSession.summary`)
+3. **Recent Chat** — Last 5 raw messages
+4. **Current Message** — User's new input
 
-LLM prompt structure:
-```
-You are {avatar_name}, Spotary's AI Scout.
-{system_instruction}
-Language: Vietnamese.
+**Condensation trigger**: When session exceeds 10 messages, older messages are summarized into `session.summary` and trimmed.
 
-Search Intent: "{user_message}"
-Target Category: "{extracted_category}"
+### 4. Hybrid Search (RRF)
 
-Context from History: ...
-Spotary Database Matches: ...
+When the tool is called, search uses:
 
-Instructions:
-- SECTION 1: 📍 Có sẵn trên Spotary (matched places)
-- SECTION 2: ✨ Gợi ý thêm từ Marin (external suggestions)
-- Tone: Friendly, local expert.
-```
+- **Semantic leg**: pgvector cosine distance
+- **Keyword leg**: Postgres FTS `ts_rank`
+- **Fusion**: Reciprocal Rank Fusion (k=60)
+
+See [04-semantic-search.md](./04-semantic-search.md) for details.
 
 ### 5. Session Management
 
 - Sessions stored in `chat_sessions` table (PostgreSQL).
 - `session_id` — string identifier (cookie/public ID).
 - `messages` — JSONB array of `{ role, content, timestamp }`.
-- `seen_place_ids` — tracks which places have been shown to avoid repetition.
+- `summary` — condensed history (TEXT, auto-generated by LLM).
+- `seen_place_ids` — tracks which places have been shown.
 
 ---
 
@@ -127,50 +125,23 @@ Marin's behavior is controlled via `AppConfig` (key: `"global"`, field: `MARIN`)
 ```json
 {
   "AVATAR_NAME": "Marin 🎀",
-  "AVATAR_IMAGE": "",
-  "SYSTEM_INSTRUCTION": "You are Marin, an AI local guide for HCMC...",
-  "CATEGORY_SYNONYMS": {
-    "Restaurant": ["nhà hàng", "quán ăn"],
-    "Bar": ["bar", "cocktail", "lounge"],
-    "Cafe & Coffee": ["cafe", "coffee", "tea"],
-    "Casual": ["casual", "street", "local"]
-  },
-  "PROMPT_CATEGORY_MAPPING": {
-    "nhậu": "Pub",
-    "ăn tối": "Restaurant",
-    "cafe": "Cafe"
-  }
+  "SYSTEM_INSTRUCTION": "You are Marin, an AI local guide for HCMC..."
 }
 ```
 
-Admins can update this config via `PUT /api/config` to tune Marin's personality, category logic, and prompt without code changes.
+Admins can update this config via `PUT /api/config` to tune Marin's personality and prompt without code changes.
 
 ---
 
 ## LLM Service (`src/core/llm.py`)
 
-### Supported Backends
-
-| Service | Class | Config |
-| :--- | :--- | :--- |
-| Google Gemini | `GeminiService` | `AI_MODE=gemini`, `GEMINI_API_KEY` |
-| Local LLM (Ollama) | `LocalLLMService` | `AI_MODE=local`, `LOCAL_MODEL_URL` |
-
 ### Key Methods
 
-| Method | Purpose |
-| :--- | :--- |
-| `analyze_image(image_data, prompt)` | Screenshot analysis |
-| `analyze_text(text, prompt)` | Text-based analysis |
-| `analyze_place_complex(text, images)` | Combined analysis (link parsing) |
-| `generate_response(place_data)` | Generate Marin commentary |
-| `analyze_search_query(query)` | Extract structured filters |
-
----
-
-## Future Enhancements (PRD 2.0)
-
-- [ ] **User-linked Sessions**: Associate `ChatSession.user_id` with authenticated user.
-- [ ] **Access Control**: Require login to use "Ask Marin" (FR-18).
-- [ ] **Richer RAG**: Include menu items in search context.
-- [ ] **Conversation Title**: Auto-generate `ChatSession.title` from first message.
+| Method                                                     | Purpose                            |
+| :--------------------------------------------------------- | :--------------------------------- |
+| `generate_with_tools(contents, system_instruction, tools)` | Agentic chat with function calling |
+| `generate_text(prompt)`                                    | Simple text generation             |
+| `analyze_place(text, images)`                              | Place analysis (structured JSON)   |
+| `generate_json(prompt, schema)`                            | Schema-enforced JSON               |
+| `extract_menu(images)`                                     | Menu OCR via Gemini Vision         |
+| `analyze_aesthetic(images)`                                | Aesthetic scoring (1-10)           |

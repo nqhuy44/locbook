@@ -15,3 +15,5 @@ python-jose[cryptography]
 passlib[bcrypt]
 httpx
 arq
+
+alembic

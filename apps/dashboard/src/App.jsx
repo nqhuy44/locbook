@@ -61,7 +61,12 @@ const PRICE_LEVEL_MAP = {
 };
 
 function AppContent() {
-  const { user, loading: authLoading, loginResponse } = useAuth();
+  const {
+    user,
+    loading: authLoading,
+    loginResponse,
+    fetchWithAuth,
+  } = useAuth();
   const { showToast } = useToast();
   const { t } = useLanguage();
   const [places, setPlaces] = useState([]);
@@ -97,11 +102,10 @@ function AppContent() {
     try {
       if (isAdded) {
         // Remove
-        const res = await fetch(
+        const res = await fetchWithAuth(
           `${API_URL}/api/lists/${listId}/items/${placeId}`,
           {
             method: "DELETE",
-            headers: { Authorization: `Bearer ${token}` },
           },
         );
         if (res.ok) {
@@ -110,12 +114,8 @@ function AppContent() {
         }
       } else {
         // Add
-        const res = await fetch(`${API_URL}/api/lists/${listId}/add`, {
+        const res = await fetchWithAuth(`${API_URL}/api/lists/${listId}/add`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
           body: JSON.stringify({
             url: selectedPlace.google_maps_url,
             name: selectedPlace.name,
@@ -140,10 +140,7 @@ function AppContent() {
   const fetchUserLists = async () => {
     if (!user) return;
     try {
-      const token = localStorage.getItem("auth_token");
-      const res = await fetch(`${API_URL}/api/lists`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetchWithAuth(`${API_URL}/api/lists`);
       if (res.ok) {
         const data = await res.json();
         setUserLists(data);
@@ -637,12 +634,8 @@ function AppContent() {
     // Fetch interaction status
     if (user) {
       try {
-        const token = localStorage.getItem("auth_token");
-        const res = await fetch(
+        const res = await fetchWithAuth(
           `${API_URL}/api/interactions/status/${placeId}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
         );
         if (res.ok) {
           const data = await res.json();
@@ -682,12 +675,8 @@ function AppContent() {
     const token = localStorage.getItem("auth_token");
 
     try {
-      const res = await fetch(`${API_URL}/api/interactions`, {
+      const res = await fetchWithAuth(`${API_URL}/api/interactions`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ place_id: placeId, type: "upvote" }),
       });
       if (res.ok) {
@@ -716,12 +705,8 @@ function AppContent() {
     const token = localStorage.getItem("auth_token");
 
     try {
-      const res = await fetch(`${API_URL}/api/memos`, {
+      const res = await fetchWithAuth(`${API_URL}/api/memos`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ place_id: placeId, content: memoContent }),
       });
       if (res.ok) {

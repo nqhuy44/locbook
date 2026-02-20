@@ -12,6 +12,7 @@ import {
   History,
   MessageSquare,
   Clock,
+  Search,
 } from "lucide-react";
 
 const AnalyticsPage = ({ API_URL, token }) => {
@@ -36,9 +37,7 @@ const AnalyticsPage = ({ API_URL, token }) => {
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/api/admin/analytics?days=${days}`, {
-        headers: {
-          "x-admin-token": token,
-        },
+        headers: { "x-admin-token": token },
       });
       if (!res.ok) throw new Error("Failed to fetch analytics");
       const result = await res.json();
@@ -165,7 +164,7 @@ const AnalyticsPage = ({ API_URL, token }) => {
         </div>
       )}
 
-      {/* Primary Metrics */}
+      {/* ========== PRIMARY METRICS ========== */}
       <div
         style={{
           display: "grid",
@@ -174,6 +173,7 @@ const AnalyticsPage = ({ API_URL, token }) => {
           marginBottom: "2rem",
         }}
       >
+        {/* Total Interactions */}
         <div className="admin-card">
           <MetricHeader
             label="Total Interactions"
@@ -183,6 +183,7 @@ const AnalyticsPage = ({ API_URL, token }) => {
           <MetricSub label="Views + Searches" />
         </div>
 
+        {/* Active Users */}
         <div className="admin-card">
           <MetricHeader
             label="Active Users"
@@ -192,6 +193,7 @@ const AnalyticsPage = ({ API_URL, token }) => {
           <MetricSub label={`Last ${days} days`} />
         </div>
 
+        {/* Gemini Tokens — grouped breakdown */}
         <div className="admin-card">
           <MetricHeader
             label="Gemini Tokens"
@@ -201,8 +203,79 @@ const AnalyticsPage = ({ API_URL, token }) => {
             value={(llm.overall?.total_tokens || 0).toLocaleString()}
           />
           <MetricSub label={`${llm.overall?.total_requests || 0} API calls`} />
+          {Object.keys(llm.by_type || {}).length > 0 &&
+            (() => {
+              const groups = {
+                Chat: { types: ["chat", "chat_tool"], color: "#34d399" },
+                Analyze: {
+                  types: ["analysis", "aesthetic", "ocr"],
+                  color: "#60a5fa",
+                },
+              };
+              return (
+                <div
+                  style={{
+                    marginTop: "0.8rem",
+                    borderTop: "1px solid rgba(255,255,255,0.06)",
+                    paddingTop: "0.6rem",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "0.5rem",
+                  }}
+                >
+                  {Object.entries(groups).map(
+                    ([label, { types: typeKeys, color }]) => {
+                      const tokens = typeKeys.reduce(
+                        (s, k) => s + (llm.by_type[k]?.total_tokens || 0),
+                        0,
+                      );
+                      const reqs = typeKeys.reduce(
+                        (s, k) => s + (llm.by_type[k]?.requests || 0),
+                        0,
+                      );
+                      if (tokens === 0 && reqs === 0) return null;
+                      return (
+                        <div
+                          key={label}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            fontSize: "0.75rem",
+                          }}
+                        >
+                          <span
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              color: "var(--text-secondary)",
+                            }}
+                          >
+                            <span
+                              style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: "50%",
+                                background: color,
+                                display: "inline-block",
+                              }}
+                            />
+                            {label}
+                          </span>
+                          <span style={{ color: "var(--text-tertiary)" }}>
+                            {tokens.toLocaleString()} tkn · {reqs} req
+                          </span>
+                        </div>
+                      );
+                    },
+                  )}
+                </div>
+              );
+            })()}
         </div>
 
+        {/* Chat Efficiency */}
         <div className="admin-card">
           <MetricHeader
             label="Chat Efficiency"
@@ -212,9 +285,40 @@ const AnalyticsPage = ({ API_URL, token }) => {
             value={chat.avg_messages_per_user?.toFixed(1) || "0.0"}
           />
           <MetricSub label="Avg msgs per user" />
+          <div
+            style={{
+              marginTop: "0.8rem",
+              borderTop: "1px solid rgba(255,255,255,0.06)",
+              paddingTop: "0.6rem",
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: "0.75rem",
+            }}
+          >
+            <span style={{ color: "var(--text-secondary)" }}>
+              Total Sessions
+            </span>
+            <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>
+              {(chat.total_sessions || 0).toLocaleString()}
+            </span>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: "0.75rem",
+              marginTop: "0.3rem",
+            }}
+          >
+            <span style={{ color: "var(--text-secondary)" }}>Chat Users</span>
+            <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>
+              {chat.active_chat_users || 0}
+            </span>
+          </div>
         </div>
       </div>
 
+      {/* ========== TREND CHARTS ========== */}
       <div
         style={{
           display: "grid",
@@ -223,7 +327,7 @@ const AnalyticsPage = ({ API_URL, token }) => {
           marginBottom: "1.5rem",
         }}
       >
-        {/* Engagement Trend */}
+        {/* User Engagement Trend */}
         <div className="admin-card">
           <SectionTitle title="User Engagement" icon={<History size={18} />} />
           <ChartContainer>
@@ -251,26 +355,112 @@ const AnalyticsPage = ({ API_URL, token }) => {
           </ChartContainer>
         </div>
 
-        {/* Token Usage Trend */}
+        {/* Token Trend — Stacked Chat vs Analyze */}
         <div className="admin-card">
           <SectionTitle title="Gemini Token Trend" icon={<Zap size={18} />} />
+          <div
+            style={{
+              display: "flex",
+              gap: "1rem",
+              marginBottom: "0.5rem",
+              fontSize: "0.75rem",
+            }}
+          >
+            <span
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                color: "var(--text-secondary)",
+              }}
+            >
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: "#34d399",
+                  display: "inline-block",
+                }}
+              />{" "}
+              Chat
+            </span>
+            <span
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                color: "var(--text-secondary)",
+              }}
+            >
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: "#60a5fa",
+                  display: "inline-block",
+                }}
+              />{" "}
+              Analyze
+            </span>
+          </div>
           <ChartContainer>
-            {llm.trend?.length > 0 ? (
-              llm.trend
+            {llm.trend_grouped?.length > 0 ? (
+              llm.trend_grouped
                 .slice()
-                .reverse()
+                .sort((a, b) => a.date.localeCompare(b.date))
                 .map((day) => {
                   const maxTokens =
-                    Math.max(...llm.trend.map((d) => d.tokens)) || 1;
-                  const height = (day.tokens / maxTokens) * 100;
+                    Math.max(
+                      ...llm.trend_grouped.map(
+                        (d) => (d.chat_tokens || 0) + (d.analyze_tokens || 0),
+                      ),
+                    ) || 1;
+                  const total =
+                    (day.chat_tokens || 0) + (day.analyze_tokens || 0);
+                  const height = (total / maxTokens) * 100;
+                  const chatPct =
+                    total > 0 ? ((day.chat_tokens || 0) / total) * 100 : 50;
                   return (
-                    <Bar
+                    <div
                       key={day.date}
-                      height={height}
-                      label={day.date.split("-").slice(1).join("/")}
-                      tooltip={`${day.date}: ${day.tokens.toLocaleString()} tokens`}
-                      color="linear-gradient(to top, #60a5fa, #93c5fd)"
-                    />
+                      style={{
+                        flex: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "100%",
+                          height: `${Math.max(height, 5)}%`,
+                          borderRadius: "4px 4px 0 0",
+                          transition: "height 0.5s ease",
+                          overflow: "hidden",
+                          display: "flex",
+                          flexDirection: "column",
+                        }}
+                        title={`${day.date}: Chat ${(day.chat_tokens || 0).toLocaleString()} · Analyze ${(day.analyze_tokens || 0).toLocaleString()}`}
+                      >
+                        <div style={{ flex: chatPct, background: "#34d399" }} />
+                        <div
+                          style={{ flex: 100 - chatPct, background: "#60a5fa" }}
+                        />
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "0.6rem",
+                          color: "var(--text-tertiary)",
+                          writingMode: "vertical-rl",
+                          transform: "rotate(180deg)",
+                        }}
+                      >
+                        {day.date.split("-").slice(1).join("/")}
+                      </div>
+                    </div>
                   );
                 })
             ) : (
@@ -280,6 +470,7 @@ const AnalyticsPage = ({ API_URL, token }) => {
         </div>
       </div>
 
+      {/* ========== DISTRIBUTION + PERFORMANCE ========== */}
       <div
         style={{
           display: "grid",
@@ -288,7 +479,7 @@ const AnalyticsPage = ({ API_URL, token }) => {
           marginBottom: "1.5rem",
         }}
       >
-        {/* Event Distribution (Pie Chart Style) */}
+        {/* Action Distribution */}
         <div className="admin-card">
           <SectionTitle
             title="Action Distribution"
@@ -300,10 +491,7 @@ const AnalyticsPage = ({ API_URL, token }) => {
                 width: "140px",
                 height: "140px",
                 borderRadius: "50%",
-                background: `conic-gradient(
-                 var(--accent-color) 0% ${Math.min((totalViews / (totalInteractions || 1)) * 100, 100)}%, 
-                 #34d399 ${Math.min((totalViews / (totalInteractions || 1)) * 100, 100)}% 100%
-               )`,
+                background: `conic-gradient(var(--accent-color) 0% ${Math.min((totalViews / (totalInteractions || 1)) * 100, 100)}%, #34d399 ${Math.min((totalViews / (totalInteractions || 1)) * 100, 100)}% 100%)`,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -351,6 +539,209 @@ const AnalyticsPage = ({ API_URL, token }) => {
           </div>
         </div>
 
+        {/* Gemini Performance — Grouped Table */}
+        <div className="admin-card">
+          <SectionTitle title="Gemini Performance" icon={<Cpu size={18} />} />
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "1rem",
+              marginBottom: "1.2rem",
+            }}
+          >
+            <div
+              style={{
+                background: "rgba(255,255,255,0.03)",
+                padding: "1rem",
+                borderRadius: "10px",
+              }}
+            >
+              <div
+                style={{
+                  color: "var(--text-tertiary)",
+                  fontSize: "0.75rem",
+                  marginBottom: "0.4rem",
+                }}
+              >
+                Avg Tokens / Req
+              </div>
+              <div style={{ fontSize: "1.1rem", fontWeight: 700 }}>
+                {Math.round(llm.overall?.avg_tokens || 0)}
+              </div>
+            </div>
+            <div
+              style={{
+                background: "rgba(255,255,255,0.03)",
+                padding: "1rem",
+                borderRadius: "10px",
+              }}
+            >
+              <div
+                style={{
+                  color: "var(--text-tertiary)",
+                  fontSize: "0.75rem",
+                  marginBottom: "0.4rem",
+                }}
+              >
+                Input : Output
+              </div>
+              <div style={{ fontSize: "1.1rem", fontWeight: 700 }}>
+                {Math.round(
+                  (llm.overall?.input_tokens /
+                    (llm.overall?.output_tokens || 1)) *
+                    10,
+                ) / 10}{" "}
+                : 1
+              </div>
+            </div>
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table
+              style={{
+                width: "100%",
+                textAlign: "left",
+                borderCollapse: "collapse",
+                fontSize: "0.8rem",
+              }}
+            >
+              <thead>
+                <tr
+                  style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+                >
+                  <th
+                    style={{
+                      padding: "0.6rem 0.4rem",
+                      color: "var(--text-tertiary)",
+                    }}
+                  >
+                    Group
+                  </th>
+                  <th
+                    style={{
+                      padding: "0.6rem 0.4rem",
+                      color: "var(--text-tertiary)",
+                      textAlign: "right",
+                    }}
+                  >
+                    Requests
+                  </th>
+                  <th
+                    style={{
+                      padding: "0.6rem 0.4rem",
+                      color: "var(--text-tertiary)",
+                      textAlign: "right",
+                    }}
+                  >
+                    Tokens
+                  </th>
+                  <th
+                    style={{
+                      padding: "0.6rem 0.4rem",
+                      color: "var(--text-tertiary)",
+                      textAlign: "right",
+                    }}
+                  >
+                    Avg
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {(() => {
+                  const groups = [
+                    {
+                      label: "Chat",
+                      types: ["chat", "chat_tool"],
+                      color: "#34d399",
+                    },
+                    {
+                      label: "Analyze",
+                      types: ["analysis", "aesthetic", "ocr"],
+                      color: "#60a5fa",
+                    },
+                  ];
+                  const byType = llm.by_type || {};
+                  return groups.map(({ label, types: keys, color }) => {
+                    const reqs = keys.reduce(
+                      (s, k) => s + (byType[k]?.requests || 0),
+                      0,
+                    );
+                    const tokens = keys.reduce(
+                      (s, k) => s + (byType[k]?.total_tokens || 0),
+                      0,
+                    );
+                    const avg = reqs > 0 ? Math.round(tokens / reqs) : 0;
+                    return (
+                      <tr
+                        key={label}
+                        style={{
+                          borderBottom: "1px solid rgba(255,255,255,0.03)",
+                        }}
+                      >
+                        <td style={{ padding: "0.6rem 0.4rem" }}>
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "6px",
+                            }}
+                          >
+                            <span
+                              style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: "50%",
+                                background: color,
+                                display: "inline-block",
+                              }}
+                            />
+                            {label}
+                          </span>
+                        </td>
+                        <td
+                          style={{
+                            padding: "0.6rem 0.4rem",
+                            textAlign: "right",
+                          }}
+                        >
+                          {reqs}
+                        </td>
+                        <td
+                          style={{
+                            padding: "0.6rem 0.4rem",
+                            textAlign: "right",
+                          }}
+                        >
+                          {tokens.toLocaleString()}
+                        </td>
+                        <td
+                          style={{
+                            padding: "0.6rem 0.4rem",
+                            textAlign: "right",
+                            color: "var(--text-tertiary)",
+                          }}
+                        >
+                          {avg}
+                        </td>
+                      </tr>
+                    );
+                  });
+                })()}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* ========== TOP RANKINGS ========== */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gap: "1.5rem",
+          marginBottom: "1.5rem",
+        }}
+      >
         {/* Top Places */}
         <div className="admin-card">
           <SectionTitle title="Top Visited Spots" icon={<MapPin size={18} />} />
@@ -375,7 +766,7 @@ const AnalyticsPage = ({ API_URL, token }) => {
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
-                        maxWidth: "200px",
+                        maxWidth: "180px",
                       }}
                     >
                       {place.name}
@@ -386,9 +777,9 @@ const AnalyticsPage = ({ API_URL, token }) => {
                   </div>
                   <div
                     style={{
-                      height: "8px",
+                      height: "6px",
                       background: "rgba(255,255,255,0.03)",
-                      borderRadius: "4px",
+                      borderRadius: "3px",
                       overflow: "hidden",
                     }}
                   >
@@ -397,7 +788,7 @@ const AnalyticsPage = ({ API_URL, token }) => {
                         height: "100%",
                         width: `${(place.views / (data.top_places[0].views || 1)) * 100}%`,
                         background: "var(--accent-color)",
-                        borderRadius: "4px",
+                        borderRadius: "3px",
                       }}
                     />
                   </div>
@@ -409,78 +800,18 @@ const AnalyticsPage = ({ API_URL, token }) => {
           </div>
         </div>
 
-        {/* LLM Breakdown */}
+        {/* Top Search Keywords */}
         <div className="admin-card">
-          <SectionTitle title="Gemini Performance" icon={<Cpu size={18} />} />
+          <SectionTitle
+            title="Top Search Keywords"
+            icon={<Search size={18} />}
+          />
           <div
-            style={{ display: "flex", flexDirection: "column", gap: "1.2rem" }}
+            style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}
           >
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "1rem",
-              }}
-            >
-              <div
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  padding: "1rem",
-                  borderRadius: "10px",
-                }}
-              >
-                <div
-                  style={{
-                    color: "var(--text-tertiary)",
-                    fontSize: "0.75rem",
-                    marginBottom: "0.4rem",
-                  }}
-                >
-                  Avg Tokens / Req
-                </div>
-                <div style={{ fontSize: "1.1rem", fontWeight: 700 }}>
-                  {Math.round(llm.overall?.avg_tokens || 0)}
-                </div>
-              </div>
-              <div
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  padding: "1rem",
-                  borderRadius: "10px",
-                }}
-              >
-                <div
-                  style={{
-                    color: "var(--text-tertiary)",
-                    fontSize: "0.75rem",
-                    marginBottom: "0.4rem",
-                  }}
-                >
-                  Input : Output
-                </div>
-                <div style={{ fontSize: "1.1rem", fontWeight: 700 }}>
-                  {Math.round(
-                    (llm.overall?.input_tokens /
-                      (llm.overall?.output_tokens || 1)) *
-                      10,
-                  ) / 10}{" "}
-                  : 1
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h4
-                style={{
-                  margin: "0 0 0.8rem",
-                  color: "var(--text-secondary)",
-                  fontSize: "0.85rem",
-                }}
-              >
-                Avg Tokens by Activity
-              </h4>
-              {Object.entries(llm.by_type || {}).map(([type, stats]) => (
-                <div key={type} style={{ marginBottom: "0.8rem" }}>
+            {data.search_keywords?.length > 0 ? (
+              data.search_keywords.map((kw, i) => (
+                <div key={i}>
                   <div
                     style={{
                       display: "flex",
@@ -491,20 +822,34 @@ const AnalyticsPage = ({ API_URL, token }) => {
                   >
                     <span
                       style={{
-                        textTransform: "capitalize",
                         color: "var(--text-primary)",
+                        fontWeight: 500,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        maxWidth: "180px",
+                        padding: "2px 8px",
+                        background: "rgba(52, 211, 153, 0.1)", // Green tint
+                        border: "1px solid rgba(52, 211, 153, 0.2)",
+                        borderRadius: "12px",
+                        fontSize: "0.75rem",
                       }}
                     >
-                      {type}
+                      #{kw.keyword}
                     </span>
-                    <span style={{ color: "var(--text-tertiary)" }}>
-                      {Math.round(stats.avg_tokens)} tkn
+                    <span
+                      style={{
+                        color: "var(--text-tertiary)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {kw.count}×
                     </span>
                   </div>
                   <div
                     style={{
                       height: "6px",
-                      background: "rgba(255,255,255,0.05)",
+                      background: "rgba(255,255,255,0.03)",
                       borderRadius: "3px",
                       overflow: "hidden",
                     }}
@@ -512,19 +857,90 @@ const AnalyticsPage = ({ API_URL, token }) => {
                     <div
                       style={{
                         height: "100%",
-                        width: `${Math.min((stats.avg_tokens / 5000) * 100, 100)}%`,
-                        background: type === "chat" ? "#34d399" : "#60a5fa",
+                        width: `${(kw.count / (data.search_keywords[0].count || 1)) * 100}%`,
+                        background:
+                          "linear-gradient(to right, #34d399, #60a5fa)",
+                        borderRadius: "3px",
                       }}
                     />
                   </div>
                 </div>
-              ))}
-            </div>
+              ))
+            ) : (
+              <EmptyState label="No search data yet" />
+            )}
+          </div>
+        </div>
+
+        {/* Top Chat Users */}
+        <div className="admin-card">
+          <SectionTitle
+            title="Top Chat Users"
+            icon={<MessageSquare size={18} />}
+          />
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}
+          >
+            {data.top_chat_users?.length > 0 ? (
+              data.top_chat_users.map((u, i) => (
+                <div key={i}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      fontSize: "0.8rem",
+                      marginBottom: "0.4rem",
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: "var(--text-primary)",
+                        fontWeight: 500,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        maxWidth: "160px",
+                      }}
+                    >
+                      {i + 1}. {u.name}
+                    </span>
+                    <span
+                      style={{
+                        color: "var(--text-tertiary)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {u.messages} msgs · {u.sessions} sess
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      height: "6px",
+                      background: "rgba(255,255,255,0.03)",
+                      borderRadius: "3px",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${(u.messages / (data.top_chat_users[0].messages || 1)) * 100}%`,
+                        background:
+                          "linear-gradient(to right, #a78bfa, #f472b6)",
+                        borderRadius: "3px",
+                      }}
+                    />
+                  </div>
+                </div>
+              ))
+            ) : (
+              <EmptyState label="No chat users yet" />
+            )}
           </div>
         </div>
       </div>
 
-      {/* System Stats (Nightly) Table */}
+      {/* ========== SYSTEM STATS TABLE ========== */}
       <div className="admin-card">
         <SectionTitle
           title="Daily System Performance"

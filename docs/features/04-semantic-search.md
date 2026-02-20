@@ -1,8 +1,8 @@
 # Feature: Semantic Search & Discovery
 
-> **PRD Reference**: FR-08, FR-12
-> **Status**: ✅ Working (Basic), 🔧 Enhancements planned
-> **Source**: `src/routers/discovery.py`, `src/core/ai.py`, `src/core/vector_store.py`
+> **PRD Reference**: FR-08, FR-12  
+> **Status**: ✅ Working (Hybrid Search — Semantic + Keyword)  
+> **Source**: `src/modules/places/service.py`, `src/core/ai.py`, `src/modules/places/quality.py`
 
 ---
 
@@ -24,16 +24,20 @@ Gemini Embedding API (text-embedding-004, 768 dimensions)
 Vector stored in Place.embedding (pgvector column)
 ```
 
-### Search Pipeline
+### Search Pipeline (Hybrid — RRF)
 
 ```
 User Query: "quiet place for coding"
+    ↓ (parallel)
+    ├── Gemini Embedding API → query_vector (3072d)
+    │   └── pgvector: ORDER BY embedding <=> query_vector → semantic_rank
+    │
+    └── plainto_tsquery('simple', query)
+        └── Postgres FTS: ts_rank(search_text, tsquery) → keyword_rank
     ↓
-Gemini Embedding API → query_vector (768d)
+    Reciprocal Rank Fusion: score = 1/(60+semantic_rank) + 1/(60+keyword_rank)
     ↓
-PostgreSQL: ORDER BY embedding <=> query_vector (cosine distance)
-    ↓
-Top N results returned
+    Top N results returned
 ```
 
 ---
@@ -44,12 +48,13 @@ Top N results returned
 
 **`GET /api/discovery/places`** — Personalized results based on user's vibe profile.
 
-| Param | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `limit` | int | 20 | Results per page |
-| `offset` | int | 0 | Pagination |
+| Param    | Type | Default | Description      |
+| :------- | :--- | :------ | :--------------- |
+| `limit`  | int  | 20      | Results per page |
+| `offset` | int  | 0       | Pagination       |
 
 **Logic**:
+
 1. Fetch user's `Profile.vibe_embedding`.
 2. If embedding exists → sort by `Place.embedding.cosine_distance(user_embedding)`.
 3. If no embedding → fallback to `ORDER BY created_at DESC`.
@@ -64,11 +69,13 @@ Uses `ILIKE` matching on: `name`, `address`, `categories`, `vibes`.
 
 **`POST /api/chat`** — Natural language search via Marin AI.
 
-1. User message goes through intent extraction (LLM).
-2. Query embedding generated.
-3. pgvector cosine distance search.
-4. Results fed to LLM as RAG context.
-5. Marin responds with recommendations.
+1. User message processed by Gemini with Function Calling.
+2. Gemini autonomously decides to call `search_places` tool.
+3. Hybrid search executed (Semantic + FTS + RRF).
+4. `FunctionResponse` with results sent back to Gemini.
+5. Marin synthesizes a friendly response with recommendations.
+
+See [05-ai-chat-marin.md](./05-ai-chat-marin.md) for details.
 
 ---
 
@@ -79,11 +86,15 @@ Uses `ILIKE` matching on: `name`, `address`, `categories`, `vibes`.
 ```sql
 CREATE EXTENSION IF NOT EXISTS vector;
 
--- Column definition
-embedding VECTOR(768)
+-- Vector column (3072d for gemini-embedding-001)
+embedding VECTOR(3072)
 
--- Index (recommended for > 1000 rows)
+-- tsvector column for Full-Text Search
+search_text TSVECTOR
+
+-- Indexes
 CREATE INDEX ON places USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+CREATE INDEX ON places USING gin(search_text);
 ```
 
 ### Embedding Generation (`src/core/ai.py`)
@@ -100,11 +111,11 @@ def get_text_embedding(text: str) -> list[float]:
 
 ### Distance Operators
 
-| Operator | Name | Usage |
-| :--- | :--- | :--- |
-| `<=>` | Cosine Distance | Best for text embeddings |
-| `<->` | L2 (Euclidean) | Alternative |
-| `<#>` | Inner Product | For normalized vectors |
+| Operator | Name            | Usage                    |
+| :------- | :-------------- | :----------------------- |
+| `<=>`    | Cosine Distance | Best for text embeddings |
+| `<->`    | L2 (Euclidean)  | Alternative              |
+| `<#>`    | Inner Product   | For normalized vectors   |
 
 Spotary uses **cosine distance** (`<=>`) as the default.
 
@@ -125,6 +136,7 @@ Spotary uses **cosine distance** (`<=>`) as the default.
 ```
 
 **Process**:
+
 1. Concatenate selections into descriptive text.
 2. Generate embedding via Gemini.
 3. Store as `Profile.vibe_embedding`.
@@ -132,18 +144,23 @@ Spotary uses **cosine distance** (`<=>`) as the default.
 
 ---
 
-## Future Enhancements (PRD 2.0)
+## Future Enhancements
 
-### Hybrid Search (Phase 2)
-- [ ] Combine vector similarity with keyword matching (menu items, specific names).
-- [ ] Implement `ts_rank` full-text search alongside pgvector distance.
+### Hybrid Search Refinements
+
+- [x] ~~Combine vector similarity with keyword matching~~ ✅ Implemented (RRF)
+- [x] ~~Implement `ts_rank` full-text search alongside pgvector distance~~ ✅ Implemented
+- [ ] Tune RRF k-constant based on real usage data
+- [ ] Add weighted RRF (boost keyword for exact name matches)
 
 ### Sort Modes (Phase 3)
+
 - [ ] "Best Match" — cosine distance to user vibe.
 - [ ] "Most Popular" — `ORDER BY upvote_count DESC`.
 - [ ] "Trending" — upvotes in last 7 days.
 - [ ] "Nearest" — PostGIS distance from user location.
 
-### AI Query Understanding (Phase 2)
-- [ ] Use `analyze_search_query()` in `llm.py` to extract structured filters from natural language.
-- [ ] Example: "cheap pub near District 1" → `{ category: "Pub", price: "$", district: "District 1" }`.
+### AI Query Understanding
+
+- [x] ~~Use tool calling for structured filter extraction~~ ✅ Implemented via Gemini Function Calling
+- [ ] Multi-tool support (search + map + menu lookup)

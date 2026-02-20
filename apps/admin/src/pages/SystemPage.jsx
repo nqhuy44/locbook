@@ -27,6 +27,7 @@ const SystemPage = ({ API_URL }) => {
         if (res.ok) {
           const data = await res.json();
           newVersions.backend = data.backend || "unknown";
+          if (data.dashboard) newVersions.dashboard = data.dashboard;
         } else {
           newVersions.backend = "error";
         }
@@ -49,36 +50,10 @@ const SystemPage = ({ API_URL }) => {
         newVersions.admin_dashboard = window.__APP_VERSION__ || "dev";
       }
 
-      // 3. User Dashboard (Need Config first for URL)
-      try {
-        const configRes = await fetch(`${API_URL}/api/config`);
-        if (configRes.ok) {
-          const configData = await configRes.json();
-          const dashboardUrl =
-            configData.LINKS?.DASHBOARD_URL || configData.LINKS?.AUTHOR_WEBSITE;
-
-          if (dashboardUrl) {
-            try {
-              // Ensure no trailing slash
-              const cleanUrl = dashboardUrl.replace(/\/$/, "");
-              const res = await fetch(`${cleanUrl}/version.json`);
-              if (res.ok) {
-                const data = await res.json();
-                newVersions.dashboard = data.version || "unknown";
-              } else {
-                newVersions.dashboard = "unknown";
-              }
-            } catch (e) {
-              console.error("Failed to fetch dashboard version", e);
-              newVersions.dashboard = "error";
-            }
-          } else {
-            newVersions.dashboard = "not configured";
-          }
-        }
-      } catch (e) {
-        console.error("Failed to fetch config for dashboard url", e);
-        newVersions.dashboard = "-";
+      // 3. User Dashboard (Proxied via Backend to avoid CORS)
+      // Already fetched in step 1 if backend supports it
+      if (newVersions.dashboard === "...") {
+        newVersions.dashboard = "unknown";
       }
 
       setVersions(newVersions);
