@@ -104,6 +104,7 @@ class GeminiService:
             response = await self.client.aio.models.generate_content(
                 model=self.model_name,
                 contents=prompt,
+                config=types.GenerateContentConfig(max_output_tokens=500),
             )
             if response.usage_metadata:
                 await self._log_usage("chat", response.usage_metadata, user_id)
@@ -129,13 +130,13 @@ class GeminiService:
             raise ValueError("AI Service not ready.")
 
         try:
-            config_kwargs = {}
+            config_kwargs = {"max_output_tokens": 500}
             if tools:
                 config_kwargs["tools"] = tools
             if system_instruction:
                 config_kwargs["system_instruction"] = system_instruction
                 
-            config = types.GenerateContentConfig(**config_kwargs) if config_kwargs else None
+            config = types.GenerateContentConfig(**config_kwargs)
 
             response = await self.client.aio.models.generate_content(
                 model=self.model_name,

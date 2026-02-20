@@ -129,9 +129,16 @@ const ChatView = ({ onPlaceClick, config }) => {
       });
       const data = await res.json();
 
+      let finalReply = "";
+      if (data.is_rate_limited) {
+        finalReply = t("ask_marin.rate_limited");
+      } else {
+        finalReply = data.reply || t("ask_marin.error");
+      }
+
       const replyMsg = {
         role: "assistant",
-        content: data.reply || "Marin đang bị lỗi kết nối 😢",
+        content: finalReply,
         timestamp: new Date(),
       };
 
@@ -345,7 +352,7 @@ const ChatView = ({ onPlaceClick, config }) => {
                   </ReactMarkdown>
                 </div>
                 <div className={`message-timestamp ${isUser ? "user" : "bot"}`}>
-                  {msg.timestamp.toLocaleTimeString([], {
+                  {new Date(msg.timestamp).toLocaleTimeString([], {
                     hour: "2-digit",
                     minute: "2-digit",
                   })}

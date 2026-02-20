@@ -41,8 +41,34 @@ from fastapi.staticfiles import StaticFiles
 import os
 import shutil
 import uuid
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.errors import RateLimitExceeded
+from fastapi.responses import JSONResponse
+from starlette.requests import Request
+from src.core.rate_limiter import limiter
 
 app = FastAPI(title="Spotary API", lifespan=lifespan)
+
+async def rate_limit_custom_handler(request: Request, exc: RateLimitExceeded):
+    if request.url.path == "/api/chat/message":
+        # Return a structured soft-error for the frontend to localize
+        return JSONResponse(
+            status_code=200,
+            content={
+                "is_rate_limited": True,
+                "reply": None,
+                "session_id": None,
+                "suggested_places": []
+            }
+        )
+    return JSONResponse(
+        status_code=429,
+        content={"detail": f"Rate limit exceeded: {exc.detail}"}
+    )
+
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
+app.add_exception_handler(RateLimitExceeded, rate_limit_custom_handler)
 
 # Mount Routers
 app.include_router(auth_router)
@@ -309,28 +335,53 @@ DEFAULT_APP_CONFIG = {
     "AVATAR_NAME": "Marin 🎀",
     "AVATAR_IMAGE": "",
     "SYSTEM_INSTRUCTION": "You are Marin, an AI local guide for Ho Chi Minh City. You are helpful, friendly, and knowledgeable about Saigon's nightlife and cafes.",
-    "CATEGORY_SYNONYMS": {
-        "bar": ["lounge", "speakeasy", "nightlife", "cocktail"],
-        "pub": ["gastropub", "izakaya", "beer", "brewery", "nightlife", "pub"],
-        "club": ["club", "nightclub"],
-        "nhậu": ["nhậu", "beer", "bia", "quán nhậu"],
-        "bakery": ["bakery", "dessert","cake"],
-        "cafe": ["coffee", "tea",  "bistro", "brunch"],
-        "restaurant": ["dining", "eatery", "bistro", "food", "dinner", "lunch", "cuisine"],
-        "casual": ["bình dân", "street food", "vỉa hè", "local"]
-    },
-    "PROMPT_CATEGORY_MAPPING": {
-        "nhậu": "nhậu",
-        "quẩy": "club",
-        "ăn xế": "snack",
-        "tâm sự": ["intimate", "speakeasy", "quiet"],
-        "bình dân": "Casual",
-        "cafe": "Cafe",
-        "bánh": "bakery",
-        "trà sữa": "milktea",
-        "nướng": ["bbq", "grill"],
-        "đặc sản": ["specialty", "local cuisine"]
-    }
+    "CATEGORY_MAPPINGS": [
+        {
+            "vietnamese": "Quán Nhậu / Bia",
+            "english": "nhậu",
+            "keywords": ["nhậu", "beer", "bia", "quán nhậu", "mồi"]
+        },
+        {
+            "vietnamese": "Club / Bar xập xình",
+            "english": "club",
+            "keywords": ["quẩy", "club", "nightclub", "lên đồ", "dj"]
+        },
+        {
+            "vietnamese": "Bar Tâm Sự",
+            "english": "bar",
+            "keywords": ["tâm sự", "lounge", "speakeasy", "cocktail", "intimate", "quiet"]
+        },
+        {
+            "vietnamese": "Cà Phê / Trà",
+            "english": "cafe",
+            "keywords": ["cafe", "coffee", "tea", "bistro", "brunch", "trà sữa", "milktea"]
+        },
+        {
+            "vietnamese": "Bánh / Tráng Miệng",
+            "english": "bakery",
+            "keywords": ["bánh", "bakery", "dessert", "cake", "ngọt", "tráng miệng"]
+        },
+        {
+            "vietnamese": "Nhà Hàng",
+            "english": "restaurant",
+            "keywords": ["dining", "eatery", "food", "dinner", "lunch", "cuisine", "nhà hàng", "ăn tối"]
+        },
+        {
+            "vietnamese": "Quán Trảo / Đồ Nướng",
+            "english": "restaurant",
+            "keywords": ["nướng", "bbq", "grill", "lẩu"]
+        },
+        {
+            "vietnamese": "Bình Dân / Vỉa Hè",
+            "english": "casual",
+            "keywords": ["bình dân", "street food", "vỉa hè", "local", "ăn vặt", "ăn xế", "snack"]
+        },
+        {
+            "vietnamese": "Đặc Sản",
+            "english": "restaurant",
+            "keywords": ["đặc sản", "specialty", "local cuisine", "địa phương"]
+        }
+    ]
   }
 }
 
@@ -429,10 +480,13 @@ async def get_latest_chat(
         "messages": session.messages or [],
     }
 
+from fastapi import Request
+
 @app.post("/api/chat/message")
-async def chat_message(payload: ChatMessage, current_user: User = Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def chat_message(request: Request, payload: ChatMessage, current_user: User = Depends(get_current_user)):
     if not DEFAULT_APP_CONFIG["FEATURES"]["ASK_MARIN"]:
-        return {"error": "Feature disabled"}
+         return {"error": "Feature disabled"}
     
     from src.modules.places.chat_service import chat_service
     

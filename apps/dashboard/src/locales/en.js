@@ -80,6 +80,9 @@ export const en = {
     go_to_profile: "Go to Profile to Login",
     disabled_title: "Marin is on vacation",
     disabled_msg: "The trip is wonderful. Marin will meet you soon!",
+    rate_limited:
+      "You're asking too much, Marin needs a break 🤯 Wait a bit and ask again!",
+    error: "Marin is having a hard time 😢",
   },
   // Books
   books: {

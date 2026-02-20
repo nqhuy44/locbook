@@ -346,6 +346,7 @@ const AnalyticsPage = ({ API_URL, token }) => {
                       label={day.date.split("-").slice(1).join("/")}
                       tooltip={`${day.date}: ${day.dau} users`}
                       color="linear-gradient(to top, var(--accent-color), #d8b4fe)"
+                      value={day.dau > 0 ? day.dau : ""}
                     />
                   );
                 })
@@ -429,7 +430,9 @@ const AnalyticsPage = ({ API_URL, token }) => {
                         flex: 1,
                         display: "flex",
                         flexDirection: "column",
+                        justifyContent: "flex-end",
                         alignItems: "center",
+                        height: "100%",
                         gap: "8px",
                       }}
                     >
@@ -439,13 +442,43 @@ const AnalyticsPage = ({ API_URL, token }) => {
                           height: `${Math.max(height, 5)}%`,
                           borderRadius: "4px 4px 0 0",
                           transition: "height 0.5s ease",
-                          overflow: "hidden",
                           display: "flex",
                           flexDirection: "column",
+                          position: "relative",
                         }}
                         title={`${day.date}: Chat ${(day.chat_tokens || 0).toLocaleString()} · Analyze ${(day.analyze_tokens || 0).toLocaleString()}`}
                       >
-                        <div style={{ flex: chatPct, background: "#34d399" }} />
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "-20px",
+                            left: "50%",
+                            transform: "translateX(-50%)",
+                            fontSize: "0.6rem",
+                            fontWeight: 600,
+                            color: "var(--text-secondary)",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {(() => {
+                            if (total <= 0) return "";
+                            if (total >= 1e9)
+                              return (total / 1e9).toFixed(1) + "b";
+                            if (total >= 1e6)
+                              return (total / 1e6).toFixed(1) + "m";
+                            if (total >= 1e3)
+                              return (total / 1e3).toFixed(1) + "k";
+                            return total;
+                          })()}
+                        </div>
+                        <div
+                          style={{
+                            flex: chatPct,
+                            background: "#34d399",
+                            borderRadius: "4px 4px 0 0",
+                            overflow: "hidden",
+                          }}
+                        />
                         <div
                           style={{ flex: 100 - chatPct, background: "#60a5fa" }}
                         />
@@ -800,17 +833,17 @@ const AnalyticsPage = ({ API_URL, token }) => {
           </div>
         </div>
 
-        {/* Top Search Keywords */}
+        {/* Top Search Categories */}
         <div className="admin-card">
           <SectionTitle
-            title="Top Search Keywords"
+            title="Top Search Categories"
             icon={<Search size={18} />}
           />
           <div
             style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}
           >
-            {data.search_keywords?.length > 0 ? (
-              data.search_keywords.map((kw, i) => (
+            {data.top_categories?.length > 0 ? (
+              data.top_categories.map((kw, i) => (
                 <div key={i}>
                   <div
                     style={{
@@ -835,7 +868,7 @@ const AnalyticsPage = ({ API_URL, token }) => {
                         fontSize: "0.75rem",
                       }}
                     >
-                      #{kw.keyword}
+                      {kw.keyword}
                     </span>
                     <span
                       style={{
@@ -857,7 +890,7 @@ const AnalyticsPage = ({ API_URL, token }) => {
                     <div
                       style={{
                         height: "100%",
-                        width: `${(kw.count / (data.search_keywords[0].count || 1)) * 100}%`,
+                        width: `${(kw.count / (data.top_categories[0].count || 1)) * 100}%`,
                         background:
                           "linear-gradient(to right, #34d399, #60a5fa)",
                         borderRadius: "3px",
@@ -867,7 +900,79 @@ const AnalyticsPage = ({ API_URL, token }) => {
                 </div>
               ))
             ) : (
-              <EmptyState label="No search data yet" />
+              <EmptyState label="No category data yet" />
+            )}
+          </div>
+        </div>
+
+        {/* Top Search Vibes */}
+        <div className="admin-card">
+          <SectionTitle
+            title="Top Search Vibes/Moods"
+            icon={<Search size={18} />}
+          />
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}
+          >
+            {data.top_vibes?.length > 0 ? (
+              data.top_vibes.map((kw, i) => (
+                <div key={i}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      fontSize: "0.8rem",
+                      marginBottom: "0.4rem",
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: "var(--text-primary)",
+                        fontWeight: 500,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        maxWidth: "180px",
+                        padding: "2px 8px",
+                        background: "rgba(96, 165, 250, 0.1)", // Blue tint
+                        border: "1px solid rgba(96, 165, 250, 0.2)",
+                        borderRadius: "12px",
+                        fontSize: "0.75rem",
+                      }}
+                    >
+                      {kw.keyword}
+                    </span>
+                    <span
+                      style={{
+                        color: "var(--text-tertiary)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {kw.count}×
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      height: "6px",
+                      background: "rgba(255,255,255,0.03)",
+                      borderRadius: "3px",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${(kw.count / (data.top_vibes[0].count || 1)) * 100}%`,
+                        background:
+                          "linear-gradient(to right, #60a5fa, #c084fc)",
+                        borderRadius: "3px",
+                      }}
+                    />
+                  </div>
+                </div>
+              ))
+            ) : (
+              <EmptyState label="No vibes data yet" />
             )}
           </div>
         </div>
@@ -1182,13 +1287,15 @@ const ChartContainer = ({ children }) => (
   </div>
 );
 
-const Bar = ({ height, label, tooltip, color }) => (
+const Bar = ({ height, label, tooltip, color, value }) => (
   <div
     style={{
       flex: 1,
       display: "flex",
       flexDirection: "column",
+      justifyContent: "flex-end",
       alignItems: "center",
+      height: "100%",
       gap: "8px",
     }}
   >
@@ -1199,9 +1306,24 @@ const Bar = ({ height, label, tooltip, color }) => (
         background: color,
         borderRadius: "4px 4px 0 0",
         transition: "height 0.5s ease",
+        position: "relative",
       }}
       title={tooltip}
-    />
+    >
+      <div
+        style={{
+          position: "absolute",
+          top: "-20px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          fontSize: "0.6rem",
+          fontWeight: 600,
+          color: "var(--text-secondary)",
+        }}
+      >
+        {value}
+      </div>
+    </div>
     <div
       style={{
         fontSize: "0.6rem",

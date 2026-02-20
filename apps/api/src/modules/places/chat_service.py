@@ -293,18 +293,17 @@ Condensed Summary:"""
             session_summary = session.summary or ""
             
             # Build the full system instruction with avatar name and dynamic config
-            synonyms = marin_config.get("CATEGORY_SYNONYMS", {})
-            mappings = marin_config.get("PROMPT_CATEGORY_MAPPING", {})
+            category_mappings = marin_config.get("CATEGORY_MAPPINGS", [])
             
             dynamic_rules = ""
-            if synonyms:
-                dynamic_rules += f"\n\n[Category Synonyms]\n{json.dumps(synonyms, ensure_ascii=False, indent=2)}"
-            if mappings:
-                dynamic_rules += (
-                    f"\n\n[Prompt Category Mapping]\n"
-                    f"CRITICAL: When user input matches a key here, use the corresponding English value for `query_en` and `categories`.\n"
-                    f"{json.dumps(mappings, ensure_ascii=False, indent=2)}"
-                )
+            if category_mappings:
+                dynamic_rules += "\n\n[Prompt Category Mapping]\n"
+                dynamic_rules += "CRITICAL: When user input matches any keywords below, map their intent to the EXACT English value for `query_en` and `categories` parameters:\n"
+                for m in category_mappings:
+                    vn = m.get("vietnamese", "")
+                    en = m.get("english", "")
+                    kws = ", ".join(m.get("keywords", []))
+                    dynamic_rules += f"- \"{en}\" ({vn}): {kws}\n"
 
             full_system_instruction = f"You are {avatar_name}, Spotary's AI Scout.\n{system_instruction}\n{dynamic_rules}\n\n{location_context}"
             
@@ -392,7 +391,7 @@ Condensed Summary:"""
                                     place_dict["id"] = str(p.id)
                                     suggested_places.append(place_dict)
                                     
-                                # Format results for FunctionResponse
+                                # Format results for FunctionResponse using TOON
                                 if places:
                                     tool_results = []
                                     for p in places:
@@ -406,9 +405,14 @@ Condensed Summary:"""
                                             "rating": f"{p.rating}/5.0" if p.rating else "N/A",
                                             "price_level": p.price_level or "N/A",
                                         })
-                                    tool_response_data = {"results": tool_results}
+                                    
+                                    # Convert to TOON string to compress tokens
+                                    toon_str = to_toon({"results": tool_results})
+                                    tool_response_data = {"toon_payload": toon_str}
                                 else:
-                                    tool_response_data = {"results": [], "message": f"No places found for query: {args.get('query')}"}
+                                    tool_response_data = {
+                                        "toon_payload": f"No places found for query: {args.get('query')}"
+                                    }
                                 
                                 tool_response_parts.append(
                                     types.Part.from_function_response(

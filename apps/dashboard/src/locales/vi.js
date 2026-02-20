@@ -79,6 +79,9 @@ export const vi = {
     disabled_title: "Marin đi chơi rồi!",
     disabled_msg:
       "Marin đang trong kì nghỉ rồi! Marin sẽ ko để bạn nhớ thật lâu đâu!",
+    rate_limited:
+      "Bạn hỏi dồn dập quá, Marin xin nghỉ tay chút nha 🤯 Bạn đợi xíu rùi nhắn lại nhé!",
+    error: "Marin xoắn não rồi 😢",
   },
   // Books
   books: {
