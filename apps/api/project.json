@@ -72,7 +72,7 @@
     "migrate": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "../../venv/bin/python -m src.scripts.run_migrations",
+        "command": "../../venv/bin/alembic upgrade head",
         "cwd": "apps/api"
       }
     },

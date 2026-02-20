@@ -171,6 +171,33 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Generic Fetch Wrapper with Auto-Refresh
+  const fetchWithAuth = async (url, options = {}) => {
+    let currentToken = localStorage.getItem("auth_token");
+
+    const headers = {
+      "Content-Type": "application/json",
+      ...options.headers,
+      ...(currentToken ? { Authorization: `Bearer ${currentToken}` } : {}),
+    };
+
+    try {
+      let res = await fetch(url, { ...options, headers });
+
+      if (res.status === 401 && refreshToken) {
+        console.log("Token expired, refreshing...");
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          headers.Authorization = `Bearer ${newToken}`;
+          res = await fetch(url, { ...options, headers });
+        }
+      }
+      return res;
+    } catch (error) {
+      throw error;
+    }
+  };
+
   const logout = () => {
     googleLogout();
     setToken(null);
@@ -185,11 +212,13 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider
       value={{
         user,
+        token,
         loading,
         loginWithGoogle,
         logout,
         updateProfile,
         loginResponse,
+        fetchWithAuth, // Export this
       }}
     >
       {children}

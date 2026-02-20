@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import {
   ArrowLeft,
@@ -24,6 +25,7 @@ import { useToast } from "../context/ToastContext";
 const API_URL = import.meta.env.VITE_API_URL || "";
 
 function BookDetailPage({ bookId, onBack, onPlaceClick, user }) {
+  const { fetchWithAuth } = useAuth();
   const { t } = useLanguage();
   const [book, setBook] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -49,12 +51,7 @@ function BookDetailPage({ bookId, onBack, onPlaceClick, user }) {
 
   const fetchBookDetails = async () => {
     try {
-      const token = localStorage.getItem("auth_token");
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
-      const res = await fetch(`${API_URL}/api/lists/${bookId}`, {
-        headers: headers,
-      });
+      const res = await fetchWithAuth(`${API_URL}/api/lists/${bookId}`);
 
       if (res.ok) {
         const data = await res.json();
@@ -79,9 +76,8 @@ function BookDetailPage({ bookId, onBack, onPlaceClick, user }) {
     const method = book.is_following ? "DELETE" : "POST";
 
     try {
-      const res = await fetch(`${API_URL}/api/lists/${bookId}/follow`, {
+      const res = await fetchWithAuth(`${API_URL}/api/lists/${bookId}/follow`, {
         method: method,
-        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (res.ok) {
@@ -177,13 +173,8 @@ function BookDetailPage({ bookId, onBack, onPlaceClick, user }) {
     e.preventDefault();
     setAddLoading(true);
     try {
-      const token = localStorage.getItem("auth_token");
-      const res = await fetch(`${API_URL}/api/lists/${bookId}/add`, {
+      const res = await fetchWithAuth(`${API_URL}/api/lists/${bookId}/add`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           url: addUrl,
           suggested_dishes: [],
@@ -217,14 +208,10 @@ function BookDetailPage({ bookId, onBack, onPlaceClick, user }) {
     if (!itemToDelete) return;
     const placeId = itemToDelete;
     try {
-      const token = localStorage.getItem("auth_token");
-      const res = await fetch(
+      const res = await fetchWithAuth(
         `${API_URL}/api/lists/${bookId}/items/${placeId}`,
         {
           method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
         },
       );
 
@@ -242,12 +229,8 @@ function BookDetailPage({ bookId, onBack, onPlaceClick, user }) {
   const handleDeleteBook = async () => {
     // Confirm handled by UI button (ConfirmModal now)
     try {
-      const token = localStorage.getItem("auth_token");
-      const res = await fetch(`${API_URL}/api/lists/${bookId}`, {
+      const res = await fetchWithAuth(`${API_URL}/api/lists/${bookId}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
 
       if (res.ok) {
@@ -268,13 +251,8 @@ function BookDetailPage({ bookId, onBack, onPlaceClick, user }) {
     e.preventDefault();
     setEditLoading(true);
     try {
-      const token = localStorage.getItem("auth_token");
-      const res = await fetch(`${API_URL}/api/lists/${bookId}`, {
+      const res = await fetchWithAuth(`${API_URL}/api/lists/${bookId}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           name: editName,
           description: editDesc,

@@ -7,7 +7,7 @@ from sqlmodel import SQLModel, Field, Relationship
 from sqlalchemy import String, Column, DateTime, text, Numeric, Text, ARRAY, Integer, UniqueConstraint, func, Boolean, Enum as SAEnum
 
 
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from pgvector.sqlalchemy import Vector
 from geoalchemy2 import Geometry
 
@@ -135,6 +135,9 @@ class PlaceBase(SQLModel):
     # --- AI Data ---
     raw_ai_response: Dict[str, Any] = Field(default={}, sa_column=Column(JSONB))
 
+    # --- Full-Text Search (populated by quality.sync_search_text) ---
+    search_text: Optional[Any] = Field(default=None, sa_column=Column(TSVECTOR))
+
 # ==========================================
 # 2. DATABASE TABLES
 # ==========================================
@@ -181,6 +184,7 @@ class User(SQLModel, table=True):
     lists: List["UserList"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     chat_sessions: List["ChatSession"] = Relationship(back_populates="user")
     refresh_tokens: List["RefreshToken"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    memories: List["UserMemory"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     
     # Note: Relationship Followers/Following cần config phức tạp hơn trong SQLModel nếu muốn access trực tiếp,
     # tạm thời query thông qua bảng UserFollow.
@@ -306,6 +310,9 @@ class ChatSession(SQLModel, table=True):
     title: Optional[str] = None
     messages: List[Dict] = Field(default=[], sa_column=Column(JSONB))
     seen_place_ids: List[str] = Field(default=[], sa_column=Column(ARRAY(String)))
+    
+    # Condensed long-term memory — LLM-generated summary of older messages
+    summary: Optional[str] = Field(default=None, sa_column=Column(Text))
     
     created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
     updated_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now()))
@@ -452,3 +459,23 @@ class UserListFollow(SQLModel, table=True):
     user_id: uuid.UUID = Field(foreign_key="users.id", primary_key=True)
     list_id: uuid.UUID = Field(foreign_key="user_lists.id", primary_key=True)
     created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+
+
+# ==========================================
+# 6. AGENTIC MEMORY
+# ==========================================
+
+class UserMemory(SQLModel, table=True):
+    __tablename__ = "user_memories"
+    
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    user_id: uuid.UUID = Field(foreign_key="users.id", index=True, ondelete="CASCADE")
+    
+    memory_text: str = Field(sa_column=Column(Text))
+    category: str = Field(index=True) # e.g. 'preference', 'dislike', 'plan'
+    confidence: float = Field(default=1.0)
+    
+    last_accessed_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime(timezone=True)))
+    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), server_default=func.now()))
+    
+    user: User = Relationship(back_populates="memories")

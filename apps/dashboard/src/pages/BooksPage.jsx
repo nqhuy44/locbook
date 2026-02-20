@@ -101,7 +101,7 @@ const BookItem = ({ list, t, isOwned = false }) => (
 );
 
 function BooksPage() {
-  const { user } = useAuth();
+  const { user, fetchWithAuth } = useAuth();
   const { t } = useLanguage();
   const [lists, setLists] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -122,14 +122,7 @@ function BooksPage() {
 
   const fetchLists = async () => {
     try {
-      const token = localStorage.getItem("auth_token");
-      if (!token) return;
-
-      const res = await fetch(`${API_URL}/api/lists`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const res = await fetchWithAuth(`${API_URL}/api/lists`);
       if (res.ok) {
         const data = await res.json();
         setLists(data);
@@ -147,13 +140,8 @@ function BooksPage() {
 
     setCreateLoading(true);
     try {
-      const token = localStorage.getItem("auth_token");
-      const res = await fetch(`${API_URL}/api/lists`, {
+      const res = await fetchWithAuth(`${API_URL}/api/lists`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           name: newListName,
           description: newListDesc,

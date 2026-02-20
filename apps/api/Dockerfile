@@ -27,6 +27,8 @@ COPY --from=builder /install /usr/local
 COPY src ./src
 COPY scripts ./scripts
 COPY .env.example .
+COPY alembic.ini .
+COPY migrations ./migrations
 
 # Set environment variables
 ENV PYTHONPATH=/app

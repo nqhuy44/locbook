@@ -42,6 +42,7 @@ async def init_postgres():
         from sqlalchemy import text
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS unaccent"))
         
         # Create tables
         await conn.run_sync(SQLModel.metadata.create_all)

@@ -112,6 +112,46 @@ class GeminiService:
             logger.error(f"Text generation failed: {e}")
             return self._handle_error(e)
 
+    async def generate_with_tools(
+        self, 
+        contents: List[Any],
+        system_instruction: str = None,
+        tools: List[Dict[str, Any]] = None,
+        user_id: str = None
+    ) -> Any:
+        """Generate content with tool support and optional system instruction.
+        
+        Uses Gemini's native function calling protocol with proper multi-turn support.
+        System instruction is passed via config to avoid duplicating in prompt.
+        Returns the raw response object (including function calls).
+        """
+        if not self.client:
+            raise ValueError("AI Service not ready.")
+
+        try:
+            config_kwargs = {}
+            if tools:
+                config_kwargs["tools"] = tools
+            if system_instruction:
+                config_kwargs["system_instruction"] = system_instruction
+                
+            config = types.GenerateContentConfig(**config_kwargs) if config_kwargs else None
+
+            response = await self.client.aio.models.generate_content(
+                model=self.model_name,
+                contents=contents,
+                config=config,
+            )
+            
+            if response.usage_metadata:
+                await self._log_usage("chat_tool", response.usage_metadata, user_id)
+                
+            return response
+            
+        except Exception as e:
+            logger.error(f"Generate with tools failed: {e}")
+            raise e
+
     async def generate_json(self, prompt: str, schema: dict = None) -> Dict[str, Any]:
         """Generate JSON response with optional schema enforcement."""
         if not self.client:

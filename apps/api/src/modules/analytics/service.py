@@ -94,18 +94,30 @@ async def get_system_stats(
         "avg_tokens": float(llm_row[4] or 0),
     }
 
-    # 4. LLM usage by type
+    # 4. LLM usage by type — includes total tokens + requests per type
     stmt_llm_type = text("""
-        SELECT request_type, COUNT(*), AVG(total_tokens)
+        SELECT request_type, 
+               COUNT(*) as requests, 
+               COALESCE(SUM(total_tokens), 0) as total_tokens,
+               COALESCE(SUM(prompt_tokens), 0) as input_tokens,
+               COALESCE(SUM(output_tokens), 0) as output_tokens,
+               COALESCE(AVG(total_tokens), 0) as avg_tokens
         FROM llm_usage_logs
         WHERE created_at >= :cutoff
         GROUP BY request_type
     """)
     res_llm_type = await db.execute(stmt_llm_type, {"cutoff": cutoff})
-    llm_by_type = {row[0]: {"requests": row[1], "avg_tokens": float(row[2] or 0)} for row in res_llm_type.all()}
+    llm_by_type = {
+        row[0]: {
+            "requests": row[1],
+            "total_tokens": int(row[2]),
+            "input_tokens": int(row[3]),
+            "output_tokens": int(row[4]),
+            "avg_tokens": float(row[5]),
+        } for row in res_llm_type.all()
+    }
 
-    # 5. Chat efficiency (Avg messages per user)
-    # Filter for Chat SEARCH events
+    # 5. Chat efficiency (Avg messages per user) + total sessions
     stmt_chat_stats = text("""
         WITH chat_users AS (
             SELECT user_id, COUNT(*) as msg_count
@@ -120,9 +132,18 @@ async def get_system_stats(
     """)
     res_chat = await db.execute(stmt_chat_stats, {"cutoff": cutoff})
     chat_row = res_chat.first()
+
+    # Total chat sessions count
+    stmt_total_sessions = text("""
+        SELECT COUNT(*) FROM chat_sessions WHERE updated_at >= :cutoff
+    """)
+    res_sessions = await db.execute(stmt_total_sessions, {"cutoff": cutoff})
+    total_sessions = res_sessions.scalar() or 0
+
     chat_stats = {
         "active_chat_users": chat_row[0] or 0,
         "avg_messages_per_user": float(chat_row[1] or 0),
+        "total_sessions": total_sessions,
     }
 
     # 6. LLM Daily Trend
@@ -156,6 +177,94 @@ async def get_system_stats(
     result_daily = await db.execute(stmt_daily)
     daily_stats = result_daily.scalars().all()
 
+    # 9. Top 10 search tags (Vibes + Categories) from CHAT_SEARCH events
+    # We aggregate both fields and merge them to show "Trending Tags"
+    stmt_vibes = text("""
+        SELECT payload->>'vibe' as keyword, COUNT(*) as count
+        FROM analytics_events
+        WHERE created_at >= :cutoff
+          AND event_type = 'CHAT_SEARCH'
+          AND payload->>'vibe' IS NOT NULL
+          AND payload->>'vibe' != ''
+          AND payload->>'vibe' != 'null'
+        GROUP BY payload->>'vibe'
+    """)
+    res_vibes = await db.execute(stmt_vibes, {"cutoff": cutoff})
+    
+    stmt_cats = text("""
+        SELECT payload->>'categories' as keyword, COUNT(*) as count
+        FROM analytics_events
+        WHERE created_at >= :cutoff
+          AND event_type = 'CHAT_SEARCH'
+          AND payload->>'categories' IS NOT NULL
+          AND payload->>'categories' != ''
+          AND payload->>'categories' != 'null'
+        GROUP BY payload->>'categories'
+    """)
+    res_cats = await db.execute(stmt_cats, {"cutoff": cutoff})
+    
+    # Merge counts in Python
+    tag_counts = {}
+    for row in res_vibes.all():
+        tag = row[0].strip()
+        if tag:
+            tag_counts[tag] = tag_counts.get(tag, 0) + row[1]
+            
+    for row in res_cats.all():
+        tag = row[0].strip()
+        if tag:
+            tag_counts[tag] = tag_counts.get(tag, 0) + row[1]
+            
+    # Sort by count desc
+    sorted_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+    search_keywords = [{"keyword": k, "count": v} for k, v in sorted_tags]
+
+    # 10. Top 5 chat users by total message count
+    stmt_top_chat = text("""
+        SELECT u.username, u.email, 
+               SUM(jsonb_array_length(cs.messages)) as total_msgs,
+               COUNT(cs.id) as sessions
+        FROM chat_sessions cs
+        JOIN users u ON cs.user_id = u.id
+        WHERE cs.updated_at >= :cutoff
+          AND cs.user_id IS NOT NULL
+        GROUP BY u.id, u.username, u.email
+        ORDER BY total_msgs DESC
+        LIMIT 5
+    """)
+    res_top_chat = await db.execute(stmt_top_chat, {"cutoff": cutoff})
+    top_chat_users = [
+        {"name": row[0] or row[1], "messages": int(row[2]), "sessions": row[3]}
+        for row in res_top_chat.all()
+    ]
+
+    # 11. LLM daily trend grouped by Chat (chat+chat_tool) vs Analyze (analysis+aesthetic+ocr)
+    stmt_llm_trend_type = text("""
+        SELECT DATE(created_at) as day,
+               CASE WHEN request_type IN ('chat', 'chat_tool') THEN 'chat'
+                    ELSE 'analyze' END as group_type,
+               SUM(total_tokens) as tokens,
+               COUNT(*) as requests
+        FROM llm_usage_logs
+        WHERE created_at >= :cutoff
+        GROUP BY DATE(created_at), group_type
+        ORDER BY day DESC
+    """)
+    res_trend_type = await db.execute(stmt_llm_trend_type, {"cutoff": cutoff})
+    # Build {date: {chat: {tokens, requests}, analyze: {tokens, requests}}}
+    trend_by_type_map = {}
+    for row in res_trend_type.all():
+        day_str = str(row[0])
+        if day_str not in trend_by_type_map:
+            trend_by_type_map[day_str] = {"date": day_str, "chat_tokens": 0, "chat_reqs": 0, "analyze_tokens": 0, "analyze_reqs": 0}
+        if row[1] == "chat":
+            trend_by_type_map[day_str]["chat_tokens"] = int(row[2] or 0)
+            trend_by_type_map[day_str]["chat_reqs"] = row[3]
+        else:
+            trend_by_type_map[day_str]["analyze_tokens"] = int(row[2] or 0)
+            trend_by_type_map[day_str]["analyze_reqs"] = row[3]
+    llm_trend_grouped = list(trend_by_type_map.values())
+
     return {
         "summary": {
             "total_interactions": sum(event_counts.values()),
@@ -166,9 +275,12 @@ async def get_system_stats(
             "overall": llm_stats,
             "by_type": llm_by_type,
             "trend": llm_trend,
+            "trend_grouped": llm_trend_grouped,
         },
         "chat": chat_stats,
         "top_places": top_places,
+        "top_chat_users": top_chat_users,
+        "search_keywords": search_keywords,
         "daily_active_graph": daily_active,
         "daily_stats": [
             {

@@ -58,6 +58,11 @@ const ConfigPage = ({ API_URL, token }) => {
           }
         });
         payload.CATEGORY_KEYWORDS = newKeywords;
+
+        // Ensure HOME_CATEGORIES is strictly from current config state to avoid any loss
+        if (config.HOME_CATEGORIES) {
+          payload.HOME_CATEGORIES = config.HOME_CATEGORIES;
+        }
       }
 
       const res = await fetch(`${API_URL}/api/config`, {
@@ -106,6 +111,21 @@ const ConfigPage = ({ API_URL, token }) => {
   };
 
   const updateCategoryMapping = (id, field, value) => {
+    // If we're updating the name, we should also update HOME_CATEGORIES if the old name was present
+    if (field === "name") {
+      const oldMapping = categoryMappings.find((m) => m.id === id);
+      const oldName = oldMapping?.name;
+
+      if (oldName && config.HOME_CATEGORIES?.includes(oldName)) {
+        setConfig((prev) => ({
+          ...prev,
+          HOME_CATEGORIES: prev.HOME_CATEGORIES.map((c) =>
+            c === oldName ? value : c,
+          ),
+        }));
+      }
+    }
+
     setCategoryMappings(
       categoryMappings.map((m) => (m.id === id ? { ...m, [field]: value } : m)),
     );
@@ -390,24 +410,131 @@ const ConfigPage = ({ API_URL, token }) => {
               >
                 Which categories from above should appear on the homepage?
               </p>
-              <textarea
-                className="search-input"
+              {/* Drag and Drop UI */}
+              <div
                 style={{
-                  ...commonInputStyle,
-                  minHeight: "80px",
-                  color: "var(--text-primary)",
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "0.5rem",
+                  background: "var(--bg-primary)",
+                  padding: "1rem",
+                  borderRadius: "12px",
+                  border: "1px solid var(--border-color)",
                 }}
-                value={config.HOME_CATEGORIES?.join(", ")}
-                onChange={(e) =>
-                  setConfig({
-                    ...config,
-                    HOME_CATEGORIES: e.target.value
-                      .split(",")
-                      .map((s) => s.trim())
-                      .filter(Boolean),
-                  })
-                }
-              />
+              >
+                {/* 1. Render Enabled Categories (Draggable) */}
+                {(config.HOME_CATEGORIES || []).map((cat, index) => (
+                  <div
+                    key={cat}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData("text/plain", index);
+                      e.dataTransfer.effectAllowed = "move";
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault(); // Necessary for drop
+                      e.dataTransfer.dropEffect = "move";
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const fromIndex = parseInt(
+                        e.dataTransfer.getData("text/plain"),
+                      );
+                      const toIndex = index;
+                      if (fromIndex === toIndex) return;
+
+                      const newOrder = [...(config.HOME_CATEGORIES || [])];
+                      const [moved] = newOrder.splice(fromIndex, 1);
+                      newOrder.splice(toIndex, 0, moved);
+
+                      setConfig({ ...config, HOME_CATEGORIES: newOrder });
+                    }}
+                    onClick={() => {
+                      // Click to Disable (Remove)
+                      const newOrder = config.HOME_CATEGORIES.filter(
+                        (c) => c !== cat,
+                      );
+                      setConfig({ ...config, HOME_CATEGORIES: newOrder });
+                    }}
+                    style={{
+                      padding: "0.4rem 0.8rem",
+                      background: "rgba(52, 211, 153, 0.15)", // Green tint
+                      border: "1px solid rgba(52, 211, 153, 0.3)",
+                      color: "var(--text-primary)",
+                      borderRadius: "20px",
+                      fontSize: "0.85rem",
+                      fontWeight: 500,
+                      cursor: "grab",
+                      userSelect: "none",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.4rem",
+                      transition: "all 0.2s",
+                    }}
+                    title="Drag to reorder, Click to remove"
+                  >
+                    <span style={{ cursor: "pointer" }}>{cat}</span>
+                    <button
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        color: "var(--text-tertiary)",
+                        cursor: "pointer",
+                        display: "flex",
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+
+                {/* 2. Render Disabled Categories (Click to Enable) */}
+                {categoryMappings
+                  .map((m) => m.name)
+                  .filter((name) => !config.HOME_CATEGORIES?.includes(name))
+                  .map((cat) => (
+                    <div
+                      key={cat}
+                      onClick={() => {
+                        // Click to Enable (Add to end)
+                        const newOrder = [
+                          ...(config.HOME_CATEGORIES || []),
+                          cat,
+                        ];
+                        setConfig({ ...config, HOME_CATEGORIES: newOrder });
+                      }}
+                      style={{
+                        padding: "0.4rem 0.8rem",
+                        background: "var(--bg-secondary)",
+                        border: "1px dashed var(--border-color)",
+                        color: "var(--text-tertiary)",
+                        borderRadius: "20px",
+                        fontSize: "0.85rem",
+                        cursor: "pointer",
+                        userSelect: "none",
+                        transition: "all 0.2s",
+                        opacity: 0.7,
+                      }}
+                      title="Click to add to Home"
+                    >
+                      + {cat}
+                    </div>
+                  ))}
+
+                {categoryMappings.length === 0 &&
+                  (config.HOME_CATEGORIES || []).length === 0 && (
+                    <div
+                      style={{
+                        color: "var(--text-tertiary)",
+                        fontSize: "0.8rem",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      No categories defined. Add rules below.
+                    </div>
+                  )}
+              </div>
             </div>
 
             {/* Category Logic */}
