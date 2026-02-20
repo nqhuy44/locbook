@@ -36,6 +36,10 @@ export const en = {
     delete: "Delete",
     edit: "Edit",
     close: "Close",
+    success: "Success",
+    failed: "Failed",
+    error: "An error occurred",
+    upvote: "Upvote",
   },
   // Home
   home: {
@@ -48,6 +52,27 @@ export const en = {
     search_results_count: "Search Results",
     loading: "Loading Marin's Picks...",
     search_placeholder: "Find places, vibes...",
+    get_directions: "Get Direction",
+    share: "Share",
+    book: "Book",
+    info: "Info",
+    menu: "Menu",
+    marins_take: "Marin's Take",
+    added_to_book: "Added to book!",
+    removed_from_book: "Removed from book!",
+    add_to_book_failed: "Failed to add to book",
+    address: "Address",
+    hours: "Hours",
+    memos: "Memos",
+    no_memos: "No memos yet. Be the first to write one!",
+    memos_coming_soon: "Memo feature coming soon!",
+    vibes_label: "Vibes",
+    categories_label: "Categories",
+    no_menu: "No menu available yet",
+    upvoted: "Upvoted!",
+    removed_upvote: "Removed upvote",
+    memo_saved: "Memo saved!",
+    add_to_book_title: "Add to Book",
   },
   // Categories
   categories: {
@@ -66,23 +91,6 @@ export const en = {
     disabled_title: "Marin is Drawing",
     disabled_msg:
       "The Map view is currently unavaible. Marin is drawing the map",
-  },
-  // Ask Marin
-  ask_marin: {
-    title: "Ask Marin",
-    placeholder: "What would you like to know?",
-    send: "Send",
-    loading: "Thinking...",
-    error: "Something went wrong. Please try again.",
-    login_required: "Login to Ask Marin",
-    chat_login_msg:
-      "Don't know where to go? Marin will help you find the perfect spot!",
-    go_to_profile: "Go to Profile to Login",
-    disabled_title: "Marin is on vacation",
-    disabled_msg: "The trip is wonderful. Marin will meet you soon!",
-    rate_limited:
-      "You're asking too much, Marin needs a break 🤯 Wait a bit and ask again!",
-    error: "Marin is having a hard time 😢",
   },
   // Books
   books: {
@@ -126,8 +134,31 @@ export const en = {
     add_from_maps: "Add from Google Maps",
     suggestions: "suggestions",
     add_to_book: "Add to Book",
+    back: "Back",
+    book_deleted: "Book deleted successfully",
+    places_count: "places",
     select_book: "Select Book",
-    no_books: "No books found. Create one in Books section!",
+  },
+  // Chat
+  ask_marin: {
+    title: "Ask Marin",
+    placeholder_input: "Type a message to Marin...",
+    send: "Send",
+    loading: "Thinking...",
+    error: "Something went wrong. Please try again.",
+    login_required: "Login to Ask Marin",
+    chat_login_msg:
+      "Don't know where to go? Marin will help you find the perfect spot!",
+    go_to_profile: "Go to Profile to Login",
+    disabled_title: "Marin is on vacation",
+    disabled_msg: "The trip is wonderful. Marin will meet you soon!",
+    rate_limited:
+      "You're asking too much, Marin needs a break 🤯 Wait a bit and ask again!",
+    welcome_msg:
+      "Hello! Marin here 🎀. Where do you want to go today? (e.g., 'Find a quiet cafe', 'A fun place for drinks'...) ",
+    connection_error: "Connection error 😭",
+    empty_recommendations: "No suggestions yet. Ask Marin! 👇",
+    thinking: "Marin is thinking...",
   },
   // Profile
   profile: {

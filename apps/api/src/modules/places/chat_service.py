@@ -57,6 +57,10 @@ class ChatService:
                                 type="STRING",
                                 description="Quận/Huyện (VD: 'District 1', 'Thảo Điền')."
                             ),
+                            "ward": types.Schema(
+                                type="STRING",
+                                description="Phường/Xã (VD: 'Phường Bến Nghé', 'Xã Đảo'). Chỉ sử dụng khi user yêu cầu cụ thể."
+                            ),
                             "categories": types.Schema(
                                 type="ARRAY",
                                 items=types.Schema(type="STRING"),
@@ -378,6 +382,7 @@ Condensed Summary:"""
                                     "vibes": args.get("vibes"),
                                     "city": args.get("city"),
                                     "district": args.get("district"),
+                                    "ward": args.get("ward"),
                                     "categories": categories,
                                 }
                                 

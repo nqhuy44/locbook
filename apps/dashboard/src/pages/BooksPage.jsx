@@ -66,7 +66,7 @@ const BookItem = ({ list, t, isOwned = false }) => (
             display: "inline-block",
           }}
         >
-          {list.item_count} places
+          {list.item_count} {t("books.places_count") || "places"}
         </span>
         <span
           style={{
@@ -213,7 +213,7 @@ function BooksPage() {
         className="loading-screen"
         style={{ color: "white", padding: "2rem" }}
       >
-        Loading books...
+        {t("common.loading")}
       </div>
     );
 
@@ -262,7 +262,7 @@ function BooksPage() {
                     fontWeight: "600",
                   }}
                 >
-                  {t("books.my_books") || "My Books"}
+                  {t("books.my_books")}
                 </h2>
                 <div style={{ display: "flex", flexDirection: "column" }}>
                   {lists
@@ -290,7 +290,7 @@ function BooksPage() {
                     fontWeight: "600",
                   }}
                 >
-                  {t("books.followed_books") || "Followed Books"}
+                  {t("books.followed_books")}
                 </h2>
                 <div style={{ display: "flex", flexDirection: "column" }}>
                   {lists

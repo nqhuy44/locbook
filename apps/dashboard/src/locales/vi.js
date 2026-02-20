@@ -36,6 +36,10 @@ export const vi = {
     delete: "Xóa",
     edit: "Sửa",
     close: "Đóng",
+    success: "Thành công",
+    failed: "Thất bại",
+    error: "Có lỗi xảy ra",
+    upvote: "Upvote",
   },
   // Home
   home: {
@@ -47,6 +51,27 @@ export const vi = {
     search_results_count: "Kết quả tìm kiếm",
     loading: "Đang tải lựa chọn của Marin...",
     search_placeholder: "Tìm địa điểm, vibes...",
+    get_directions: "Chỉ đường",
+    share: "Share",
+    book: "Tủ",
+    info: "Thông tin",
+    menu: "Menu",
+    marins_take: "Marin's Take",
+    added_to_book: "Đã thêm vào Tủ",
+    removed_from_book: "Đã xóa khỏi Tủ",
+    add_to_book_failed: "Thêm vào tủ không thành công",
+    address: "Địa chỉ",
+    hours: "Giờ hoạt động",
+    memos: "Memo",
+    no_memos: "Chưa có memo nào",
+    memos_coming_soon: "Memo sắp ra mắt!",
+    vibes_label: "Vibes",
+    categories_label: "Categories",
+    no_menu: "Không có menu",
+    upvoted: "Đã upvote!",
+    removed_upvote: "Đã xóa upvote",
+    memo_saved: "Memo đã được lưu!",
+    add_to_book_title: "Thêm vào tủ",
   },
   // Categories
   categories: {
@@ -64,24 +89,6 @@ export const vi = {
     go_to_profile: "Đi đến trang Hồ sơ để đăng nhập",
     disabled_title: "Marin đang vẽ",
     disabled_msg: "Bạn chưa xem được đâu! Marin cần thời gian để vẽ bản đồ",
-  },
-  // Ask Marin
-  ask_marin: {
-    title: "Hỏi Marin",
-    placeholder: "Bạn muốn biết gì?",
-    send: "Gửi",
-    loading: "Đang suy nghĩ...",
-    error: "Có lỗi xảy ra. Vui lòng thử lại.",
-    login_required: "Đăng nhập để hỏi Marin",
-    chat_login_msg:
-      "Không biết đi đâu? Marin sẽ giúp bạn tìm địa điểm hoàn hảo!",
-    go_to_profile: "Đi đến trang Hồ sơ để đăng nhập",
-    disabled_title: "Marin đi chơi rồi!",
-    disabled_msg:
-      "Marin đang trong kì nghỉ rồi! Marin sẽ ko để bạn nhớ thật lâu đâu!",
-    rate_limited:
-      "Bạn hỏi dồn dập quá, Marin xin nghỉ tay chút nha 🤯 Bạn đợi xíu rùi nhắn lại nhé!",
-    error: "Marin xoắn não rồi 😢",
   },
   // Books
   books: {
@@ -124,8 +131,32 @@ export const vi = {
     add_from_maps: "Thêm từ Google Maps",
     suggestions: "gợi ý món ăn",
     add_to_book: "Thêm vào Tủ",
-    select_book: "Chọn Tủ",
-    no_books: "Không thấy danh sách nào. Hãy tạo mới ở phần Tủ nhé!",
+    back: "Quay lại",
+    book_deleted: "Đã xóa danh sách",
+    places_count: "địa điểm",
+    select_book: "Chọn tủ",
+  },
+  // Chat
+  ask_marin: {
+    title: "Hỏi Marin",
+    placeholder_input: "Gõ tin nhắn cho Marin...",
+    send: "Gửi",
+    loading: "Đang suy nghĩ...",
+    error: "Có lỗi xảy ra. Vui lòng thử lại.",
+    login_required: "Đăng nhập để hỏi Marin",
+    chat_login_msg:
+      "Không biết đi đâu? Marin sẽ giúp bạn tìm địa điểm hoàn hảo!",
+    go_to_profile: "Đi đến trang Hồ sơ để đăng nhập",
+    disabled_title: "Marin đi chơi rồi!",
+    disabled_msg:
+      "Marin đang trong kì nghỉ rồi! Marin sẽ ko để bạn nhớ thật lâu đâu!",
+    rate_limited:
+      "Bạn hỏi dồn dập quá, Marin xin nghỉ tay chút nha 🤯 Bạn đợi xíu rùi nhắn lại nhé!",
+    welcome_msg:
+      "Hé lô! Marin đây 🎀. Hôm nay bạn muốn đi đâu? (Ví dụ: 'Tìm quán cafe yên tĩnh', 'Chỗ nào nhậu vui vẻ'...) ",
+    connection_error: "Lỗi kết nối rồi huhu 😭",
+    empty_recommendations: "Chưa có gợi ý nào. Hãy hỏi Marin nhé! 👇",
+    thinking: "Marin đang suy nghĩ...",
   },
   // Profile
   profile: {

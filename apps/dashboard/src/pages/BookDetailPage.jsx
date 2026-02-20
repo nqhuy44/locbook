@@ -126,7 +126,9 @@ function BookDetailPage({ bookId, onBack, onPlaceClick, user }) {
             }}
           >
             <ArrowLeft size={24} />
-            <span style={{ fontSize: "1rem", fontWeight: 500 }}>Back</span>
+            <span style={{ fontSize: "1rem", fontWeight: 500 }}>
+              {t("books.back")}
+            </span>
           </button>
         </div>
 
@@ -234,10 +236,10 @@ function BookDetailPage({ bookId, onBack, onPlaceClick, user }) {
       });
 
       if (res.ok) {
-        showToast("Book deleted successfully", "success");
+        showToast(t("books.book_deleted"), "success");
         onBack(); // Go back to list
       } else {
-        showToast("Failed to delete book", "error");
+        showToast(t("common.error"), "error");
       }
     } catch (err) {
       console.error("Failed to delete book", err);
@@ -289,7 +291,7 @@ function BookDetailPage({ bookId, onBack, onPlaceClick, user }) {
         className="loading-screen"
         style={{ color: "white", padding: "2rem" }}
       >
-        Book not found
+        {t("books.book_not_found")}
       </div>
     );
 

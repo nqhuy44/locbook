@@ -267,7 +267,7 @@ export default function ProfilePage({ onBack, viewingProfile }) {
         className="loading-screen"
         style={{ color: "white", padding: "2rem" }}
       >
-        Loading profile...
+        {t("common.loading")}
       </div>
     );
 
@@ -327,7 +327,7 @@ export default function ProfilePage({ onBack, viewingProfile }) {
         className="loading-screen"
         style={{ color: "white", padding: "2rem" }}
       >
-        User not found
+        {t("profile.user_not_found")}
       </div>
     );
   }
@@ -588,7 +588,7 @@ export default function ProfilePage({ onBack, viewingProfile }) {
                     name="display_name"
                     value={formData.display_name}
                     onChange={handleChange}
-                    placeholder="Marin Explorer"
+                    placeholder="e.g. Marin Explorer"
                     className="form-input"
                   />
                 </div>
