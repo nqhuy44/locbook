@@ -219,6 +219,7 @@ function BookDetailPage({ bookId, onBack, onPlaceClick, user }) {
 
       if (res.ok) {
         setItems(items.filter((i) => i.place.id !== placeId));
+        window.dispatchEvent(new CustomEvent("refresh-user-lists"));
       }
     } catch (err) {
       console.error("Failed to delete item", err);
@@ -237,6 +238,7 @@ function BookDetailPage({ bookId, onBack, onPlaceClick, user }) {
 
       if (res.ok) {
         showToast(t("books.book_deleted"), "success");
+        window.dispatchEvent(new CustomEvent("refresh-user-lists"));
         onBack(); // Go back to list
       } else {
         showToast(t("common.error"), "error");
@@ -258,7 +260,6 @@ function BookDetailPage({ bookId, onBack, onPlaceClick, user }) {
         body: JSON.stringify({
           name: editName,
           description: editDesc,
-          privacy: editPrivacy,
         }),
       });
 
@@ -684,77 +685,6 @@ function BookDetailPage({ bookId, onBack, onPlaceClick, user }) {
                     className="input-field"
                     required
                   />
-                </div>
-                <div style={{ marginBottom: "1.5rem" }}>
-                  <label
-                    style={{
-                      display: "block",
-                      marginBottom: "0.5rem",
-                      fontWeight: "500",
-                    }}
-                  >
-                    {t("books.privacy_label")}
-                  </label>
-                  <div style={{ display: "flex", gap: "1rem" }}>
-                    <button
-                      type="button"
-                      onClick={() => setEditPrivacy("private")}
-                      style={{
-                        flex: 1,
-                        padding: "0.75rem",
-                        borderRadius: "8px",
-                        border:
-                          editPrivacy === "private"
-                            ? "2px solid var(--primary-color)"
-                            : "1px solid var(--border-color)",
-                        background:
-                          editPrivacy === "private"
-                            ? "rgba(217, 70, 239, 0.1)"
-                            : "var(--bg-secondary)",
-                        color:
-                          editPrivacy === "private"
-                            ? "var(--primary-color)"
-                            : "var(--text-primary)",
-                        cursor: "pointer",
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                      }}
-                    >
-                      <Lock size={20} />
-                      <span>{t("books.privacy_private")}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditPrivacy("public")}
-                      style={{
-                        flex: 1,
-                        padding: "0.75rem",
-                        borderRadius: "8px",
-                        border:
-                          editPrivacy === "public"
-                            ? "2px solid var(--primary-color)"
-                            : "1px solid var(--border-color)",
-                        background:
-                          editPrivacy === "public"
-                            ? "rgba(217, 70, 239, 0.1)"
-                            : "var(--bg-secondary)",
-                        color:
-                          editPrivacy === "public"
-                            ? "var(--primary-color)"
-                            : "var(--text-primary)",
-                        cursor: "pointer",
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                      }}
-                    >
-                      <Globe size={20} />
-                      <span>{t("books.privacy_public")}</span>
-                    </button>
-                  </div>
                 </div>
                 <div style={{ marginBottom: "2rem" }}>
                   <label

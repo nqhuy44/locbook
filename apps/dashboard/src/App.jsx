@@ -40,7 +40,8 @@ import { ToastProvider, useToast } from "./context/ToastContext";
 import LoginButton from "./components/auth/LoginButton";
 import UserMenu from "./components/auth/UserMenu";
 import BottomNav from "./components/BottomNav";
-import OnboardingPage from "./pages/OnboardingPage";
+import PWABanner from "./components/common/PWABanner";
+import ReloadPrompt from "./components/common/ReloadPrompt";
 import FeatureDisabledOverlay from "./components/common/FeatureDisabledOverlay";
 import Footer from "./components/common/Footer";
 import ProfilePage from "./pages/ProfilePage";
@@ -110,7 +111,7 @@ function AppContent() {
         );
         if (res.ok) {
           showToast(t("home.removed_from_book"), t("common.success"));
-          fetchUserLists();
+          window.dispatchEvent(new CustomEvent("refresh-user-lists"));
         }
       } else {
         // Add
@@ -125,7 +126,7 @@ function AppContent() {
         });
         if (res.ok) {
           showToast(t("home.added_to_book"), t("common.success"));
-          fetchUserLists();
+          window.dispatchEvent(new CustomEvent("refresh-user-lists"));
         } else {
           const err = await res.json();
           showToast(err.detail || t("home.add_to_book_failed"), "error");
@@ -156,17 +157,24 @@ function AppContent() {
     }
   }, [user]);
 
+  useEffect(() => {
+    const handleRefresh = () => fetchUserLists();
+    window.addEventListener("refresh-user-lists", handleRefresh);
+    return () => window.removeEventListener("refresh-user-lists", handleRefresh);
+  }, [user]);
+
   // Custom navigation handler for deep links / internal navigation
   useEffect(() => {
     const handleNavigate = (e) => {
       const path = e.detail.path;
-      if (path && path.startsWith("/books")) {
+      if (path && (path.startsWith("/book/") || path.startsWith("/books/"))) {
         const parts = path.split("/");
-        if (parts.length > 2) {
+        if (parts.length > 2 && parts[2]) {
           setBookId(parts[2]);
           setCurrentView("book-detail");
-        } else {
+        } else if (path.startsWith("/books")) {
           setCurrentView("books");
+          setBookId(null);
         }
       }
     };
@@ -187,12 +195,6 @@ function AppContent() {
   const [activeVibes, setActiveVibes] = useState([]);
   const [activeCats, setActiveCats] = useState([]);
 
-  // Handle Onboarding Redirect
-  useEffect(() => {
-    if (user && loginResponse?.is_new) {
-      setCurrentView("onboarding");
-    }
-  }, [user, loginResponse]);
 
   // State for Profile View
   const [viewingProfile, setViewingProfile] = useState(null); // { username: string } or null for self
@@ -272,7 +274,7 @@ function AppContent() {
     }
 
     // 2. Books / Lists
-    if (path.startsWith("/book/")) {
+    if (path.startsWith("/book/") || (path.startsWith("/books/") && path.length > 7)) {
       const parts = path.split("/");
       const bId = parts[2];
       if (bId) {
@@ -760,13 +762,11 @@ function AppContent() {
       </div>
     );
 
-  // Standalone pages – rendered without the main navbar/filter chrome
-  if (currentView === "onboarding") {
-    return <OnboardingPage onComplete={() => setCurrentView("list")} />;
-  }
 
   return (
     <div className="app-container">
+      <PWABanner />
+      <ReloadPrompt />
       {/* Pull-to-refresh Indicator */}
       <div
         className={`pull-to-refresh-indicator ${isPullRefreshing ? "refreshing" : ""}`}
@@ -1283,14 +1283,14 @@ function AppContent() {
                             {typeof selectedPlace.raw_ai_response
                               .marin_comment === "object"
                               ? selectedPlace.raw_ai_response.marin_comment[
-                                  language
-                                ] ||
-                                selectedPlace.raw_ai_response.marin_comment[
-                                  "vi"
-                                ] ||
-                                selectedPlace.raw_ai_response.marin_comment[
-                                  "en"
-                                ]
+                              language
+                              ] ||
+                              selectedPlace.raw_ai_response.marin_comment[
+                              "vi"
+                              ] ||
+                              selectedPlace.raw_ai_response.marin_comment[
+                              "en"
+                              ]
                               : selectedPlace.raw_ai_response.marin_comment}
                             "
                           </div>

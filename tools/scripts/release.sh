@@ -17,6 +17,8 @@ fi
 
 echo "🚀 Preparing Release: $VERSION for target: $TARGET"
 
+mkdir -p temp
+
 # Load .env variables for build-time injection (VITE_...)
 if [ -f ".env" ]; then
   echo "📄 Loading .env file..."

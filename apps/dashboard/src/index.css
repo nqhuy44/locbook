@@ -24,6 +24,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -99,15 +100,18 @@
   /* Remove blue tap highlight on mobile */
 }
 
+html,
 body {
   margin: 0;
+  padding: 0;
   font-family: "Nunito", sans-serif;
   background: var(--bg-primary);
-  /* Use the main gradient for the whole body */
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
   width: 100%;
+  position: relative;
+  height: 100%;
 }
 
 .app-container {
@@ -122,15 +126,15 @@ body {
 .navbar {
   position: sticky;
   top: 0;
-  z-index: 100;
-  /* background: rgba(255, 255, 255, 0.85); */
+  z-index: 1000;
   backdrop-filter: blur(16px);
   padding: 0.8rem 2rem;
+  padding-top: calc(0.8rem + env(safe-area-inset-top, 0px));
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 64px;
-  /* border-bottom: 1px solid var(--border-color); */
+  height: auto;
+  min-height: 64px;
 }
 
 .brand {
@@ -175,7 +179,6 @@ body {
 /* Filter Bar */
 .filter-bar {
   padding: 0.8rem 2rem;
-  /* Match main content padding */
   display: flex;
   gap: 1rem;
   align-items: center;
@@ -184,7 +187,7 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
   position: sticky;
-  top: 64px;
+  top: calc(64px + env(safe-area-inset-top, 0px));
   z-index: 90;
   backdrop-filter: blur(12px);
   width: 100%;
@@ -625,7 +628,7 @@ body {
   max-width: 90%;
 }
 
-.hero-actions > * {
+.hero-actions>* {
   flex: 1;
 }
 
@@ -736,6 +739,7 @@ body {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
+
 .book-popup-list::-webkit-scrollbar {
   display: none;
 }
@@ -787,6 +791,7 @@ body {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -797,6 +802,7 @@ body {
     transform: translateY(20px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -815,6 +821,7 @@ body {
   .hero-actions {
     gap: 0.5rem;
   }
+
   .hero-social-actions {
     gap: 1.2rem;
   }
@@ -851,6 +858,7 @@ body {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
+
 .modal-body::-webkit-scrollbar {
   display: none;
 }
@@ -1300,20 +1308,17 @@ body {
 
 .popup-container {
   background: var(--bg-card);
-  /* Should be white or almost white */
   border-radius: 24px;
-  /* More rounded */
   box-shadow:
     0 10px 40px rgba(0, 0, 0, 0.15),
     0 0 0 1px rgba(0, 0, 0, 0.05);
-  /* Soft, deep shadow */
   width: 90%;
   max-width: 450px;
-  max-height: 95vh;
+  max-height: 80vh;
+  /* Reduced to leave space for keyboard */
   overflow-y: auto;
   position: relative;
   animation: popupIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  /* Apple-like spring/ease */
   display: flex;
   flex-direction: column;
 }
@@ -1548,14 +1553,15 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 70px;
+  height: auto;
+  min-height: 70px;
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(16px);
   border-top: 1px solid var(--border-color);
   z-index: 1000;
   justify-content: space-around;
   align-items: center;
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 5px);
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
 }
 
@@ -1566,27 +1572,18 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE / Edge */
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE / Edge */
   padding: 0 1rem;
 }
 
 .main-content::-webkit-scrollbar {
-  display: none; /* Chrome/Safari/Webkit */
+  display: none;
+  /* Chrome/Safari/Webkit */
 }
 
-/* Onboarding Page */
-.onboarding-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100%;
-  /* Fill available space instead of 100vh */
-  background: #0f0518;
-  color: white;
-  padding: 1.5rem;
-}
 
 /* Books & Book Detail Pages */
 .books-page-container {
@@ -1859,6 +1856,7 @@ body {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
+
 .chat-messages::-webkit-scrollbar {
   display: none;
 }
@@ -2502,5 +2500,388 @@ select {
 
   .filter-bar {
     padding: 0.8rem 2rem;
+  }
+}
+
+/* PWA Banner - Floating Card Design */
+.pwa-banner {
+  position: fixed;
+  top: env(safe-area-inset-top, 0px);
+  left: 0;
+  right: 0;
+  z-index: 10002;
+  padding: 12px;
+  pointer-events: none;
+  /* Let clicks pass through to background if not on card */
+  animation: slideDownCard 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pwa-banner-card {
+  pointer-events: auto;
+  /* Enable clicks on the card itself */
+  background: white;
+  border-radius: 18px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 500px;
+  margin: 0 auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.pwa-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.pwa-app-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.pwa-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pwa-app-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #1a1a1a;
+  line-height: 1.2;
+}
+
+.pwa-app-url {
+  font-size: 0.75rem;
+  color: #8e8e93;
+}
+
+.pwa-banner-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pwa-install-link {
+  background: none;
+  border: none;
+  color: #007aff;
+  /* Apple Blue */
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 8px 4px;
+}
+
+.pwa-hint-text {
+  font-size: 0.75rem;
+  color: #8e8e93;
+  text-align: right;
+  max-width: 150px;
+}
+
+.pwa-banner-close {
+  background: none;
+  border: none;
+  color: #8e8e93;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  opacity: 0.6;
+}
+
+@keyframes slideDownCard {
+  from {
+    transform: translateY(-120%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* PWA Reload Prompt - Premium Design */
+.pwa-reload-prompt {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10001;
+  padding: 16px;
+  pointer-events: none;
+  animation: slideUpCard 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pwa-reload-card {
+  pointer-events: auto;
+  background: white;
+  border-radius: 18px;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 500px;
+  margin: 0 auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.pwa-reload-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pwa-reload-icon {
+  width: 40px;
+  height: 40px;
+  background: #f2f2f7;
+  color: #007aff;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pwa-reload-text {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.pwa-reload-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pwa-reload-btn {
+  background: var(--accent-gradient);
+  border: none;
+  color: white;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 8px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(217, 70, 239, 0.2);
+}
+
+.pwa-reload-close {
+  background: none;
+  border: none;
+  color: #8e8e93;
+  cursor: pointer;
+  padding: 4px;
+  opacity: 0.6;
+}
+
+@keyframes slideUpCard {
+  from {
+    transform: translateY(120%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-spin-slow {
+  animation: spin 3s linear infinite;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Adjust for mobile to avoid bottom nav overlay */
+@media (max-width: 768px) {
+  .pwa-reload-prompt {
+    margin: 12px;
+    bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+    left: 12px;
+    right: 12px;
+  }
+}
+
+/* PWA Install Overlay */
+.pwa-install-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 20000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.pwa-overlay-card {
+  background: white;
+  width: 100%;
+  max-width: 400px;
+  border-radius: 24px;
+  padding: 24px;
+  position: relative;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pwa-overlay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pwa-overlay-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.pwa-overlay-close {
+  background: none;
+  border: none;
+  color: #8e8e93;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.pwa-overlay-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pwa-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pwa-step-number {
+  width: 28px;
+  height: 28px;
+  background: var(--accent-gradient);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.pwa-step-text {
+  font-size: 0.95rem;
+  color: #3a3a3c;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pwa-step-icon {
+  background: #f2f2f7;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #007aff;
+}
+
+.pwa-overlay-btn {
+  margin-top: 10px;
+  height: 48px;
+  border-radius: 14px;
+  font-weight: 600;
+}
+
+.pwa-ios-indicator {
+  position: absolute;
+  bottom: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
