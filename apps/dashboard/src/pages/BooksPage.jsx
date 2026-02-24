@@ -17,13 +17,13 @@ const API_URL = import.meta.env.VITE_API_URL || "";
 
 const BookItem = ({ list, t, isOwned = false }) => (
   <a
-    href={`/books/${list.id}`}
+    href={`/book/${list.id}`}
     onClick={(e) => {
       e.preventDefault();
-      window.history.pushState(null, "", `/books/${list.id}`);
+      window.history.pushState(null, "", `/book/${list.id}`);
       window.dispatchEvent(
         new CustomEvent("navigate", {
-          detail: { path: `/books/${list.id}` },
+          detail: { path: `/book/${list.id}` },
         }),
       );
     }}
@@ -154,6 +154,7 @@ function BooksPage() {
         setNewListName("");
         setNewListDesc("");
         setNewListPrivacy("public");
+        window.dispatchEvent(new CustomEvent("refresh-user-lists"));
         fetchLists();
       } else {
         const err = await res.json();

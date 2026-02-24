@@ -40,6 +40,7 @@ export const en = {
     failed: "Failed",
     error: "An error occurred",
     upvote: "Upvote",
+    ok: "Got it!",
   },
   // Home
   home: {
@@ -138,6 +139,7 @@ export const en = {
     book_deleted: "Book deleted successfully",
     places_count: "places",
     select_book: "Select Book",
+    no_books: "No books yet.",
   },
   // Chat
   ask_marin: {
@@ -184,5 +186,20 @@ export const en = {
     no_vibes: "No vibes selected.",
     no_personality: "No personality selected.",
     no_bio: "No bio yet.",
+  },
+  pwa: {
+    use_app_title: "Open in Spotary App",
+    use_app_desc: "For the best experience, open this link in your installed app or Add to Home Screen.",
+    install_btn: "Install Now",
+    update_available: "New version available",
+    reload_btn: "Reload",
+    install_ready_desc: "Tap the button below to install Spotary to your home screen in one step!",
+    install_fallback_android: "To install: Tap (⋮) -> 'Install App' or 'Add to Home Screen'.",
+    how_to_install: "How to install Spotary",
+    ios_step_1: "Tap the 'Share' button in Safari's bottom bar.",
+    ios_step_2: "Scroll down and select 'Add to Home Screen'.",
+    ios_step_3: "Tap 'Add' to finish.",
+    android_step_1: "Tap the menu icon (three dots) at the top right.",
+    android_step_2: "Select 'Install App' or 'Add to Home Screen'.",
   },
 };

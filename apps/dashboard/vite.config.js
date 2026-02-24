@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
       injectRegister: "inline",
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "mask-icon.svg"],
       manifest: {
@@ -20,14 +20,25 @@ export default defineConfig({
             src: "pwa-192x192.png",
             sizes: "192x192",
             type: "image/png",
+            purpose: "any maskable",
           },
           {
             src: "pwa-512x512.png",
             sizes: "512x512",
             type: "image/png",
+            purpose: "any maskable",
           },
         ],
+        id: "/",
+        scope: "/",
+        start_url: "/",
+        display: "standalone",
+        orientation: "portrait",
         screenshots: [],
+        launch_handler: {
+          client_mode: "navigate-existing",
+        },
+        capture_links: "existing-client-navigate",
       },
       workbox: {
         cleanupOutdatedCaches: true,
