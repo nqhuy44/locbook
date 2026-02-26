@@ -204,5 +204,6 @@ export const en = {
     ios_step_3: "Tap 'Add' to finish.",
     android_step_1: "Tap the menu icon (three dots) at the top right.",
     android_step_2: "Select 'Install App' or 'Add to Home Screen'.",
+    offline_ready: "Offline ready!",
   },
 };

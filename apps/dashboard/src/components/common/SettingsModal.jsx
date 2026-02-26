@@ -286,9 +286,9 @@ const SettingsModal = ({ onClose }) => {
           >
             <p>
               {t("settings.about")} • v
-              {typeof __APP_VERSION__ !== "undefined"
-                ? __APP_VERSION__
-                : "1.0.0"}
+              {typeof process.env.NEXT_PUBLIC_APP_VERSION !== "undefined"
+                ? process.env.NEXT_PUBLIC_APP_VERSION
+                : "1.2.0"}
             </p>
           </div>
         </div>

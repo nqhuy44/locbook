@@ -202,5 +202,6 @@ export const vi = {
     ios_step_3: "Nhấn 'Thêm' để hoàn tất.",
     android_step_1: "Nhấn vào biểu tượng menu (3 chấm) ở góc trên bên phải.",
     android_step_2: "Chọn 'Cài đặt ứng dụng' hoặc 'Thêm vào màn hình chính'.",
+    offline_ready: "Đã cập nhật!",
   },
 };
