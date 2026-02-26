@@ -1,6 +1,7 @@
+"use client";
 import React, { useState, useEffect } from "react";
-import { useAuth } from "../context/AuthContext";
-import { useLanguage } from "../context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import {
   ArrowLeft,
   Plus,
@@ -18,11 +19,11 @@ import {
   UserPlus,
   UserMinus,
 } from "lucide-react";
-import ShareButton from "../components/common/ShareButton";
-import ConfirmModal from "../components/common/ConfirmModal";
-import { useToast } from "../context/ToastContext";
+import ShareButton from "@/components/common/ShareButton";
+import ConfirmModal from "@/components/common/ConfirmModal";
+import { useToast } from "@/context/ToastContext";
 
-const API_URL = import.meta.env.VITE_API_URL || "";
+import { API_URL } from "@/lib/api";
 
 function BookDetailPage({ bookId, onBack, onPlaceClick, user }) {
   const { fetchWithAuth } = useAuth();
@@ -82,7 +83,7 @@ function BookDetailPage({ bookId, onBack, onPlaceClick, user }) {
 
       if (res.ok) {
         showToast(
-          book.is_following ? "Unfollowed book" : "Following book!",
+          book.is_following ? t("books.unfollowed_book") : t("books.following_book"),
           "success",
         );
         fetchBookDetails();

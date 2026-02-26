@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 import {
   X,
@@ -9,8 +10,8 @@ import {
   Smartphone,
   Share,
 } from "lucide-react";
-import { useLanguage } from "../../context/LanguageContext";
-import { CONFIG } from "../../config";
+import { useLanguage } from "@/context/LanguageContext";
+import { CONFIG } from "@/lib/config";
 
 // Reusing popup styling from index.css
 const SettingsModal = ({ onClose }) => {

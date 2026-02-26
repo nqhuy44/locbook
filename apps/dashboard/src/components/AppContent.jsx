@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Search,
@@ -31,28 +33,28 @@ import {
   Menu,
   Compass,
 } from "lucide-react";
-import { CONFIG as DEFAULT_CONFIG } from "./config";
-import MapView from "./components/MapView";
-import CategoryRow from "./components/CategoryRow";
-import ChatView from "./components/ChatView";
-import { useAuth, AuthProvider } from "./context/AuthContext";
-import { ToastProvider, useToast } from "./context/ToastContext";
-import LoginButton from "./components/auth/LoginButton";
-import UserMenu from "./components/auth/UserMenu";
-import BottomNav from "./components/BottomNav";
-import PWABanner from "./components/common/PWABanner";
-import ReloadPrompt from "./components/common/ReloadPrompt";
-import FeatureDisabledOverlay from "./components/common/FeatureDisabledOverlay";
-import Footer from "./components/common/Footer";
-import ProfilePage from "./pages/ProfilePage";
-import BooksPage from "./pages/BooksPage";
-import BookDetailPage from "./pages/BookDetailPage";
-import { LanguageProvider, useLanguage } from "./context/LanguageContext";
-import SettingsModal from "./components/common/SettingsModal";
-import FilterBar from "./components/FilterBar";
-import ErrorBoundary from "./components/common/ErrorBoundary";
+import { CONFIG as DEFAULT_CONFIG } from "@/lib/config";
+import MapView from "@/components/MapView";
+import CategoryRow from "@/components/CategoryRow";
+import ChatView from "@/components/ChatView";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/context/ToastContext";
+import LoginButton from "@/components/auth/LoginButton";
+import UserMenu from "@/components/auth/UserMenu";
+import BottomNav from "@/components/BottomNav";
+import PWABanner from "@/components/common/PWABanner";
+import ReloadPrompt from "@/components/common/ReloadPrompt";
+import FeatureDisabledOverlay from "@/components/common/FeatureDisabledOverlay";
+import Footer from "@/components/common/Footer";
+import ProfilePage from "@/components/pages/ProfilePage";
+import BooksPage from "@/components/pages/BooksPage";
+import BookDetailPage from "@/components/pages/BookDetailPage";
+import { useLanguage } from "@/context/LanguageContext";
+import SettingsModal from "@/components/common/SettingsModal";
+import FilterBar from "@/components/FilterBar";
+import ErrorBoundary from "@/components/common/ErrorBoundary";
+import { API_URL } from "@/lib/api";
 
-const API_URL = import.meta.env.VITE_API_URL || "";
 
 const PRICE_LEVEL_MAP = {
   PRICE_LEVEL_INEXPENSIVE: "Inexpensive",
@@ -1481,19 +1483,9 @@ function AppContent() {
   );
 }
 
-function App() {
-  return (
-    <ErrorBoundary>
-      <LanguageProvider>
-        <AuthProvider>
-          <ToastProvider>
-            <AppContent />
-          </ToastProvider>
-        </AuthProvider>
-      </LanguageProvider>
-    </ErrorBoundary>
-  );
-}
+
+export default AppContent;
+
 
 function PlaceCard({ place, onClick }) {
   let imageUrl =
@@ -1638,4 +1630,4 @@ function ShareButton() {
   );
 }
 
-export default App;
+

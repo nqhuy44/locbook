@@ -1,12 +1,13 @@
+"use client";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { divIcon } from "leaflet";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MapPin, Navigation, Crosshair } from "lucide-react";
 import { useState, useEffect } from "react";
-import { API_URL } from "../utils/config";
-import { useAuth } from "../context/AuthContext";
-import { useLanguage } from "../context/LanguageContext";
+import { API_URL } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { LogIn } from "lucide-react";
 
 // Custom Marker Icon for Places

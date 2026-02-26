@@ -1,3 +1,4 @@
+"use client";
 import React, { useState, useEffect } from "react";
 import {
   Plus,
@@ -7,13 +8,15 @@ import {
   Lock,
   X,
   Users,
+  Compass,
 } from "lucide-react";
 
-import { useAuth } from "../context/AuthContext";
-import { useLanguage } from "../context/LanguageContext";
+
+import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { LogIn } from "lucide-react";
 
-const API_URL = import.meta.env.VITE_API_URL || "";
+import { API_URL } from "@/lib/api";
 
 const BookItem = ({ list, t, isOwned = false }) => (
   <a
@@ -109,8 +112,12 @@ function BooksPage() {
   const [newListName, setNewListName] = useState("");
   const [newListDesc, setNewListDesc] = useState("");
   const [newListPrivacy, setNewListPrivacy] = useState("public");
-
   const [createLoading, setCreateLoading] = useState(false);
+
+  // Discover feature
+  const [activeTab, setActiveTab] = useState("my"); // "my" | "discover"
+  const [discoverLists, setDiscoverLists] = useState([]);
+  const [discoverLoading, setDiscoverLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -119,6 +126,13 @@ function BooksPage() {
       setLoading(false);
     }
   }, [user]);
+
+  // Fetch discover lists when tab switches
+  useEffect(() => {
+    if (activeTab === "discover") {
+      fetchDiscoverLists();
+    }
+  }, [activeTab]);
 
   const fetchLists = async () => {
     try {
@@ -133,6 +147,22 @@ function BooksPage() {
       setLoading(false);
     }
   };
+
+  const fetchDiscoverLists = async () => {
+    setDiscoverLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/lists/discover`);
+      if (res.ok) {
+        const data = await res.json();
+        setDiscoverLists(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch discover lists", err);
+    } finally {
+      setDiscoverLoading(false);
+    }
+  };
+
 
   const handleCreateList = async (e) => {
     e.preventDefault();
@@ -240,76 +270,122 @@ function BooksPage() {
         </button>
       </div>
 
-      {/* List Content */}
-      <div className="books-content">
-        {lists.length === 0 ? (
-          <div className="empty-state">
-            <BookIcon size={48} className="empty-state-icon" />
-            <p>{t("books.empty_title")}</p>
-            <p style={{ fontSize: "0.9rem" }}>{t("books.empty_desc")}</p>
-          </div>
-        ) : (
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}
-          >
-            {/* My Books Section */}
-            {lists.some((l) => l.is_owner) && (
-              <div>
-                <h2
-                  style={{
-                    fontSize: "1rem",
-                    color: "var(--text-secondary)",
-                    marginBottom: "0.75rem",
-                    fontWeight: "600",
-                  }}
-                >
-                  {t("books.my_books")}
-                </h2>
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  {lists
-                    .filter((l) => l.is_owner)
-                    .map((list) => (
-                      <BookItem
-                        key={list.id}
-                        list={list}
-                        t={t}
-                        isOwned={true}
-                      />
-                    ))}
-                </div>
-              </div>
-            )}
+      {/* Tabs */}
+      <div style={{
+        display: "flex",
+        borderBottom: "1px solid var(--border-color)",
+        padding: "0 1rem",
+        gap: "0",
+      }}>
+        <button
+          onClick={() => setActiveTab("my")}
+          style={{
+            flex: 1,
+            padding: "0.75rem 0",
+            background: "none",
+            border: "none",
+            color: activeTab === "my" ? "var(--accent-color)" : "var(--text-tertiary)",
+            fontWeight: activeTab === "my" ? "700" : "500",
+            fontSize: "0.95rem",
+            cursor: "pointer",
+            borderBottom: activeTab === "my" ? "2px solid var(--accent-color)" : "2px solid transparent",
+            transition: "all 0.2s",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "0.4rem",
+          }}
+        >
+          <BookIcon size={16} /> {t("books.my_books") || "My Books"}
+        </button>
+        <button
+          onClick={() => setActiveTab("discover")}
+          style={{
+            flex: 1,
+            padding: "0.75rem 0",
+            background: "none",
+            border: "none",
+            color: activeTab === "discover" ? "var(--accent-color)" : "var(--text-tertiary)",
+            fontWeight: activeTab === "discover" ? "700" : "500",
+            fontSize: "0.95rem",
+            cursor: "pointer",
+            borderBottom: activeTab === "discover" ? "2px solid var(--accent-color)" : "2px solid transparent",
+            transition: "all 0.2s",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "0.4rem",
+          }}
+        >
+          <Compass size={16} /> {t("books.discover_tab") || "Discover"}
+        </button>
+      </div>
 
-            {/* Followed Books Section */}
-            {lists.some((l) => !l.is_owner) && (
-              <div>
-                <h2
-                  style={{
-                    fontSize: "1rem",
-                    color: "var(--text-secondary)",
-                    marginBottom: "0.75rem",
-                    fontWeight: "600",
-                  }}
-                >
-                  {t("books.followed_books")}
-                </h2>
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  {lists
-                    .filter((l) => !l.is_owner)
-                    .map((list) => (
-                      <BookItem
-                        key={list.id}
-                        list={list}
-                        t={t}
-                        isOwned={false}
-                      />
+      {/* Tab Content */}
+      <div className="books-content">
+        {activeTab === "my" ? (
+          /* My Books Tab */
+          lists.length === 0 ? (
+            <div className="empty-state">
+              <BookIcon size={48} className="empty-state-icon" />
+              <p>{t("books.empty_title")}</p>
+              <p style={{ fontSize: "0.9rem" }}>{t("books.empty_desc")}</p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+              {/* My Books Section */}
+              {lists.some((l) => l.is_owner) && (
+                <div>
+                  <h2 style={{ fontSize: "1rem", color: "var(--text-secondary)", marginBottom: "0.75rem", fontWeight: "600" }}>
+                    {t("books.my_books")}
+                  </h2>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    {lists.filter((l) => l.is_owner).map((list) => (
+                      <BookItem key={list.id} list={list} t={t} isOwned={true} />
                     ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+
+              {/* Followed Books Section */}
+              {lists.some((l) => !l.is_owner) && (
+                <div>
+                  <h2 style={{ fontSize: "1rem", color: "var(--text-secondary)", marginBottom: "0.75rem", fontWeight: "600" }}>
+                    {t("books.followed_books")}
+                  </h2>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    {lists.filter((l) => !l.is_owner).map((list) => (
+                      <BookItem key={list.id} list={list} t={t} isOwned={false} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        ) : (
+          /* Discover Tab */
+          discoverLoading ? (
+            <div style={{ textAlign: "center", padding: "2rem", color: "var(--text-secondary)" }}>
+              {t("common.loading")}
+            </div>
+          ) : discoverLists.length === 0 ? (
+            <div className="empty-state">
+              <Compass size={48} className="empty-state-icon" />
+              <p>{t("books.discover_empty") || "No public collections to discover yet"}</p>
+              <p style={{ fontSize: "0.9rem", color: "var(--text-tertiary)" }}>
+                {t("books.discover_empty_desc") || "Be the first to create a public collection!"}
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {discoverLists.map((list) => (
+                <BookItem key={list.id} list={list} t={t} isOwned={false} />
+              ))}
+            </div>
+          )
         )}
       </div>
+
 
       {/* Create Modal */}
       {showCreateModal && (

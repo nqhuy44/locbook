@@ -1,3 +1,4 @@
+"use client";
 import React from 'react';
 
 export class GlobalErrorBoundary extends React.Component {

@@ -1,28 +1,36 @@
-# Stage 1: Build
-FROM node:24-alpine AS builder
-
+# Stage 1: Install dependencies
+FROM node:22-alpine AS deps
 WORKDIR /app
-
 COPY package.json package-lock.json ./
-RUN npm install --legacy-peer-deps
+RUN npm ci --only=production
 
+# Stage 2: Build
+FROM node:22-alpine AS builder
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
 COPY . .
-
-# Inject environment variables at build time
-ARG VITE_API_URL
-ARG VITE_GOOGLE_CLIENT_ID
-
-ENV VITE_API_URL=$VITE_API_URL
-ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
-
 RUN npm run build
 
-# Stage 2: Serve
-FROM nginx:alpine
+# Stage 3: Production
+FROM node:22-alpine AS runner
+WORKDIR /app
 
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
-EXPOSE 80
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
-CMD ["nginx", "-g", "daemon off;"]
+# Copy only what's needed
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+EXPOSE 3000
+
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+CMD ["node", "server.js"]

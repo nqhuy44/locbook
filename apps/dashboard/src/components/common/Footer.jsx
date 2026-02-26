@@ -1,6 +1,7 @@
+"use client";
 import React from "react";
 import { Coffee, Github, Globe, MessageSquare } from "lucide-react";
-import { useLanguage } from "../../context/LanguageContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 const Footer = ({ config }) => {
   const { t } = useLanguage();

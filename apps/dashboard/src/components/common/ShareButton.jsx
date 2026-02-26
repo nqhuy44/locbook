@@ -1,6 +1,7 @@
+"use client";
 import React, { useState } from "react";
 import { Share2, Check } from "lucide-react";
-import { useToast } from "../../context/ToastContext";
+import { useToast } from "@/context/ToastContext";
 
 const ShareButton = ({
   title,

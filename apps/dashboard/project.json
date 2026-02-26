@@ -1,61 +1,41 @@
 {
-  "name": "dashboard",
-  "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "apps/dashboard/src",
-  "projectType": "application",
-  "targets": {
-    "serve": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "npm run dev",
-        "cwd": "apps/dashboard"
-      }
+    "name": "dashboard",
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "apps/dashboard/src",
+    "projectType": "application",
+    "targets": {
+        "serve": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "npm run dev",
+                "cwd": "apps/dashboard"
+            }
+        },
+        "build": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "npm run build",
+                "cwd": "apps/dashboard"
+            }
+        },
+        "build-image": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "docker build --platform linux/amd64 -t nqh44/spotary-dashboard:{args.ver} .",
+                "cwd": "apps/dashboard",
+                "forwardAllArgs": false
+            }
+        },
+        "push-image": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "docker push nqh44/spotary-dashboard:{args.ver}",
+                "cwd": "apps/dashboard",
+                "forwardAllArgs": false
+            }
+        }
     },
-    "build": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "npm run build",
-        "cwd": "apps/dashboard"
-      }
-    },
-    "prebuild-image": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "mv .env ../../temp/dashboard.env || true",
-        "cwd": "apps/dashboard"
-      }
-    },
-    "postbuild-image": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "mv ../../temp/dashboard.env .env || true",
-        "cwd": "apps/dashboard"
-      }
-    },
-    "build-image": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "docker build --platform linux/amd64 --build-arg VITE_API_URL=$VITE_API_URL --build-arg VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID -t nqh44/spotary-dashboard:{args.ver} .",
-        "cwd": "apps/dashboard",
-        "forwardAllArgs": false
-      }
-    },
-
-    "push-image": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "docker push nqh44/spotary-dashboard:{args.ver}",
-        "cwd": "apps/dashboard",
-        "forwardAllArgs": false
-      }
-    },
-    "lint": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "npm run lint",
-        "cwd": "apps/dashboard"
-      }
-    }
-  },
-  "tags": ["type:frontend"]
+    "tags": [
+        "type:frontend"
+    ]
 }

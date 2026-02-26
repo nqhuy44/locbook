@@ -1,7 +1,8 @@
+"use client";
 import React from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { LogIn } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 
 export default function LoginButton({ onLogin }) {
     // We access login function from AuthContext to keep state unified

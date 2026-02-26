@@ -99,6 +99,8 @@ export const vi = {
     followed_books: "Đang theo dõi",
     followed_tag: "Đã theo dõi",
     following_tag: "Tác giả",
+    following_book: "Đã theo dõi tủ!",
+    unfollowed_book: "Bỏ theo dõi tủ",
     empty_title: "Bạn chưa có tủ nào",
     empty_desc: "Tạo tủ để lưu lại những địa điểm yêu thích!",
     create_title: "Tạo tủ mới",
@@ -137,6 +139,7 @@ export const vi = {
     places_count: "địa điểm",
     select_book: "Chọn tủ",
     no_books: "Chưa có tủ nào.",
+    discover_tab: "Khám phá"
   },
   // Chat
   ask_marin: {
