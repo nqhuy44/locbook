@@ -1,6 +1,7 @@
+"use client";
 import React from "react";
 import { Lock, Construction, Map, Plane } from "lucide-react";
-import { useLanguage } from "../../context/LanguageContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 const FeatureDisabledOverlay = ({ title, message, mode = "lock" }) => {
   const { t } = useLanguage();

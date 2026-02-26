@@ -1,0 +1,30 @@
+{
+    "name": "Spotary",
+    "short_name": "Spotary",
+    "description": "Collect and organize places by vibe.",
+    "theme_color": "#FFF0F5",
+    "background_color": "#1a1a2e",
+    "display": "standalone",
+    "orientation": "portrait",
+    "scope": "/",
+    "start_url": "/?source=pwa",
+    "id": "/",
+    "icons": [
+        {
+            "src": "/pwa-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/pwa-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "launch_handler": {
+        "client_mode": "navigate-existing"
+    },
+    "capture_links": "existing-client-navigate"
+}

@@ -1,6 +1,7 @@
+"use client";
 import React, { useState, useEffect, useMemo } from "react";
-import { useAuth } from "../context/AuthContext";
-import { useLanguage } from "../context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import {
   ArrowLeft,
   Save,
@@ -10,8 +11,8 @@ import {
   Plus,
   LogIn,
 } from "lucide-react";
-import LoginButton from "../components/auth/LoginButton";
-import ShareButton from "../components/common/ShareButton";
+import LoginButton from "@/components/auth/LoginButton";
+import ShareButton from "@/components/common/ShareButton";
 
 const DICEBEAR_STYLES = [
   "thumbs",
@@ -68,7 +69,7 @@ const PERSONALITY_TAGS = [
   "Homebody",
 ].sort();
 
-const API_URL = import.meta.env.VITE_API_URL || "";
+import { API_URL } from "@/lib/api";
 
 export default function ProfilePage({ onBack, viewingProfile }) {
   const { user, updateProfile, loginWithGoogle } = useAuth();

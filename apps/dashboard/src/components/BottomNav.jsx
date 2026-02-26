@@ -1,6 +1,7 @@
-import { useAuth } from "../context/AuthContext";
-import { useLanguage } from "../context/LanguageContext";
-import { useToast } from "../context/ToastContext";
+"use client";
+import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { useToast } from "@/context/ToastContext";
 import { Home, Map, Sparkles, User, List, Compass } from "lucide-react";
 
 const BottomNav = ({ currentView, onViewChange, onProfileClick }) => {

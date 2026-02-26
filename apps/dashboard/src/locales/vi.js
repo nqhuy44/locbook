@@ -99,6 +99,8 @@ export const vi = {
     followed_books: "Đang theo dõi",
     followed_tag: "Đã theo dõi",
     following_tag: "Tác giả",
+    following_book: "Đã theo dõi tủ!",
+    unfollowed_book: "Bỏ theo dõi tủ",
     empty_title: "Bạn chưa có tủ nào",
     empty_desc: "Tạo tủ để lưu lại những địa điểm yêu thích!",
     create_title: "Tạo tủ mới",
@@ -137,6 +139,7 @@ export const vi = {
     places_count: "địa điểm",
     select_book: "Chọn tủ",
     no_books: "Chưa có tủ nào.",
+    discover_tab: "Khám phá"
   },
   // Chat
   ask_marin: {
@@ -199,5 +202,6 @@ export const vi = {
     ios_step_3: "Nhấn 'Thêm' để hoàn tất.",
     android_step_1: "Nhấn vào biểu tượng menu (3 chấm) ở góc trên bên phải.",
     android_step_2: "Chọn 'Cài đặt ứng dụng' hoặc 'Thêm vào màn hình chính'.",
+    offline_ready: "Đã cập nhật!",
   },
 };

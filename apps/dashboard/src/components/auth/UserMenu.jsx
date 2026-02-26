@@ -1,6 +1,7 @@
+"use client";
 import React, { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { LogOut, User as UserIcon } from 'lucide-react';
 
 function getDiceBearAvatar(seed) {

@@ -1,10 +1,11 @@
+"use client";
 import React, { useState, useEffect, useRef } from "react";
 import { Send, Sparkles, User, Bot, MapPin } from "lucide-react";
-import { CONFIG } from "../config";
+import { CONFIG } from "@/lib/config";
 import ReactMarkdown from "react-markdown";
-import { API_URL } from "../utils/config";
-import { useAuth } from "../context/AuthContext";
-import { useLanguage } from "../context/LanguageContext";
+import { API_URL } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { LogIn } from "lucide-react";
 
 const ChatView = ({ onPlaceClick, config }) => {

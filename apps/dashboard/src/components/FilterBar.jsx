@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 import { Search, ThumbsUp, TrendingUp, Clock, Sparkles } from "lucide-react";
 

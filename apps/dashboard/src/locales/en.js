@@ -101,6 +101,8 @@ export const en = {
     followed_books: "Followed Books",
     followed_tag: "Followed",
     following_tag: "Author",
+    following_book: "Following book!",
+    unfollowed_book: "Unfollowed book",
     empty_title: "You haven't created any books yet.",
     empty_desc: "Create a book to collect your favorite places!",
     create_title: "Create New Book",
@@ -140,6 +142,7 @@ export const en = {
     places_count: "places",
     select_book: "Select Book",
     no_books: "No books yet.",
+    discover_tab: "Discover",
   },
   // Chat
   ask_marin: {
@@ -201,5 +204,6 @@ export const en = {
     ios_step_3: "Tap 'Add' to finish.",
     android_step_1: "Tap the menu icon (three dots) at the top right.",
     android_step_2: "Select 'Install App' or 'Add to Home Screen'.",
+    offline_ready: "Offline ready!",
   },
 };

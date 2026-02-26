@@ -1,6 +1,7 @@
+"use client";
 import React, { useState, useEffect } from "react";
 import { Share, X, ArrowUpCircle, Share2, PlusSquare, ArrowUp } from "lucide-react";
-import { useLanguage } from "../../context/LanguageContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 /**
  * Overlay component to guide users on how to install the PWA manually

@@ -61,6 +61,90 @@ class AddDishRequest(BaseModel):
 
 # --- Endpoints ---
 
+@router.get("/discover", response_model=List[UserListRead])
+async def discover_public_lists(
+    skip: int = 0,
+    limit: int = 20,
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Discover public lists from all users, sorted by follower count."""
+    from sqlalchemy import func
+    from sqlalchemy.orm import joinedload
+
+    # Base query: public lists only
+    stmt = (
+        select(UserList)
+        .options(joinedload(UserList.user))
+        .where(UserList.privacy == ListPrivacy.PUBLIC)
+    )
+
+    # Exclude current user's own lists if authenticated
+    if current_user:
+        stmt = stmt.where(UserList.user_id != current_user.id)
+
+    # Subquery for follower count ordering
+    followers_subq = (
+        select(
+            UserListFollow.list_id,
+            func.count(UserListFollow.user_id).label("fc")
+        )
+        .group_by(UserListFollow.list_id)
+        .subquery()
+    )
+
+    stmt = (
+        stmt
+        .outerjoin(followers_subq, UserList.id == followers_subq.c.list_id)
+        .order_by(func.coalesce(followers_subq.c.fc, 0).desc(), UserList.updated_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+
+    result = await db.execute(stmt)
+    public_lists = result.scalars().unique().all()
+
+    # Get follower counts
+    list_ids = [l.id for l in public_lists]
+    followers_counts = {}
+    if list_ids:
+        stmt_count = (
+            select(UserListFollow.list_id, func.count(UserListFollow.user_id))
+            .where(UserListFollow.list_id.in_(list_ids))
+            .group_by(UserListFollow.list_id)
+        )
+        result_count = await db.execute(stmt_count)
+        for lid, count in result_count.all():
+            followers_counts[lid] = count
+
+    # Check if current user follows any
+    following_ids = set()
+    if current_user:
+        stmt_follows = select(UserListFollow.list_id).where(
+            UserListFollow.user_id == current_user.id,
+            UserListFollow.list_id.in_(list_ids)
+        )
+        res_follows = await db.execute(stmt_follows)
+        following_ids = {row[0] for row in res_follows.all()}
+
+    results = []
+    for l in public_lists:
+        results.append(UserListRead(
+            id=l.id,
+            name=l.name,
+            description=l.description,
+            privacy=l.privacy,
+            item_count=len(l.items),
+            followers_count=followers_counts.get(l.id, 0),
+            items=[],
+            is_owner=False,
+            is_following=l.id in following_ids,
+            owner_username=l.user.username if l.user else None
+        ))
+
+    return results
+
+
 @router.get("", response_model=List[UserListRead])
 async def get_my_lists(
     current_user: User = Depends(get_current_user),
