@@ -5,6 +5,9 @@ export const vi = {
     map: "Bản đồ",
     ask_marin: "Hỏi Marin",
     request_place: "Đề xuất địa điểm",
+    filter_by: "Bộ lọc",
+    apply_filters: "Áp dụng",
+    group_city: "Tỉnh/Thành",
     login: "Đăng nhập",
     profile: "Hồ sơ",
     sign_out: "Đăng xuất",
@@ -73,6 +76,7 @@ export const vi = {
     removed_upvote: "Đã xóa upvote",
     memo_saved: "Memo đã được lưu!",
     add_to_book_title: "Thêm vào tủ",
+    group_city: "Tỉnh/Thành phố",
   },
   // Categories
   categories: {
@@ -139,7 +143,11 @@ export const vi = {
     places_count: "địa điểm",
     select_book: "Chọn tủ",
     no_books: "Chưa có tủ nào.",
-    discover_tab: "Khám phá"
+    discover_tab: "Khám phá",
+    sort_popular: "Phổ biến",
+    sort_newest: "Mới nhất",
+    filter_all_cities: "Tất cả",
+    search_placeholder: "Tìm tủ ...",
   },
   // Chat
   ask_marin: {

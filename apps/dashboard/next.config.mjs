@@ -12,6 +12,9 @@ const nextConfig = {
   // Standalone output for Docker
   output: "standalone",
 
+  // Allow Turbopack dev mode to coexist with next-pwa's webpack plugin
+  turbopack: {},
+
   // Proxy API calls to the backend in dev
   async rewrites() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";

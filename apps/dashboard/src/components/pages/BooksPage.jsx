@@ -9,6 +9,10 @@ import {
   X,
   Users,
   Compass,
+  TrendingUp,
+  Clock,
+  MapPin,
+  Search,
 } from "lucide-react";
 
 
@@ -118,6 +122,7 @@ function BooksPage() {
   const [activeTab, setActiveTab] = useState("my"); // "my" | "discover"
   const [discoverLists, setDiscoverLists] = useState([]);
   const [discoverLoading, setDiscoverLoading] = useState(false);
+  const [discoverSearchTerm, setDiscoverSearchTerm] = useState("");
 
   useEffect(() => {
     if (user) {
@@ -148,13 +153,24 @@ function BooksPage() {
     }
   };
 
+  // Fisher-Yates shuffle for randomized discover results
+  const shuffleArray = (arr) => {
+    const shuffled = [...arr];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
   const fetchDiscoverLists = async () => {
     setDiscoverLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/lists/discover`);
+      const res = await fetch(`${API_URL}/api/lists/discover?limit=50`);
       if (res.ok) {
         const data = await res.json();
-        setDiscoverLists(data);
+        // Shuffle to randomize
+        setDiscoverLists(shuffleArray(data));
       }
     } catch (err) {
       console.error("Failed to fetch discover lists", err);
@@ -364,25 +380,65 @@ function BooksPage() {
           )
         ) : (
           /* Discover Tab */
-          discoverLoading ? (
-            <div style={{ textAlign: "center", padding: "2rem", color: "var(--text-secondary)" }}>
-              {t("common.loading")}
+          <>
+            <div style={{ marginBottom: "1rem" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  background: "var(--bg-secondary)",
+                  borderRadius: "20px",
+                  padding: "0.5rem 1rem",
+                  border: "1px solid var(--border-color)",
+                }}
+              >
+                <Search size={16} color="var(--text-tertiary)" style={{ marginRight: "0.5rem" }} />
+                <input
+                  type="text"
+                  placeholder={t("books.search_placeholder") || "Tìm tủ sách..."}
+                  value={discoverSearchTerm}
+                  onChange={(e) => setDiscoverSearchTerm(e.target.value)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    outline: "none",
+                    flex: 1,
+                    fontSize: "0.95rem",
+                    color: "var(--text-primary)",
+                  }}
+                />
+              </div>
             </div>
-          ) : discoverLists.length === 0 ? (
-            <div className="empty-state">
-              <Compass size={48} className="empty-state-icon" />
-              <p>{t("books.discover_empty") || "No public collections to discover yet"}</p>
-              <p style={{ fontSize: "0.9rem", color: "var(--text-tertiary)" }}>
-                {t("books.discover_empty_desc") || "Be the first to create a public collection!"}
-              </p>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              {discoverLists.map((list) => (
-                <BookItem key={list.id} list={list} t={t} isOwned={false} />
-              ))}
-            </div>
-          )
+
+            {/* Discover List */}
+            {discoverLoading ? (
+              <div style={{ textAlign: "center", padding: "2rem", color: "var(--text-secondary)" }}>
+                {t("common.loading")}
+              </div>
+            ) : discoverLists.length === 0 ? (
+              <div className="empty-state">
+                <Compass size={48} className="empty-state-icon" />
+                <p>{t("books.discover_empty") || "No public collections to discover yet"}</p>
+                <p style={{ fontSize: "0.9rem", color: "var(--text-tertiary)" }}>
+                  {t("books.discover_empty_desc") || "Be the first to create a public collection!"}
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {discoverLists
+                  .filter((list) =>
+                    discoverSearchTerm.trim() === ""
+                      ? true
+                      : list.name
+                        .toLowerCase()
+                        .includes(discoverSearchTerm.toLowerCase())
+                  )
+                  .map((list) => (
+                    <BookItem key={list.id} list={list} t={t} isOwned={false} />
+                  ))}
+              </div>
+            )}
+          </>
         )}
       </div>
 

@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { Search, ThumbsUp, TrendingUp, Clock, Sparkles } from "lucide-react";
+import { Search, ThumbsUp, TrendingUp, Clock, Sparkles, MapPin } from "lucide-react";
 
 /**
  * FilterBar Component
@@ -21,6 +21,8 @@ const FilterBar = ({
   sortMode,
   setSortMode,
   currentView,
+  groupMode,
+  setGroupMode,
   t,
 }) => {
   return (
@@ -48,36 +50,55 @@ const FilterBar = ({
           />
         </div>
 
-        {/* Sort Mode Selector */}
-        {currentView !== "map" && (
-          <div className="sort-selector">
-            {[
-              {
-                key: "popular",
-                icon: <ThumbsUp size={14} />,
-                label: t("home.popular"),
-              },
-              //   {
-              //     key: "trending",
-              //     icon: <TrendingUp size={14} />,
-              //     label: t("home.trending"),
-              //   },
-              {
-                key: "newest",
-                icon: <Clock size={14} />,
-                label: t("home.newest"),
-              },
-            ].map((mode) => (
+        <div
+          style={{
+            display: "flex",
+            gap: "1rem",
+            alignItems: "center",
+            flexWrap: "nowrap",
+            width: "100%",
+            overflowX: "auto",
+            paddingBottom: "4px",
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+          }}
+        >
+          {/* Sort Mode Selector */}
+          {currentView !== "map" && (
+            <div className="sort-selector" style={{ flexShrink: 0 }}>
+              {[
+                {
+                  key: "popular",
+                  icon: <ThumbsUp size={14} />,
+                  label: t("home.popular"),
+                },
+                {
+                  key: "newest",
+                  icon: <Clock size={14} />,
+                  label: t("home.newest"),
+                },
+              ].map((mode) => (
+                <button
+                  key={mode.key}
+                  className={`sort-btn ${sortMode === mode.key ? "active" : ""}`}
+                  onClick={() => setSortMode(mode.key)}
+                >
+                  {mode.icon} {mode.label}
+                </button>
+              ))}
+
               <button
-                key={mode.key}
-                className={`sort-btn ${sortMode === mode.key ? "active" : ""}`}
-                onClick={() => setSortMode(mode.key)}
+                className={`sort-btn ${groupMode === "city" ? "active" : ""}`}
+                onClick={() =>
+                  setGroupMode(groupMode === "city" ? "category" : "city")
+                }
+                style={{ marginLeft: "0.5rem" }}
               >
-                {mode.icon} {mode.label}
+                <MapPin size={14} /> {t("home.group_city") || "City/Province"}
               </button>
-            ))}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
