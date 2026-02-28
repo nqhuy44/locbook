@@ -74,6 +74,7 @@ export const en = {
     removed_upvote: "Removed upvote",
     memo_saved: "Memo saved!",
     add_to_book_title: "Add to Book",
+    group_city: "City/Province",
   },
   // Categories
   categories: {
@@ -83,6 +84,9 @@ export const en = {
     bar: "Bar",
     dessert: "Dessert",
     bakery: "Bakery",
+    filter_by: "Filters",
+    apply_filters: "Apply",
+    group_city: "City/Province",
   },
   // Map
   map: {
@@ -143,6 +147,10 @@ export const en = {
     select_book: "Select Book",
     no_books: "No books yet.",
     discover_tab: "Discover",
+    sort_popular: "Popular",
+    sort_newest: "Newest",
+    filter_all_cities: "All",
+    search_placeholder: "Search books...",
   },
   // Chat
   ask_marin: {

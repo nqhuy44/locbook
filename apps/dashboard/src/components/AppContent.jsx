@@ -196,6 +196,7 @@ function AppContent() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeVibes, setActiveVibes] = useState([]);
   const [activeCats, setActiveCats] = useState([]);
+  const [groupMode, setGroupMode] = useState("category"); // "category" | "city"
 
 
   // State for Profile View
@@ -473,7 +474,18 @@ function AppContent() {
     };
   }, [places, searchTerm, activeVibes, activeCats, config]);
 
-  const isFiltering =
+  const homeCities = useMemo(() => {
+    if (!places) return [];
+    const uniqueCities = new Set();
+    places.forEach((p) => {
+      if (p.city && p.city.trim() !== "") {
+        uniqueCities.add(p.city);
+      }
+    });
+    return Array.from(uniqueCities).sort((a, b) => a.localeCompare(b, language));
+  }, [places, language]);
+
+  const isSearchFiltering =
     searchTerm !== "" || activeVibes.length > 0 || activeCats.length > 0;
 
   // Shuffle seed for "Popular" randomness
@@ -483,18 +495,12 @@ function AppContent() {
     let result = places;
 
     // 1. Filter
-    if (isFiltering) {
+    if (isSearchFiltering) {
       result = result.filter((place) => {
         const matchesSearch =
           searchTerm === "" ||
           place.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          place.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          place.vibes?.some((v) =>
-            v.toLowerCase().includes(searchTerm.toLowerCase()),
-          ) ||
-          place.categories?.some((c) =>
-            c.toLowerCase().includes(searchTerm.toLowerCase()),
-          );
+          place.address?.toLowerCase().includes(searchTerm.toLowerCase());
 
         const matchesVibe =
           activeVibes.length === 0 ||
@@ -566,7 +572,7 @@ function AppContent() {
     searchTerm,
     activeVibes,
     activeCats,
-    isFiltering,
+    isSearchFiltering,
     sortMode,
     shuffleSeed,
   ]);
@@ -809,11 +815,12 @@ function AppContent() {
           </div>
           <div className="nav-links">
             <span
-              className={`nav-link ${currentView === "list" && !isFiltering ? "active" : ""}`}
+              className={`nav-link ${currentView === "list" && !isSearchFiltering ? "active" : ""}`}
               onClick={() => {
                 setSearchTerm("");
                 setActiveVibes([]);
                 setActiveCats([]);
+                setGroupMode("category");
                 setSortMode("popular");
                 // Trigger refresh and new shuffle
                 setShuffleSeed(Math.random());
@@ -839,6 +846,7 @@ function AppContent() {
                 setSearchTerm("");
                 setActiveVibes([]);
                 setActiveCats([]);
+                setGroupMode("category");
                 navigate("/chat");
               }}
               style={{ display: "flex", alignItems: "center", gap: "5px" }}
@@ -906,6 +914,8 @@ function AppContent() {
             sortMode={sortMode}
             setSortMode={setSortMode}
             currentView={currentView}
+            groupMode={groupMode}
+            setGroupMode={setGroupMode}
             t={t}
           />
         )}
@@ -965,7 +975,7 @@ function AppContent() {
             onPlaceClick={openModal}
             user={user}
           />
-        ) : isFiltering ? (
+        ) : isSearchFiltering ? (
           <div className="section-wrapper">
             <h2 className="section-title">
               {t("home.search_results")} ({filteredPlaces.length})
@@ -980,6 +990,21 @@ function AppContent() {
               ))}
             </div>
           </div>
+        ) : groupMode === "city" ? (
+          homeCities.map((city) => {
+            const cityPlaces = filteredPlaces.filter((p) => p.city === city);
+            if (cityPlaces.length === 0) return null;
+            return (
+              <CategoryRow
+                key={city}
+                title={city}
+                icon={<MapPin size={18} />}
+                places={cityPlaces}
+                onPlaceClick={openModal}
+                PlaceCardComponent={PlaceCard}
+              />
+            );
+          })
         ) : (
           config.HOME_CATEGORIES.map((category) => {
             if (
@@ -1026,6 +1051,7 @@ function AppContent() {
           setSearchTerm("");
           setActiveVibes([]);
           setActiveCats([]);
+          setGroupMode("category");
 
           if (view === "list") {
             navigate("/");

@@ -61,14 +61,32 @@ class AddDishRequest(BaseModel):
 
 # --- Endpoints ---
 
+@router.get("/discover/cities", response_model=List[str])
+async def discover_cities(
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Return distinct cities from all places (lightweight query)."""
+    stmt = (
+        select(Place.city)
+        .where(Place.city.isnot(None))
+        .where(Place.city != "")
+        .distinct()
+        .order_by(Place.city)
+    )
+    result = await db.execute(stmt)
+    return [row[0] for row in result.all()]
+
+
 @router.get("/discover", response_model=List[UserListRead])
 async def discover_public_lists(
     skip: int = 0,
-    limit: int = 20,
+    limit: int = 50,
+    sort_by: str = "popular",  # "popular" | "newest"
+    city: Optional[str] = None,
     current_user: Optional[User] = Depends(get_optional_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
-    """Discover public lists from all users, sorted by follower count."""
+    """Discover public lists. Supports sort_by (popular/newest) and city filter."""
     from sqlalchemy import func
     from sqlalchemy.orm import joinedload
 
@@ -83,23 +101,51 @@ async def discover_public_lists(
     if current_user:
         stmt = stmt.where(UserList.user_id != current_user.id)
 
-    # Subquery for follower count ordering
-    followers_subq = (
-        select(
-            UserListFollow.list_id,
-            func.count(UserListFollow.user_id).label("fc")
+    # City filter: Python-level — extract place_ids then check city
+    if city:
+        # Step 1: Get all public lists with items
+        all_public = await db.execute(
+            select(UserList.id, UserList.items)
+            .where(UserList.privacy == ListPrivacy.PUBLIC)
+            .where(func.jsonb_array_length(UserList.items) > 0)
         )
-        .group_by(UserListFollow.list_id)
-        .subquery()
-    )
+        # Step 2: Extract all place_ids from items JSONB
+        matching_list_ids = []
+        for list_id, items in all_public.all():
+            place_ids = [item.get("place_id") for item in (items or []) if item.get("place_id")]
+            if place_ids:
+                # Check if any place matches the city
+                check = await db.execute(
+                    select(Place.id).where(Place.id.in_(place_ids), Place.city == city).limit(1)
+                )
+                if check.first():
+                    matching_list_ids.append(list_id)
+        
+        if matching_list_ids:
+            stmt = stmt.where(UserList.id.in_(matching_list_ids))
+        else:
+            return []
 
-    stmt = (
-        stmt
-        .outerjoin(followers_subq, UserList.id == followers_subq.c.list_id)
-        .order_by(func.coalesce(followers_subq.c.fc, 0).desc(), UserList.updated_at.desc())
-        .offset(skip)
-        .limit(limit)
-    )
+    # Sorting
+    if sort_by == "newest":
+        stmt = stmt.order_by(UserList.created_at.desc())
+    else:
+        # Default: popular (by follower count)
+        followers_subq = (
+            select(
+                UserListFollow.list_id,
+                func.count(UserListFollow.user_id).label("fc")
+            )
+            .group_by(UserListFollow.list_id)
+            .subquery()
+        )
+        stmt = (
+            stmt
+            .outerjoin(followers_subq, UserList.id == followers_subq.c.list_id)
+            .order_by(func.coalesce(followers_subq.c.fc, 0).desc(), UserList.updated_at.desc())
+        )
+
+    stmt = stmt.offset(skip).limit(limit)
 
     result = await db.execute(stmt)
     public_lists = result.scalars().unique().all()
@@ -108,8 +154,9 @@ async def discover_public_lists(
     list_ids = [l.id for l in public_lists]
     followers_counts = {}
     if list_ids:
+        from sqlalchemy import func as fn
         stmt_count = (
-            select(UserListFollow.list_id, func.count(UserListFollow.user_id))
+            select(UserListFollow.list_id, fn.count(UserListFollow.user_id))
             .where(UserListFollow.list_id.in_(list_ids))
             .group_by(UserListFollow.list_id)
         )
