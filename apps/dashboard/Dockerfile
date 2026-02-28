@@ -10,6 +10,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
+RUN rm -rf .env*
 
 # Inject required environment variables for Next.js build-time
 ARG NEXT_PUBLIC_API_URL

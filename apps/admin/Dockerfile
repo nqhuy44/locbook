@@ -7,6 +7,7 @@ COPY package.json package-lock.json ./
 RUN npm install --legacy-peer-deps
 
 COPY . .
+RUN rm -rf .env*
 
 # Inject environment variables at build time
 ARG VITE_API_URL

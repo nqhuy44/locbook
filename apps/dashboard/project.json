@@ -17,36 +17,6 @@
                 "command": "npm run build",
                 "cwd": "apps/dashboard"
             }
-        },
-        "prebuild-image": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "mv .env ../../temp/dashboard.env || true",
-                "cwd": "apps/dashboard"
-            }
-        },
-        "postbuild-image": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "mv ../../temp/dashboard.env .env || true",
-                "cwd": "apps/dashboard"
-            }
-        },
-        "build-image": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "docker build --platform linux/amd64 --build-arg NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL --build-arg NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID -t nqh44/spotary-dashboard:{args.ver} .",
-                "cwd": "apps/dashboard",
-                "forwardAllArgs": false
-            }
-        },
-        "push-image": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "docker push nqh44/spotary-dashboard:{args.ver}",
-                "cwd": "apps/dashboard",
-                "forwardAllArgs": false
-            }
         }
     },
     "tags": [

@@ -201,7 +201,7 @@ export const vi = {
     use_app_desc: "Để có trải nghiệm tốt nhất, hãy mở link này qua app đã cài đặt hoặc Thêm vào màn hình chính.",
     install_btn: "Cài đặt ngay",
     update_available: "Phiên bản mới đã sẵn sàng",
-    reload_btn: "Cập nhật",
+    reload_btn: "Ok",
     install_ready_desc: "Nhấn nút dưới đây để cài đặt Spotary vào màn hình chính chỉ với 1 bước!",
     install_fallback_android: "Để cài đặt: Nhấn biểu tượng (⋮) -> 'Cài đặt ứng dụng' hoặc 'Thêm vào MH chính'.",
     how_to_install: "Cách cài đặt Spotary",

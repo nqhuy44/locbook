@@ -30,6 +30,10 @@ if [ -f ".env" ]; then
   echo "VITE_GOOGLE_CLIENT_ID: $VITE_GOOGLE_CLIENT_ID"
   echo "NEXT_PUBLIC_API_URL: $NEXT_PUBLIC_API_URL"
   echo "NEXT_PUBLIC_GOOGLE_CLIENT_ID: $NEXT_PUBLIC_GOOGLE_CLIENT_ID"
+  export VITE_API_URL=$VITE_API_URL
+  export VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
+  export NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+  export NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
 fi
 
 # Portable sed -i function for macOS and Linux
@@ -67,11 +71,9 @@ update_dashboard() {
     echo "{\"version\": \"${VERSION#v}\"}" > "$VERSION_FILE"
   fi
   echo "🐳 Building nqh44/spotary-dashboard..."
-  nx run dashboard:prebuild-image
-  nx run dashboard:build-image --ver=$VERSION
-  nx run dashboard:postbuild-image
+  docker build --platform linux/amd64 --build-arg NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL --build-arg NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID -t nqh44/spotary-dashboard:$VERSION apps/dashboard
   echo "🐳 Pushing nqh44/spotary-dashboard..."
-  nx run dashboard:push-image --ver=$VERSION
+  docker push nqh44/spotary-dashboard:$VERSION
 }
 
 update_admin() {
@@ -85,11 +87,9 @@ update_admin() {
     echo "{\"version\": \"${VERSION#v}\"}" > "$VERSION_FILE"
   fi
   echo "🐳 Building nqh44/spotary-admin..."
-  nx run admin:prebuild-image
-  nx run admin:build-image --ver=$VERSION
-  nx run admin:postbuild-image
+  docker build --platform linux/amd64 --build-arg VITE_API_URL=$VITE_API_URL --build-arg VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID -t nqh44/spotary-admin:$VERSION apps/admin
   echo "🐳 Pushing nqh44/spotary-admin..."
-  nx run admin:push-image --ver=$VERSION
+  docker push nqh44/spotary-admin:$VERSION
 }
 
 help() {
